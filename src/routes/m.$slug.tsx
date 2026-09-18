@@ -242,7 +242,8 @@ function ItemCard({
   const toggle = () => {
     if (disabled) return;
     if (selected) onChange({ units: 0, splitOf: null });
-    else onChange({ units: 1, splitOf: null });
+    else if (item.qty - othersQty >= 1) onChange({ units: 1, splitOf: null });
+    else onChange({ units: 0, splitOf: 2 }); // item already partly taken — start by splitting one
   };
 
   return (
