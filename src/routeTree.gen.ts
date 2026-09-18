@@ -10,33 +10,73 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ScanRouteImport } from './routes/scan'
+import { Route as MSlugRouteImport } from './routes/m.$slug'
+import { Route as MesaSlugRouteImport } from './routes/mesa.$slug'
+import { Route as PixSlugRouteImport } from './routes/pix.$slug'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ScanRoute = ScanRouteImport.update({
+  id: '/scan',
+  path: '/scan',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MSlugRoute = MSlugRouteImport.update({
+  id: '/m/$slug',
+  path: '/m/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MesaSlugRoute = MesaSlugRouteImport.update({
+  id: '/mesa/$slug',
+  path: '/mesa/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PixSlugRoute = PixSlugRouteImport.update({
+  id: '/pix/$slug',
+  path: '/pix/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/scan': typeof ScanRoute
+  '/m/$slug': typeof MSlugRoute
+  '/mesa/$slug': typeof MesaSlugRoute
+  '/pix/$slug': typeof PixSlugRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/scan': typeof ScanRoute
+  '/m/$slug': typeof MSlugRoute
+  '/mesa/$slug': typeof MesaSlugRoute
+  '/pix/$slug': typeof PixSlugRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/scan': typeof ScanRoute
+  '/m/$slug': typeof MSlugRoute
+  '/mesa/$slug': typeof MesaSlugRoute
+  '/pix/$slug': typeof PixSlugRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths: '/' | '/scan' | '/m/$slug' | '/mesa/$slug' | '/pix/$slug'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to: '/' | '/scan' | '/m/$slug' | '/mesa/$slug' | '/pix/$slug'
+  id: '__root__' | '/' | '/scan' | '/m/$slug' | '/mesa/$slug' | '/pix/$slug'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ScanRoute: typeof ScanRoute
+  MSlugRoute: typeof MSlugRoute
+  MesaSlugRoute: typeof MesaSlugRoute
+  PixSlugRoute: typeof PixSlugRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +88,43 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/scan': {
+      id: '/scan'
+      path: '/scan'
+      fullPath: '/scan'
+      preLoaderRoute: typeof ScanRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/m/$slug': {
+      id: '/m/$slug'
+      path: '/m/$slug'
+      fullPath: '/m/$slug'
+      preLoaderRoute: typeof MSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/mesa/$slug': {
+      id: '/mesa/$slug'
+      path: '/mesa/$slug'
+      fullPath: '/mesa/$slug'
+      preLoaderRoute: typeof MesaSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pix/$slug': {
+      id: '/pix/$slug'
+      path: '/pix/$slug'
+      fullPath: '/pix/$slug'
+      preLoaderRoute: typeof PixSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ScanRoute: ScanRoute,
+  MSlugRoute: MSlugRoute,
+  MesaSlugRoute: MesaSlugRoute,
+  PixSlugRoute: PixSlugRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
