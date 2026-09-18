@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ScanRouteImport } from './routes/scan'
+import { Route as MesaSlugRouteImport } from './routes/mesa.$slug'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -22,31 +23,40 @@ const ScanRoute = ScanRouteImport.update({
   path: '/scan',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MesaSlugRoute = MesaSlugRouteImport.update({
+  id: '/mesa/$slug',
+  path: '/mesa/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/scan': typeof ScanRoute
+  '/mesa/$slug': typeof MesaSlugRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/scan': typeof ScanRoute
+  '/mesa/$slug': typeof MesaSlugRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/scan': typeof ScanRoute
+  '/mesa/$slug': typeof MesaSlugRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/scan'
+  fullPaths: '/' | '/scan' | '/mesa/$slug'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/scan'
-  id: '__root__' | '/' | '/scan'
+  to: '/' | '/scan' | '/mesa/$slug'
+  id: '__root__' | '/' | '/scan' | '/mesa/$slug'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ScanRoute: typeof ScanRoute
+  MesaSlugRoute: typeof MesaSlugRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -65,12 +75,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ScanRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/mesa/$slug': {
+      id: '/mesa/$slug'
+      path: '/mesa/$slug'
+      fullPath: '/mesa/$slug'
+      preLoaderRoute: typeof MesaSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ScanRoute: ScanRoute,
+  MesaSlugRoute: MesaSlugRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
