@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ScanRouteImport } from './routes/scan'
+import { Route as MSlugRouteImport } from './routes/m.$slug'
 import { Route as MesaSlugRouteImport } from './routes/mesa.$slug'
 
 const IndexRoute = IndexRouteImport.update({
@@ -23,6 +24,11 @@ const ScanRoute = ScanRouteImport.update({
   path: '/scan',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MSlugRoute = MSlugRouteImport.update({
+  id: '/m/$slug',
+  path: '/m/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const MesaSlugRoute = MesaSlugRouteImport.update({
   id: '/mesa/$slug',
   path: '/mesa/$slug',
@@ -32,30 +38,34 @@ const MesaSlugRoute = MesaSlugRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/scan': typeof ScanRoute
+  '/m/$slug': typeof MSlugRoute
   '/mesa/$slug': typeof MesaSlugRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/scan': typeof ScanRoute
+  '/m/$slug': typeof MSlugRoute
   '/mesa/$slug': typeof MesaSlugRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/scan': typeof ScanRoute
+  '/m/$slug': typeof MSlugRoute
   '/mesa/$slug': typeof MesaSlugRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/scan' | '/mesa/$slug'
+  fullPaths: '/' | '/scan' | '/m/$slug' | '/mesa/$slug'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/scan' | '/mesa/$slug'
-  id: '__root__' | '/' | '/scan' | '/mesa/$slug'
+  to: '/' | '/scan' | '/m/$slug' | '/mesa/$slug'
+  id: '__root__' | '/' | '/scan' | '/m/$slug' | '/mesa/$slug'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ScanRoute: typeof ScanRoute
+  MSlugRoute: typeof MSlugRoute
   MesaSlugRoute: typeof MesaSlugRoute
 }
 
@@ -75,6 +85,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ScanRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/m/$slug': {
+      id: '/m/$slug'
+      path: '/m/$slug'
+      fullPath: '/m/$slug'
+      preLoaderRoute: typeof MSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/mesa/$slug': {
       id: '/mesa/$slug'
       path: '/mesa/$slug'
@@ -88,6 +105,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ScanRoute: ScanRoute,
+  MSlugRoute: MSlugRoute,
   MesaSlugRoute: MesaSlugRoute,
 }
 export const routeTree = rootRouteImport
