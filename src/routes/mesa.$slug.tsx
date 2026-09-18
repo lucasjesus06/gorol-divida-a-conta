@@ -39,7 +39,7 @@ function Mesa() {
 
   const totals = roleTotals(role);
   const link = `gorole.com.br/${role.slug}`;
-  const guestUrl = `/m/${role.slug}`;
+  const guestUrl = `/m/${role.slug}?novo=1`;
 
   const copy = () => {
     navigator.clipboard?.writeText(`https://${link}`).catch(() => {});
