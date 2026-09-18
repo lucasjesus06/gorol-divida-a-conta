@@ -19,7 +19,7 @@ import {
 } from "@/lib/role-store";
 
 export const Route = createFileRoute("/m/$slug")({
-  validateSearch: (s: Record<string, unknown>) => ({ novo: s.novo === 1 || s.novo === "1" ? 1 : undefined }),
+  validateSearch: (s: Record<string, unknown>) => ({ novo: s["novo"] === 1 || s["novo"] === "1" ? 1 : undefined }),
   head: () => ({
     meta: [
       { title: "Entrar na mesa — GoRolê" },
@@ -225,10 +225,10 @@ function ItemCard({
 }: {
   item: Item;
   index: number;
-  claim?: Claim;
+  claim: Claim | undefined;
   othersQty: number;
   rate: number;
-  disabled?: boolean;
+  disabled: boolean;
   onChange: (c: Claim) => void;
 }) {
   const units = claim?.units ?? 0;

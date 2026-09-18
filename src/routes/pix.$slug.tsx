@@ -78,7 +78,7 @@ function Pix() {
       setWaiting(false);
       setWebhook({
         amount: totals.total,
-        payerName: MOCK_PAYER_NAMES[Math.floor(Math.random() * MOCK_PAYER_NAMES.length)],
+        payerName: MOCK_PAYER_NAMES[Math.floor(Math.random() * MOCK_PAYER_NAMES.length)] ?? "ANA CAROLINA SOUZA LIMA",
         e2eId: `E${Math.floor(Math.random() * 1e8).toString().padStart(8, "0")}2026091814${Math.random().toString(36).slice(2, 10).toUpperCase()}`,
         receivedAt: new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
       });

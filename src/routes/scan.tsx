@@ -121,7 +121,7 @@ function Scan() {
                 transition={{ type: "spring", stiffness: 260, damping: 16 }}
                 className="relative grid h-24 w-24 place-items-center rounded-[28px] bg-gradient-primary text-5xl shadow-glow"
               >
-                {phase === "done" ? <Check className="h-12 w-12 text-primary-foreground" strokeWidth={3} /> : STAGES[stage].emoji}
+                {phase === "done" ? <Check className="h-12 w-12 text-primary-foreground" strokeWidth={3} /> : STAGES[stage]?.emoji}
               </motion.div>
             </div>
 
@@ -133,7 +133,7 @@ function Scan() {
                 exit={{ opacity: 0, y: -8 }}
                 className="mt-8 text-lg font-bold"
               >
-                {phase === "done" ? "Notinha na mão! Bora pro rolê 🎉" : STAGES[stage].label}
+                {phase === "done" ? "Notinha na mão! Bora pro rolê 🎉" : STAGES[stage]?.label}
               </motion.p>
             </AnimatePresence>
 
