@@ -13,7 +13,8 @@ const buttonVariants = cva(
         hero: "bg-gradient-primary text-primary-foreground shadow-glow hover:brightness-110",
         destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90",
         outline: "border border-primary-glow/60 bg-transparent text-foreground hover:bg-primary/15",
-        secondary: "bg-card-elevated text-secondary-foreground border border-border hover:bg-accent",
+        secondary:
+          "bg-card-elevated text-secondary-foreground border border-border hover:bg-accent",
         mint: "bg-mint text-success-foreground hover:brightness-110",
         ghost: "hover:bg-accent hover:text-accent-foreground",
         link: "text-primary-glow underline-offset-4 hover:underline",
