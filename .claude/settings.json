@@ -1,4 +1,15 @@
 {
+  "attribution": {
+    "commit": "",
+    "pr": "",
+    "sessionUrl": false
+  },
+  "env": {
+    "GIT_AUTHOR_NAME": "Lucas Jesus",
+    "GIT_AUTHOR_EMAIL": "lucasjesus06@hotmail.com",
+    "GIT_COMMITTER_NAME": "Lucas Jesus",
+    "GIT_COMMITTER_EMAIL": "lucasjesus06@hotmail.com"
+  },
   "permissions": {
     "allow": [
       "Bash(git add *)",
