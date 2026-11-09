@@ -7,7 +7,7 @@ Aplicação para dividir custos em ocasiões sociais: registrar despesas compart
 ## Stack do frontend
 
 - React 19 + TypeScript
-- TanStack Start / TanStack Router (roteamento por arquivos)
+- TanStack Router (roteamento por arquivos, app de página única)
 - Tailwind CSS 4 + componentes no padrão shadcn/ui
 - Motion (animações)
 - Vite 8
@@ -25,26 +25,26 @@ A aplicação sobe em `http://localhost:5173` (ou na próxima porta livre, indic
 
 ## Scripts
 
-| Script              | O que faz                             |
-| ------------------- | ------------------------------------- |
-| `npm run dev`       | Servidor de desenvolvimento           |
-| `npm run build`     | Build de produção                     |
-| `npm run preview`   | Serve o build localmente              |
-| `npm run typecheck` | Verificação de tipos (`tsc --noEmit`) |
-| `npm run lint`      | ESLint + Prettier                     |
-| `npm run format`    | Formata o código com Prettier         |
+| Script              | O que faz                                         |
+| ------------------- | ------------------------------------------------- |
+| `npm run dev`       | Servidor de desenvolvimento                       |
+| `npm run build`     | Build de produção (arquivos estáticos em `dist/`) |
+| `npm run preview`   | Serve o build localmente                          |
+| `npm run typecheck` | Verificação de tipos (`tsc --noEmit`)             |
+| `npm run lint`      | ESLint + Prettier                                 |
+| `npm run format`    | Formata o código com Prettier                     |
 
 ## Organização do código
 
 ```
 src/
   routes/          Declaração das rotas (URL, head, params). Apenas delegam para as páginas das features.
-  app/             Composição global da aplicação (providers).
+  app/             Composição global da aplicação (instância do router).
   components/
     ui/            Primitivos de interface (padrão shadcn/ui).
     layout/        Estrutura de página (Shell, Logo).
     common/        Componentes visuais reutilizáveis (Pill, Avatar, Sparkle).
-  lib/             Utilitários globais (cn, formatação, tratamento de erros de SSR).
+  lib/             Utilitários globais (cn, formatação).
   features/
     bill/          Domínio da conta: model (tipos, dados simulados), services (persistência e ações),
                    hooks (acesso ao estado) e lib (cálculos). API pública em features/bill/index.ts.
@@ -53,7 +53,7 @@ src/
     host/          Painel de quem criou o rolê.
     guest/         Visão do convidado (marcar itens consumidos).
     payment/       Pagamento via Pix (simulado).
-  router.tsx, start.ts, server.ts   Configuração do TanStack Start.
+  main.tsx         Ponto de entrada: monta o app em index.html.
 ```
 
 Regras de dependência:
