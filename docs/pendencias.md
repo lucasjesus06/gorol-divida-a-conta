@@ -1,43 +1,33 @@
-# Pendências de domínio e bugs conhecidos
+# Pendências
 
-Itens encontrados no protótipo atual que **não impedem build nem execução**, mas precisam ser tratados nas próximas etapas. Nenhum deles foi corrigido na reorganização da base do frontend: o comportamento foi preservado de propósito.
+Tudo o que ainda precisa ser feito ou decidido. O que fica para versões futuras está em [`evolucoes.md`](evolucoes.md). O trabalho está dividido nas histórias `GOR-01` a `GOR-16` do quadro "Gorole" no Trello. Ao concluir um item, remova-o daqui no mesmo PR.
 
-Prioridade: **Alta** (resultado financeiro errado ou fluxo principal quebrado fora do ambiente local), **Média** (inconsistência visível ou regra incompleta), **Baixa** (acabamento).
+## 1. Decisões em aberto
 
-## 1. Bugs
+- **Autenticação:** login anônimo do Supabase, com o servidor vinculando a sessão à pessoa quando o telefone digitado bate com o cadastrado pelo dono (bloqueia GOR-04).
+- **Verificação do app com login real:** projeto Supabase de desenvolvimento ou só PGlite e testes (GOR-04 em diante).
+- **Dependências novas além das do Kalu:** pacote de QR code (GOR-07) e Playwright nos testes de contexto (GOR-04).
+- **Arquivos:** Supabase Storage com bucket privado e URL assinada (GOR-15).
+- **Cobrança na v1:** web push e lista de avisos, com WhatsApp pela API oficial depois (GOR-13 e GOR-14).
+- **Pagantes (GOR-09):** forma de divisão padrão do rolê, definida pelo dono e usada nas despesas dos pagantes.
+- **Conta por consumo (GOR-10):**
+  - quando o dono não pagou a conta, ele só desonera os demais se for pagante dela, ou quita sozinho, ou precisa do aceite de quem pagou;
+  - "fechou, acabou a responsa": vale para a conta ou para o rolê? Proposta: fechar a conta trava a marcação, e a despesa gerada continua contestável enquanto o rolê estiver aberto;
+  - o dono pode ratear a pendência entre todos da conta?
+- **Participante que saiu do rolê:** hoje perderia o acesso. Decidir se continua vendo e pagando o que deve.
+- **Valores padrão da cobrança:** intervalo de 24 h, janela de 10 h às 20 h, pausa oferecida após 3 lembretes, pausa de 3 dias e limite de 2 pausas.
+- **Textos dos lembretes** (tom de meme) e modelos de mensagem do WhatsApp, que precisam de aprovação da Meta.
+- **Termos e condições** do primeiro acesso, incluindo o consentimento para os lembretes: texto a escrever, de preferência com orientação jurídica (LGPD).
+- **Armazenamento de arquivos:** limites de tamanho e por quanto tempo guardar.
+- **Login de conta por código:** canal do código (WhatsApp ou e-mail) e quando a pessoa passa de participante de rolê a conta.
+- **Grupos:** fluxo de vincular uma relação a um grupo, quem autoriza e como fica a visão consolidada.
 
-| #   | Prioridade | Onde                                                                                         | Problema                                                                                                                                                                                                                                                          | Próxima etapa                                                           |
-| --- | ---------- | -------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
-| B1  | Alta       | `features/bill/services/bill-store.ts`                                                       | Todo o estado fica no `localStorage` do navegador. O link compartilhado não funciona em outro aparelho: o convidado vê "Esse link não tá valendo mais".                                                                                                           | Backend + API (os services de `features/bill` passam a chamar a API).   |
-| B2  | Alta       | `features/bill/lib/calculations.ts`                                                          | Valores em dinheiro calculados com ponto flutuante (`1 / splitOf`, `amount * serviceRate`). A soma das partes pode não bater com o total da nota.                                                                                                                 | Cálculo em centavos inteiros no backend.                                |
-| B3  | Alta       | `features/payment/PixPage.tsx` (`settle`)                                                    | Ao escolher "paguei para outra pessoa", o pagamento registrado é o total calculado da pessoa escolhida, e não o valor do Pix recebido.                                                                                                                            | Registrar pagamentos com o valor efetivamente pago (pagamento parcial). |
-| B4  | Alta       | `features/bill/lib/calculations.ts` (`billTotals`)                                           | "Já pago" soma o total calculado de quem pagou, e não o valor pago (`paidAmount`). Ex.: Maria tem `paidAmount` 68,75, mas a tela mostra 77,73 como pago.                                                                                                          | Saldos derivados dos pagamentos registrados.                            |
-| B5  | Média      | `features/guest/components/ItemCard.tsx` (`toggle` e opções de divisão)                      | É possível consumir mais que a quantidade do item: ao marcar um item já esgotado, o sistema inicia uma divisão 1/2 mesmo sem sobra. As frações não são coordenadas entre as pessoas (uma escolhe 1/2 e outra 1/3 da mesma unidade).                               | Consumo por item com frações coordenadas e validação no backend.        |
-| B6  | Média      | `features/bill/services/bill-service.ts` (`createBill`)                                      | O identificador da mesa é fixo (`mesa-da-resenha`). Criar um novo rolê sobrescreve o anterior.                                                                                                                                                                    | Identificadores gerados pelo backend.                                   |
-| B7  | Média      | `features/host/components/ShareSheet.tsx`                                                    | O link compartilhado (`gorole.com.br/{slug}`) não corresponde à rota real do convidado (`/m/{slug}`) e usa um domínio que não existe.                                                                                                                             | Convite individual com link real gerado pelo backend.                   |
-| B8  | Média      | `features/host/HostPage.tsx`, `features/guest/GuestPage.tsx`, `features/payment/PixPage.tsx` | No primeiro render o estado ainda não foi lido do `localStorage` (a leitura acontece ao assinar o store), então a tela pode mostrar "não existe" ou "link não vale mais" por um instante antes de carregar. O sistema confunde "carregando" com "não encontrado". | Estados explícitos de carregamento, não encontrado e sem acesso.        |
-| B9  | Média      | `features/payment/lib/pix-code.ts`                                                           | O código Pix tem recebedor e chave fixos ("GOROLE PAGAMENTOS LTDA") e não segue o padrão BR Code. O comentário "fake CRC16" está errado: o cálculo é CRC16-CCITT de verdade.                                                                                      | BR Code gerado a partir da chave Pix do credor.                         |
-| B10 | Baixa      | `features/bill/services/bill-store.ts` (listener de `storage`)                               | O `JSON.parse` do evento de outra aba não tem tratamento de erro; um valor corrompido quebra a atualização.                                                                                                                                                       | Some com a troca do `localStorage` pela API.                            |
-| B11 | Baixa      | `features/payment/PixPage.tsx`                                                               | O contador "expira em 15:00" é apenas visual: nada acontece ao chegar a zero.                                                                                                                                                                                     | Definir a validade real da cobrança ou remover.                         |
+## 2. Fora do escopo desta versão
 
-## 2. Inconsistências entre o protótipo e o conceito do produto
+Grupos, leitura da NFC-e (a entrada de itens é digitada), Capacitor/APK, OpenAPI e compensação de saldos entre rolês.
 
-| #   | Conceito do produto                                                                               | Protótipo atual                                                                                     |
-| --- | ------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| D1  | Relações financeiras com **várias despesas** ao longo do tempo                                    | Uma mesa = uma nota fiscal                                                                          |
-| D2  | Despesa paga por **uma ou mais pessoas**                                                          | Não existe pagador da despesa; o dinheiro vai para a "plataforma"                                   |
-| D3  | Cada despesa tem **seus próprios participantes** e formas de rateio (igual, por valor, por itens) | Apenas rateio por itens da nota                                                                     |
-| D4  | Saldos consolidados e **acertos com o menor número de transferências**                            | Não existe                                                                                          |
-| D5  | Pagamento **parcial**, **direto ao credor** e **confirmado** por ele                              | Apenas `paid: true/false`; Pix para recebedor fixo; confirmação simulada por "webhook"              |
-| D6  | Convite individual com **código de uso único** (WhatsApp)                                         | O convidado digita só o primeiro nome; nomes podem se repetir                                       |
-| D7  | Administrador com permissões; qualquer participante pode registrar despesas                       | A tela do dono (`/mesa/{slug}`) mostra "Você é o dono" para qualquer pessoa, sem controle de acesso |
-| D8  | Contas (login por código), grupos e dados de recebimento                                          | Não existem                                                                                         |
-| D9  | Auditoria ("registrada por", "paga por", data e hora) e histórico com versões                     | Não existe; a troca de convidado apenas esquece a identidade no aparelho                            |
+## 3. Ações administrativas
 
-## 3. Acabamento e dados simulados
-
-- Dados simulados que saem quando houver backend: itens da nota (`features/bill/model/mock-data.ts`), convidados iniciais e chave de acesso da NFC-e (`features/bill/services/bill-service.ts`), nomes de pagadores (`features/payment/lib/bank-simulation.ts`) e o cartão "Total da última mesa R$ 412,50" da tela inicial (`features/home/HomePage.tsx`).
-- A leitura da NFC-e e a consulta à SEFAZ são apenas animação (`features/scan`). A viabilidade da importação real por estado não foi investigada.
-- A taxa de serviço é fixa em 10%; não há como escolher 13% nem remover.
-- As telas de 404 e de erro (`routes/__root.tsx`) estão em inglês num app em português.
-- As quantidades fracionadas aparecem como decimal (`0.33×`) em vez de fração (`1/3`).
+- Desconectar o projeto do Lovable (integração com o GitHub), no painel do Lovable.
+- Apagar a branch antiga `claude/eloquent-knuth-rpp6yj`.
+- Arquivar o repositório `gorole-service` depois da GOR-03.
