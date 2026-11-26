@@ -22,11 +22,17 @@ Tudo o que ainda precisa ser feito ou decidido. O que fica para versões futuras
 - **Login de conta por código:** canal do código (WhatsApp ou e-mail) e quando a pessoa passa de participante de rolê a conta.
 - **Grupos:** fluxo de vincular uma relação a um grupo, quem autoriza e como fica a visão consolidada.
 
-## 2. Fora do escopo desta versão
+## 2. Herdado da GOR-05
+
+- **GOR-04:** ao criar o `src/proxy.ts`, incluir `/manifest.webmanifest` e `/sw.js` entre os caminhos públicos (o app só instala se o manifesto abrir sem login).
+- **GOR-06:** acrescentar os atalhos (`shortcuts`) ao manifesto quando existirem as rotas de rolês.
+- **GOR-13:** o `sw.js` já trata `push` e clique, mas o registro do service worker e a inscrição de push entram nessa história.
+
+## 3. Fora do escopo desta versão
 
 Grupos, leitura da NFC-e (a entrada de itens é digitada), Capacitor/APK, OpenAPI e compensação de saldos entre rolês.
 
-## 3. Ações administrativas
+## 4. Ações administrativas
 
 - Desconectar o projeto do Lovable (integração com o GitHub), no painel do Lovable.
 - Apagar a branch antiga `claude/eloquent-knuth-rpp6yj`.
