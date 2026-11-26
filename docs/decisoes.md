@@ -107,7 +107,7 @@ Identificadores do código em inglês; textos para o usuário em português.
 ### Entrada no rolê
 
 - O dono do rolê cadastra cada participante com **nome e telefone**. No celular, pode escolher na agenda; na web, digita.
-- O **telefone identifica a pessoa**: o mesmo número é a mesma pessoa em todos os rolês.
+- O **telefone identifica a pessoa**: o mesmo número é a mesma pessoa em todos os rolês. O telefone é a credencial de entrada, então **nenhum participante lê o telefone de outro** (nem o próprio, pela sessão): a leitura é só do servidor, com checagem explícita.
 - O dono distribui **um link único do rolê**, sem mensagem individual para cada participante, de uma destas formas:
   - no grupo do WhatsApp do rolê;
   - pelo "compartilhar" do celular, marcando vários contatos de uma vez;
@@ -136,6 +136,7 @@ Identificadores do código em inglês; textos para o usuário em português.
 
 - **`src/domain`:** regras puras, sem I/O, com teste ao lado (`*.test.ts`). **`src/server`:** acesso a dados e casos de uso (server-only), com teste ao lado. Server actions fazem o papel de controller.
 - **Toda regra de negócio fica no servidor.** A interface tem apenas regras de tela.
+- **Criação de rolê:** quem cria só enxerga o rolê dentro da própria transação, até entrar como participante (`created_at = now()`); depois vale a regra de participação.
 - **Multi-tenant por RLS:** toda tabela com RLS ligado, políticas por papel e identidade da pessoa vinda da sessão. Trabalho privilegiado passa por `asService`.
 - **IDs:** `uuid` nativo.
 - Padrões de cache, formulários, webhooks, cron e segurança seguem os do Kalu (ver `AGENTS.md`).
