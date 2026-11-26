@@ -3,7 +3,7 @@ import { plusJakarta } from "./fonts";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "GoRolê — Racha a conta do bar sem estresse",
+  title: "GoRolê",
   description:
     "Divida as despesas do rolê, veja quem deve a quem e acerte com o menor número de Pix.",
   applicationName: "GoRolê",

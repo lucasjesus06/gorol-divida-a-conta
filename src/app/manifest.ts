@@ -3,7 +3,7 @@ import type { MetadataRoute } from "next";
 export default function manifest(): MetadataRoute.Manifest {
   return {
     id: "/",
-    name: "GoRolê · Racha a conta sem estresse",
+    name: "GoRolê",
     short_name: "GoRolê",
     description: "Divida as despesas do rolê, veja quem deve a quem e acerte com o menor número de Pix.",
     lang: "pt-BR",
