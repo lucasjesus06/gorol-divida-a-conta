@@ -18,6 +18,12 @@ Tudo o que ainda precisa ser feito ou decidido. O que fica para versões futuras
 - **Valores padrão da cobrança:** intervalo de 24 h, janela de 10 h às 20 h, pausa oferecida após 3 lembretes, pausa de 3 dias e limite de 2 pausas.
 - **Textos dos lembretes** (tom de meme) e modelos de mensagem do WhatsApp, que precisam de aprovação da Meta.
 - **Termos e condições** do primeiro acesso, incluindo o consentimento para os lembretes: texto a escrever, de preferência com orientação jurídica (LGPD).
+- **Leitura de documentos (GOR-17, GOR-18):**
+  - provedor do modelo de visão, chave de API e **quem paga**, com limite de leituras por rolê;
+  - texto dos termos de uso sobre o envio do documento a um terceiro (LGPD);
+  - piloto com 15 a 20 documentos reais antes de prometer a função aos usuários;
+  - valores dos limites de tamanho e de páginas;
+  - se o comprovante de Pix com valor ou destinatário diferentes do pagamento declarado é rejeitado ou segue para o credor confirmar.
 - **Armazenamento de arquivos:** limites de tamanho e por quanto tempo guardar.
 - **Login de conta por código:** canal do código (WhatsApp ou e-mail) e quando a pessoa passa de participante de rolê a conta.
 - **Grupos:** fluxo de vincular uma relação a um grupo, quem autoriza e como fica a visão consolidada.
@@ -30,7 +36,7 @@ Tudo o que ainda precisa ser feito ou decidido. O que fica para versões futuras
 
 ## 3. Fora do escopo desta versão
 
-Grupos, leitura da NFC-e (a entrada de itens é digitada), Capacitor/APK, OpenAPI e compensação de saldos entre rolês.
+Grupos, leitura da NFC-e pela SEFAZ (a leitura de documentos por foto, print e PDF entra nas GOR-17 e GOR-18), documentos Word e Excel, Capacitor/APK, OpenAPI e compensação de saldos entre rolês.
 
 ## 4. Ações administrativas
 

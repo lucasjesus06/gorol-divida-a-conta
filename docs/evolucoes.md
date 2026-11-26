@@ -11,7 +11,7 @@ Ideias e capacidades combinadas para depois da primeira versão validada. Não f
 
 ## Pagamentos
 
-- **Comprovante, opção C:** antes de confirmar automaticamente, o app lê o comprovante e confere valor, recebedor, data e o identificador único do Pix (E2E ID). Assim o mesmo comprovante não serve duas vezes. Evolução da opção B, que já está implementada.
+- **Comprovante, opção C completa:** além de verificar que é um comprovante de Pix e guardar o identificador único (já previstos na v1, ver `decisoes.md`), conferir de forma automática valor, recebedor e data contra o pagamento declarado e bloquear a confirmação quando não baterem.
 - **Open Finance (v2):**
   - **Iniciação de pagamento:** o devedor autoriza o Pix no app do banco dele, o dinheiro vai direto para o credor (o app não toca no dinheiro) e o app recebe a confirmação oficial, sem comprovante.
   - **Leitura da conta do credor:** com o consentimento do credor, o app identifica os Pix recebidos e confirma sozinho.
@@ -22,7 +22,8 @@ Ideias e capacidades combinadas para depois da primeira versão validada. Não f
 
 ## Despesas
 
-- **Leitura real da NFC-e:** QR Code da notinha e consulta à SEFAZ de cada estado para importar estabelecimento, valor e itens. A viabilidade por estado ainda não foi investigada.
+- **Leitura da NFC-e pelo QR Code:** consulta à SEFAZ de cada estado para importar estabelecimento, valor e itens sem foto. A viabilidade por estado ainda não foi investigada.
+- **Documentos Word, Excel e outros** na leitura de documentos.
 - **Identificação automática de despesas** pela conta bancária conectada.
 - **Local da despesa:** obter automaticamente pelo aparelho e transformar em endereço.
 

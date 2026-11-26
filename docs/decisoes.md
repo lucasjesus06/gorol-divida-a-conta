@@ -97,12 +97,22 @@ Identificadores do código em inglês; textos para o usuário em português.
 - O app **não movimenta dinheiro**: o pagamento é feito por fora (Pix) e registrado no app.
 - **Declarado → confirmado.** Só pagamento confirmado entra no saldo.
 - **Comprovante (opção B):** pagamento com comprovante, compartilhado direto do app do banco ou enviado, é **confirmado automaticamente**. O credor pode **contestar em até 3 dias**; contestado sai do saldo até ser confirmado ou recusado pelo credor. Sem comprovante, o credor confirma.
+- **Leitura do comprovante:** antes de aceitar, o app lê o documento e **só aceita se for um comprovante de Pix**; qualquer outro documento é rejeitado. Da leitura saem valor, data, destinatário e o código único do Pix, que não pode ser usado em dois pagamentos.
 - **Pagar também por outras pessoas:** quem paga em nome de alguém passa a ser credor dessa pessoa.
 - **Acerto por rolê**, separado dos outros rolês. Ao acertar um, o app avisa que há contas em aberto em outros rolês e pergunta se a pessoa quer quitar também.
 - **Na v1 não há compensação de saldos entre rolês diferentes** (confirmado; a compensação fica para os grupos ou a v2). A visão pessoa × pessoa mostra o total entre duas pessoas em todos os rolês.
 - **Rota inteligente:** menor número de Pix dentro do rolê; ninguém precisa pagar quem pagou a despesa original. Mínimo exato até 16 pessoas com saldo em aberto; acima disso, maior devedor paga maior credor. A pessoa vê um **resumo** que explica a rota e quantos Pix ela economiza.
 - **Rota manual:** cada um paga diretamente a quem deve, para quem não se sente seguro com a rota inteligente.
 - Pagamentos declarados contam como feitos no planejamento da rota, para ninguém pagar duas vezes enquanto aguarda confirmação.
+
+### Leitura de documentos (foto, print e PDF)
+
+- O app lê **foto da notinha, print de tela e PDF** que tenham descrições e valores (fatura, nota, pedido de delivery) e monta um **rascunho** de despesa: descrição, data, total e, quando houver, itens e taxa de serviço. Word, Excel e outros formatos ficam fora do MVP.
+- **A leitura nunca vira despesa sozinha:** a pessoa revisa e confirma. Se o documento traz itens, o rascunho pode virar conta por consumo; se não, uma despesa só com o total.
+- O leitor **só extrai campos fixos e não executa nada** do que está no documento. O conteúdo do arquivo é tratado como dado não confiável.
+- Extrai só o que a despesa precisa (descrição, valor, data). **O arquivo não é guardado por padrão**; a pessoa escolhe se quer guardá-lo como evidência da despesa.
+- **Tamanho limitado:** imagens são reduzidas no celular e há limite de tamanho e de páginas por arquivo.
+- **Recebimento:** no Android, o app instalado aparece na lista de "compartilhar". No iPhone, que não oferece isso a apps instalados da web, há um botão "Enviar documento" na tela. No computador, também vale arrastar e soltar.
 
 ### Entrada no rolê
 
