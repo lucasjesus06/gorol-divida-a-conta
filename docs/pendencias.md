@@ -4,7 +4,7 @@ Tudo o que ainda precisa ser feito ou decidido. O que fica para versões futuras
 
 ## 1. Decisões em aberto
 
-- **Verificação do app com login real:** projeto Supabase de desenvolvimento ou só PGlite e testes (GOR-04 em diante).
+- **Verificação do login de ponta a ponta (GOR-04 em diante):** o ambiente do agente só sai por HTTPS e não alcança o Postgres do Supabase. O agente verifica com Postgres local e a camada de autenticação simulada, e o Lucas confere o login real, na máquina dele, com um projeto Supabase de desenvolvimento (separado do de produção) e as chaves só no `.env.local`.
 - **Dependências novas além das do Kalu:** pacote de QR code (GOR-07) e Playwright nos testes de contexto (GOR-04).
 - **Arquivos:** Supabase Storage com bucket privado e URL assinada (GOR-15).
 - **Cobrança na v1:** web push e lista de avisos, com WhatsApp pela API oficial depois (GOR-13 e GOR-14).
@@ -14,7 +14,7 @@ Tudo o que ainda precisa ser feito ou decidido. O que fica para versões futuras
   - "fechou, acabou a responsa": vale para a conta ou para o rolê? Proposta: fechar a conta trava a marcação, e a despesa gerada continua contestável enquanto o rolê estiver aberto;
   - o dono pode ratear a pendência entre todos da conta?
 - **Participante que saiu do rolê:** hoje perderia o acesso. Decidir se continua vendo e pagando o que deve.
-- **Login da conta aprovada (GOR-04):** definir como a pessoa entra depois de aprovada (proposta: código enviado por e-mail, sem senha).
+- **Remetente de e-mail (GOR-04):** o remetente padrão do Supabase tem limite baixo de envios e só entrega a membros da equipe do projeto, então os testadores exigem um remetente próprio (SMTP de um provedor com plano gratuito). Escolher o provedor.
 - **Super administrador (GOR-19):** como o papel é atribuído ao Lucas (proposta: marcado direto no banco, sem tela) e qual o escopo do painel além de pedidos, convites e contas.
 - **Convite (GOR-19):** validade do convite e se é de uso único (proposta: uso único e com prazo).
 - **Configurações (GOR-20):**
@@ -23,7 +23,7 @@ Tudo o que ainda precisa ser feito ou decidido. O que fica para versões futuras
   - formato aceito para a chave Pix (CPF, telefone, e-mail ou chave aleatória) e quem pode ver a chave;
   - o que é "personalizar a experiência" na tela da pessoa.
 - **Valores padrão da cobrança** (passam a ser parâmetros do sistema, ver GOR-20): intervalo de 24 h, janela de 10 h às 20 h, pausa oferecida após 3 lembretes, pausa de 3 dias e limite de 2 pausas.
-- **Textos dos lembretes** (tom de meme) e modelos de mensagem do WhatsApp, que precisam de aprovação da Meta.
+- **Textos dos lembretes** (tom de meme; frases de efeito de divulgação não entram na interface) e modelos de mensagem do WhatsApp, que precisam de aprovação da Meta.
 - **Termos e condições** do primeiro acesso, incluindo o consentimento para os lembretes: texto a escrever, de preferência com orientação jurídica (LGPD).
 - **Leitura de documentos (GOR-17, GOR-18):**
   - provedor do modelo de visão, chave de API e **quem paga** (sem limite por rolê no MVP; o teto de gasto fica no provedor);
