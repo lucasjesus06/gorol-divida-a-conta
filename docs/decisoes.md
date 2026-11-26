@@ -111,7 +111,7 @@ Identificadores do código em inglês; textos para o usuário em português.
 - **Conta só mediante aprovação.** Há duas portas, e as duas terminam no mesmo estado de conta aprovada:
   - **pedido de acesso:** a pessoa toca em "enviar para análise" e o pedido chega a um **painel de super administrador**, onde o Lucas aprova ou recusa;
   - **convite:** o Lucas gera o convite e a pessoa se cadastra por ele.
-- Só quem tem conta aprovada **cria rolê**. Depois de aprovada, a pessoa faz o cadastro e o login pela própria aplicação.
+- Só quem tem conta aprovada **cria rolê**. Depois de aprovada, a pessoa faz o cadastro e o login pela própria aplicação, **sem senha: por código de 6 dígitos enviado por e-mail** (sem custo). Um link mágico não serve bem a quem usa o app instalado, porque no iPhone o link abre no navegador e não no app. **Senha comum** só entra se o envio de e-mail se mostrar inviável.
 - **Sem cotas nem limites de uso no MVP:** serão poucos testadores. A leitura de documentos tem custo, então o controle de gasto fica no próprio provedor, e não no app.
 - **Super administrador:** papel de sistema, só o Lucas no MVP. Vê pedidos, convites e contas, e **toda aprovação ou recusa fica registrada** (quem, quando).
 
