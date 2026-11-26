@@ -8,6 +8,13 @@
       "when": 1795733956690,
       "tag": "0000_pessoas_roles_e_participantes",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1795734001574,
+      "tag": "0001_politicas_rls",
+      "breakpoints": true
     }
   ]
 }
