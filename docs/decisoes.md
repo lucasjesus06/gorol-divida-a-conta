@@ -105,6 +105,24 @@ Identificadores do código em inglês; textos para o usuário em português.
 - **Rota manual:** cada um paga diretamente a quem deve, para quem não se sente seguro com a rota inteligente.
 - Pagamentos declarados contam como feitos no planejamento da rota, para ninguém pagar duas vezes enquanto aguarda confirmação.
 
+### Acesso e cadastro
+
+- **Convidado entra sem conta**, pelo link do rolê (ver "Entrada no rolê"). Ele participa do rolê em que foi cadastrado, mas **não cria rolê**. Tecnicamente, recebe uma sessão sem e-mail nem senha que só passa a representar uma pessoa depois que o telefone digitado bate com o cadastrado pelo dono.
+- **Conta só mediante aprovação.** Há duas portas, e as duas terminam no mesmo estado de conta aprovada:
+  - **pedido de acesso:** a pessoa toca em "enviar para análise" e o pedido chega a um **painel de super administrador**, onde o Lucas aprova ou recusa;
+  - **convite:** o Lucas gera o convite e a pessoa se cadastra por ele.
+- Só quem tem conta aprovada **cria rolê**. Depois de aprovada, a pessoa faz o cadastro e o login pela própria aplicação.
+- **Sem cotas nem limites de uso no MVP:** serão poucos testadores. A leitura de documentos tem custo, então o controle de gasto fica no próprio provedor, e não no app.
+- **Super administrador:** papel de sistema, só o Lucas no MVP. Vê pedidos, convites e contas, e **toda aprovação ou recusa fica registrada** (quem, quando).
+
+### Configurações
+
+Há três níveis de configuração, todos em telas do aplicativo:
+- **Pessoa:** dados do cadastro (nome, telefone e e-mail), **chave Pix**, preferências de notificação e de exibição. A chave Pix é usada para gerar o Pix copia e cola e **só aparece para quem deve a essa pessoa**.
+- **Rolê (dono do rolê):** forma de divisão padrão, rota de acerto sugerida e taxa de serviço padrão, entre outros ajustes do rolê.
+- **Sistema (super administrador):** os parâmetros dos **motores de regras**, como os da cobrança (intervalo, janela de horário, quando oferecer pausa, duração e número de pausas) e o prazo para contestar um comprovante.
+- Cada parâmetro tem **valor padrão e limites mínimo e máximo**, e toda mudança é registrada. Mudar um parâmetro vale daí em diante e **não reescreve o histórico**.
+
 ### Leitura de documentos (foto, print e PDF)
 
 - O app lê **foto da notinha, print de tela e PDF** que tenham descrições e valores (fatura, nota, pedido de delivery) e monta um **rascunho** de despesa: descrição, data, total e, quando houver, itens e taxa de serviço. Word, Excel e outros formatos ficam fora do MVP.

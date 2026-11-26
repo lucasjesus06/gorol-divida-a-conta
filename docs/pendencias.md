@@ -1,10 +1,9 @@
 # Pendências
 
-Tudo o que ainda precisa ser feito ou decidido. O que fica para versões futuras está em [`evolucoes.md`](evolucoes.md). O trabalho está dividido nas histórias `GOR-01` a `GOR-16` do quadro "Gorole" no Trello. Ao concluir um item, remova-o daqui no mesmo PR.
+Tudo o que ainda precisa ser feito ou decidido. O que fica para versões futuras está em [`evolucoes.md`](evolucoes.md). O trabalho está dividido nas histórias `GOR-01` a `GOR-20` do quadro "Gorole" no Trello. Ao concluir um item, remova-o daqui no mesmo PR.
 
 ## 1. Decisões em aberto
 
-- **Autenticação:** login anônimo do Supabase, com o servidor vinculando a sessão à pessoa quando o telefone digitado bate com o cadastrado pelo dono (bloqueia GOR-04).
 - **Verificação do app com login real:** projeto Supabase de desenvolvimento ou só PGlite e testes (GOR-04 em diante).
 - **Dependências novas além das do Kalu:** pacote de QR code (GOR-07) e Playwright nos testes de contexto (GOR-04).
 - **Arquivos:** Supabase Storage com bucket privado e URL assinada (GOR-15).
@@ -15,11 +14,19 @@ Tudo o que ainda precisa ser feito ou decidido. O que fica para versões futuras
   - "fechou, acabou a responsa": vale para a conta ou para o rolê? Proposta: fechar a conta trava a marcação, e a despesa gerada continua contestável enquanto o rolê estiver aberto;
   - o dono pode ratear a pendência entre todos da conta?
 - **Participante que saiu do rolê:** hoje perderia o acesso. Decidir se continua vendo e pagando o que deve.
-- **Valores padrão da cobrança:** intervalo de 24 h, janela de 10 h às 20 h, pausa oferecida após 3 lembretes, pausa de 3 dias e limite de 2 pausas.
+- **Login da conta aprovada (GOR-04):** definir como a pessoa entra depois de aprovada (proposta: código enviado por e-mail, sem senha).
+- **Super administrador (GOR-19):** como o papel é atribuído ao Lucas (proposta: marcado direto no banco, sem tela) e qual o escopo do painel além de pedidos, convites e contas.
+- **Convite (GOR-19):** validade do convite e se é de uso único (proposta: uso único e com prazo).
+- **Configurações (GOR-20):**
+  - confirmar a lista de parâmetros ajustáveis (cobrança, prazo de contestação do comprovante, forma de divisão, rota e taxa de serviço padrão);
+  - **não são configuráveis** os invariantes financeiros: centavos exatos, histórico imutável, saldo calculado do histórico, só pagamento confirmado entra no saldo e quem não participa não vê o rolê;
+  - formato aceito para a chave Pix (CPF, telefone, e-mail ou chave aleatória) e quem pode ver a chave;
+  - o que é "personalizar a experiência" na tela da pessoa.
+- **Valores padrão da cobrança** (passam a ser parâmetros do sistema, ver GOR-20): intervalo de 24 h, janela de 10 h às 20 h, pausa oferecida após 3 lembretes, pausa de 3 dias e limite de 2 pausas.
 - **Textos dos lembretes** (tom de meme) e modelos de mensagem do WhatsApp, que precisam de aprovação da Meta.
 - **Termos e condições** do primeiro acesso, incluindo o consentimento para os lembretes: texto a escrever, de preferência com orientação jurídica (LGPD).
 - **Leitura de documentos (GOR-17, GOR-18):**
-  - provedor do modelo de visão, chave de API e **quem paga**, com limite de leituras por rolê;
+  - provedor do modelo de visão, chave de API e **quem paga** (sem limite por rolê no MVP; o teto de gasto fica no provedor);
   - texto dos termos de uso sobre o envio do documento a um terceiro (LGPD);
   - piloto com 15 a 20 documentos reais antes de prometer a função aos usuários;
   - valores dos limites de tamanho e de páginas;
