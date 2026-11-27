@@ -1,13 +1,13 @@
 import "server-only";
-import { createHash, randomBytes } from "node:crypto";
 import { and, desc, eq, gt, isNotNull, isNull, sql } from "drizzle-orm";
 import { asService, getDb } from "@/db/client";
-import { accessInvites, accessRequests, people, superAdmins } from "@/db/schema";
+import { accessInvites, accessRequests, outingParticipants, people, superAdmins } from "@/db/schema";
 import { inviteExpiry, normalizeEmail } from "@/domain/access";
 import { DomainError } from "@/domain/domain-error";
 import { normalizeDisplayName } from "@/domain/person";
 import { normalizePhone } from "@/domain/phone";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { hashToken, newToken } from "./token";
 
 type Tx = Parameters<Parameters<ReturnType<typeof getDb>["transaction"]>[0]>[0];
 type AccountData = { name: string; email: string; phone: string };
@@ -18,10 +18,6 @@ function normalizeAccountData(input: { name: string; email: string; phone: strin
     email: normalizeEmail(input.email),
     phone: normalizePhone(input.phone),
   };
-}
-
-function hashToken(token: string) {
-  return createHash("sha256").update(token).digest("hex");
 }
 
 async function createAuthUser(email: string) {
@@ -53,6 +49,10 @@ async function approvePerson(tx: Tx, userId: string, data: AccountData) {
       .update(people)
       .set({ userId, displayName: data.name, accountApprovedAt: sql`now()` })
       .where(eq(people.id, byPhone.id));
+    await tx
+      .update(outingParticipants)
+      .set({ confirmedAt: sql`now()` })
+      .where(and(eq(outingParticipants.personId, byPhone.id), isNull(outingParticipants.confirmedAt)));
     return byPhone.id;
   }
   const [created] = await tx
@@ -132,7 +132,7 @@ async function rejectAccessRequestImpl(requestId: string, decidedBy: string, not
 }
 
 async function createInviteImpl(createdBy: string) {
-  const token = randomBytes(32).toString("base64url");
+  const token = newToken();
   await getDb()
     .insert(accessInvites)
     .values({ tokenHash: hashToken(token), createdBy, expiresAt: inviteExpiry(new Date()) });

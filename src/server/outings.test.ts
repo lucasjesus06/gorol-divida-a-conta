@@ -39,7 +39,7 @@ describe("criar rolê", () => {
     const detail = await getOuting(lucas.personId, id);
     expect(detail).toMatchObject({ name: "Churrasco de sábado", kind: "event", status: "active", role: "admin" });
     expect(detail.participants).toEqual([
-      { id: expect.any(String), displayName: "Lucas", role: "admin", phone: "+5511999990000" },
+      { id: expect.any(String), displayName: "Lucas", role: "admin", phone: "+5511999990000", joined: true, releasable: false },
     ]);
   });
 
@@ -81,6 +81,7 @@ describe("listar e abrir", () => {
   });
 
   it("participante comum vê os nomes, mas nenhum telefone", async () => {
+    await approveAccount(db(), maria);
     const id = await createOuting(lucas, { name: "Churrasco", kind: "event" });
     await addParticipant(lucas.personId, id, { name: "Mari", phone: "11999990001" });
 
@@ -124,6 +125,7 @@ describe("cadastrar participante", () => {
   });
 
   it("só o dono cadastra", async () => {
+    await approveAccount(db(), maria);
     const id = await createOuting(lucas, { name: "Churrasco", kind: "event" });
     await addParticipant(lucas.personId, id, { name: "Mari", phone: "11999990001" });
 
@@ -147,6 +149,19 @@ describe("cadastrar participante", () => {
       code: "participant_name_taken",
     });
     expect(await db().$count(people, eq(people.phone, "+5511966660004"))).toBe(0);
+  });
+
+  it("quem não tem conta aprovada fica aguardando entrar e não vê o rolê", async () => {
+    const id = await createOuting(lucas, { name: "Churrasco", kind: "event" });
+    await addParticipant(lucas.personId, id, { name: "Mari", phone: "11999990001" });
+
+    const detail = await getOuting(lucas.personId, id);
+    expect(detail.participants.map((participant) => [participant.displayName, participant.joined])).toEqual([
+      ["Lucas", true],
+      ["Mari", false],
+    ]);
+    await expect(getOuting(maria, id)).rejects.toMatchObject({ code: "outing_not_found" });
+    expect(await listOutings(maria)).toEqual([]);
   });
 
   it("recusa dados inválidos", async () => {

@@ -63,6 +63,21 @@ async function Outings() {
   );
 }
 
+async function GuestNotice() {
+  const identity = await getIdentity();
+  if (identity?.kind !== "guest") {
+    return null;
+  }
+  return (
+    <div className="card-surface flex flex-col gap-3 p-4">
+      <p className="text-sm">Você entrou como convidado. Quer ter conta e instalar o app para uma experiência completa?</p>
+      <Button asChild variant="secondary">
+        <Link href="/pedir-acesso">Pedir acesso</Link>
+      </Button>
+    </div>
+  );
+}
+
 export default function HomePage() {
   return (
     <Shell
@@ -86,6 +101,9 @@ export default function HomePage() {
         </p>
       </section>
       <div className="mt-8 flex flex-col gap-6">
+        <Suspense fallback={null}>
+          <GuestNotice />
+        </Suspense>
         <Suspense fallback={null}>
           <Outings />
         </Suspense>

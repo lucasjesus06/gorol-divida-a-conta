@@ -172,6 +172,27 @@ describe("criar um rolê", () => {
   });
 });
 
+describe("quem ainda não foi aprovado no rolê", () => {
+  it("não enxerga o rolê nem os outros participantes (só a própria vaga), e os outros não o enxergam como pessoa", async () => {
+    const [edu] = await db.insert(people).values({ displayName: "Edu pendente", phone: "+5511900000015" }).returning();
+    await db.insert(outingParticipants).values({ outingId: churrasco, personId: edu.id, displayName: "Edu", confirmedAt: null });
+
+    expect(await as(edu.id, (tx) => count(tx, outings))).toBe(0);
+    expect(await as(edu.id, (tx) => tx.$count(outingParticipants, eq(outingParticipants.outingId, churrasco)))).toBe(1);
+    const visibleToMaria = await as(maria, (tx) => tx.select({ id: people.id }).from(people));
+    expect(visibleToMaria.map((row) => row.id)).not.toContain(edu.id);
+
+    await db.update(outingParticipants).set({ confirmedAt: new Date() }).where(eq(outingParticipants.personId, edu.id));
+    expect(await as(edu.id, (tx) => count(tx, outings))).toBe(1);
+  });
+
+  it("as tabelas de entrada por link não são lidas pelo cliente comum", async () => {
+    for (const table of ["outing_join_links", "outing_join_requests", "outing_join_attempts"]) {
+      await expect(as(maria, (tx) => tx.execute(sql.raw(`select * from ${table}`)))).rejects.toThrow();
+    }
+  });
+});
+
 describe("sair do rolê", () => {
   it("cada um sai por conta própria, e quem sai deixa de ver o rolê", async () => {
     const [dani] = await db.insert(people).values({ displayName: "Dani", phone: "+5511900000011" }).returning();

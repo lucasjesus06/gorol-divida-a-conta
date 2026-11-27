@@ -1,7 +1,8 @@
 import { sql } from "drizzle-orm";
-import { check, index, pgTable, text, timestamp, uniqueIndex, uuid, type AnyPgColumn } from "drizzle-orm/pg-core";
+import { boolean, check, index, pgTable, text, timestamp, uniqueIndex, uuid, type AnyPgColumn } from "drizzle-orm/pg-core";
 import { authUsers } from "drizzle-orm/supabase";
 import { accessRequestSources, accessRequestStatuses } from "../domain/access";
+import { joinRequestStatuses } from "../domain/join";
 import { outingKinds, outingRoles, outingStatuses } from "../domain/outing";
 
 const oneOf = (column: AnyPgColumn, values: readonly string[]) =>
@@ -59,6 +60,7 @@ export const outingParticipants = pgTable(
     displayName: text("display_name").notNull(),
     role: text("role", { enum: outingRoles }).notNull().default("member"),
     joinedAt: timestamp("joined_at", { withTimezone: true }).notNull().defaultNow(),
+    confirmedAt: timestamp("confirmed_at", { withTimezone: true }).defaultNow(),
   },
   (table) => [
     check("outing_participants_role_valid", oneOf(table.role, outingRoles)),
@@ -122,4 +124,73 @@ export const accessInvites = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [check("access_invites_token_hash_shape", sql`${table.tokenHash} ~ '^[0-9a-f]{64}$'`)],
+).enableRLS();
+
+export const outingJoinLinks = pgTable(
+  "outing_join_links",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    outingId: uuid("outing_id")
+      .notNull()
+      .references(() => outings.id, { onDelete: "cascade" }),
+    tokenHash: text("token_hash").notNull().unique(),
+    createdBy: uuid("created_by")
+      .notNull()
+      .references(() => people.id, { onDelete: "restrict" }),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    check("outing_join_links_token_hash_shape", sql`${table.tokenHash} ~ '^[0-9a-f]{64}$'`),
+    uniqueIndex("outing_join_links_one_active_idx")
+      .on(table.outingId)
+      .where(sql`${table.revokedAt} is null`),
+  ],
+).enableRLS();
+
+export const outingJoinRequests = pgTable(
+  "outing_join_requests",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    outingId: uuid("outing_id")
+      .notNull()
+      .references(() => outings.id, { onDelete: "cascade" }),
+    participantId: uuid("participant_id")
+      .notNull()
+      .references(() => outingParticipants.id, { onDelete: "cascade" }),
+    guestUserId: uuid("guest_user_id")
+      .notNull()
+      .references(() => authUsers.id, { onDelete: "cascade" }),
+    status: text("status", { enum: joinRequestStatuses }).notNull().default("pending"),
+    decidedBy: uuid("decided_by").references(() => people.id, { onDelete: "set null" }),
+    decidedAt: timestamp("decided_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    check("outing_join_requests_status_valid", oneOf(table.status, joinRequestStatuses)),
+    check("outing_join_requests_decided_matches_status", sql`(${table.status} = 'pending') = (${table.decidedAt} is null)`),
+    uniqueIndex("outing_join_requests_one_pending_per_participant_idx")
+      .on(table.participantId)
+      .where(sql`${table.status} = 'pending'`),
+    uniqueIndex("outing_join_requests_one_pending_per_guest_idx")
+      .on(table.outingId, table.guestUserId)
+      .where(sql`${table.status} = 'pending'`),
+  ],
+).enableRLS();
+
+export const outingJoinAttempts = pgTable(
+  "outing_join_attempts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    outingId: uuid("outing_id")
+      .notNull()
+      .references(() => outings.id, { onDelete: "cascade" }),
+    participantId: uuid("participant_id")
+      .notNull()
+      .references(() => outingParticipants.id, { onDelete: "cascade" }),
+    succeeded: boolean("succeeded").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index("outing_join_attempts_outing_idx").on(table.outingId, table.createdAt)],
 ).enableRLS();

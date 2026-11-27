@@ -1,6 +1,6 @@
 import { eq, sql } from "drizzle-orm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { accessInvites, accessRequests, people } from "@/db/schema";
+import { accessInvites, accessRequests, outingParticipants, outings, people } from "@/db/schema";
 import { createTestDatabase } from "@/test/database";
 
 const state = vi.hoisted(() => ({
@@ -192,6 +192,21 @@ describe("convites", () => {
 });
 
 describe("conta aprovada", () => {
+  it("aprovar a conta confirma a vaga de quem já estava cadastrado em um rolê", async () => {
+    const [convidada] = await db().insert(people).values({ displayName: "Mari", phone: "+5511999990001" }).returning();
+    const [outing] = await db().insert(outings).values({ name: "Pizza", kind: "event", createdBy: admin }).returning();
+    await db()
+      .insert(outingParticipants)
+      .values({ outingId: outing.id, personId: convidada.id, displayName: "Mari", confirmedAt: null });
+    await access.submitAccessRequest(pedido);
+    const [request] = await access.listAccessRequests();
+
+    await access.approveAccessRequest(request.id, admin);
+
+    const [vaga] = await db().select().from(outingParticipants).where(eq(outingParticipants.personId, convidada.id));
+    expect(vaga.confirmedAt).not.toBeNull();
+  });
+
   it("só é aprovada a pessoa com conta e aprovação", async () => {
     const [semConta] = await db().insert(people).values({ displayName: "Sem conta", phone: "+5511999990005" }).returning();
     expect(await access.isApprovedPerson(semConta.id)).toBe(false);
