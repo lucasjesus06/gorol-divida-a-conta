@@ -9,6 +9,7 @@ import { confirmationSources, paymentStatuses } from "../domain/payment-status";
 import { payerRequestStatuses } from "../domain/payer-request";
 import { joinRequestStatuses } from "../domain/join";
 import { outingKinds, outingRoles, outingStatuses } from "../domain/outing";
+import { pixKeyTypes } from "../domain/pix-key-types";
 
 const oneOf = (column: AnyPgColumn, values: readonly string[]) =>
   sql`${column} in (${sql.raw(values.map((value) => `'${value}'`).join(", "))})`;
@@ -23,9 +24,16 @@ export const people = pgTable(
       .unique()
       .references(() => authUsers.id, { onDelete: "set null" }),
     accountApprovedAt: timestamp("account_approved_at", { withTimezone: true }),
+    pixKey: text("pix_key"),
+    pixKeyType: text("pix_key_type", { enum: pixKeyTypes }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
+    check("people_pix_key_type_valid", sql`${table.pixKeyType} is null or ${oneOf(table.pixKeyType, pixKeyTypes)}`),
+    check(
+      "people_pix_key_complete",
+      sql`(${table.pixKey} is null) = (${table.pixKeyType} is null)`,
+    ),
     check("people_phone_e164", sql`${table.phone} ~ '^\\+[1-9][0-9]{7,14}$'`),
     check("people_display_name_filled", sql`length(btrim(${table.displayName})) > 0`),
   ],

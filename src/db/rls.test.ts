@@ -75,6 +75,20 @@ describe("quem participa", () => {
     await expect(as(maria, (tx) => tx.select().from(people))).rejects.toThrow();
   });
 
+  it("não lê nem altera a chave Pix pelo acesso do usuário, nem a própria", async () => {
+    await expect(as(maria, (tx) => tx.select({ pixKey: people.pixKey }).from(people))).rejects.toThrow();
+    await expect(
+      as(maria, (tx) => tx.update(people).set({ pixKey: "maria@exemplo.com", pixKeyType: "email" }).where(eq(people.id, maria))),
+    ).rejects.toThrow();
+  });
+
+  it("exige chave e tipo juntos", async () => {
+    await expect(db.update(people).set({ pixKey: "maria@exemplo.com" }).where(eq(people.id, maria))).rejects.toThrow();
+    await expect(
+      db.update(people).set({ pixKey: "x", pixKeyType: "outro" as "email" }).where(eq(people.id, maria)),
+    ).rejects.toThrow();
+  });
+
   it("muda o próprio nome, mas não o telefone nem o nome dos outros", async () => {
     await as(maria, (tx) => tx.update(people).set({ displayName: "Maria Clara" }).where(eq(people.id, maria)));
     await as(maria, (tx) => tx.update(people).set({ displayName: "Invasora" }).where(eq(people.id, lucas)));
