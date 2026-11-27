@@ -188,12 +188,16 @@ Há três níveis de configuração, todos em telas do aplicativo:
 
 ### Cobrança pelo WhatsApp
 
-- **O lembrete por WhatsApp faz parte do MVP**, pois a cobrança é o centro do produto. Sai pela **API oficial do WhatsApp** desde a primeira versão, por modelos de mensagem aprovados pela Meta, e o **tom de meme é mantido** nos textos. Push e lista de avisos no app servem aos alertas internos (como a pendência que chega ao dono), e não substituem a cobrança.
+- **Decisão do Lucas (2026-11-27): a cobrança da primeira versão é por aviso no app e envio manual pelo super admin.** Há uma **tela dedicada ao super admin** (`/configuracoes/cobrancas`) com a fila de quem deve e já pode ser cobrado, a **mensagem já escrita** e o botão **"Abrir WhatsApp"**, que abre o WhatsApp Business **na conversa certa, com o texto pronto**; o super admin só toca em enviar, contato por contato. Também há o botão **"Avisar no app"** (lista de avisos e push, GOR-13). A **API oficial da Meta** (lembrete automático por modelos aprovados) fica como evolução, em [`evolucoes.md`](evolucoes.md). O **tom de meme é mantido** nos textos.
+- **Textos editáveis pelo super admin:** de 1 a 10 textos de até 600 caracteres, com as variáveis `{nome}`, `{credor}`, `{valor}`, `{rolês}` e `{chave_pix}`; variável desconhecida é recusada. Os textos **giram a cada cobrança**. Sem texto próprio, valem três textos padrão em tom de meme.
+- **Quem se cobra:** a cobrança segue a **relação entre duas contas** (o saldo líquido entre todos os rolês, na direção atual). Convidados sem conta não entram na fila.
+- **A regra é conferida de novo na hora de registrar o disparo**, para uma tela desatualizada não mandar dois lembretes dentro do intervalo. Cada disparo fica no histórico (quem, quando, canal e número do lembrete), que não se altera nem se apaga.
+- **Pausa sem chat:** quando o devedor pede, o super admin **registra a pausa** (disponível depois de 3 cobranças, 3 dias, no máximo 2).
 - **Avisos no app (GOR-13):** cada aviso fica numa **lista** da pessoa (só ela lê; ninguém cria aviso pelo acesso do usuário, só o servidor) e, se ela ligou o push no aparelho, também chega como notificação. O endereço do aviso é sempre **interno ao app**. A inscrição é **por aparelho**, e o aparelho que o navegador informa como expirado é removido sozinho. **Falha ao avisar nunca desfaz** o pagamento, a despesa ou o pedido que a causou. As chaves VAPID ficam só em variáveis de ambiente.
 - É **função do app**, não marketing. O consentimento vem nos **termos e condições aceitos no primeiro acesso**, que incluem o recebimento de lembretes de pagamento.
 - Lembretes amigáveis, em tom de meme ("e o Pix, nada ainda?"), até o pagamento ser confirmado.
 - **Regra de frequência:** intervalo mínimo entre lembretes (padrão 24 h) e horário comercial no fuso de São Paulo (padrão 10 h–20 h).
-- Depois de alguns lembretes (padrão 3), o chat oferece **pausar por alguns dias** (padrão 3); ao fim da pausa as cobranças voltam. Número de pausas limitado (padrão 2).
+- Depois de alguns lembretes (padrão 3), o super admin pode **registrar uma pausa de alguns dias** (padrão 3), quando o devedor pedir; ao fim da pausa as cobranças voltam. Número de pausas limitado (padrão 2).
 - Para quando não há mais nada a pagar e fica suspensa enquanto há contestação aberta.
 
 ### Grupos (ainda não implementados)

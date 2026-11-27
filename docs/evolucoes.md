@@ -53,3 +53,4 @@ Ideias e capacidades combinadas para depois da primeira versão validada. Não f
 ## Arquitetura
 
 - **Microsserviços** ou serviço separado, se o volume exigir; hoje tudo roda no Next e no Postgres do Supabase.
+- **Cobrança automática pelo WhatsApp (API oficial da Meta, GOR-21 e GOR-22):** lembretes enviados sozinhos por modelos aprovados pela Meta, com cron diário protegido por `CRON_SECRET`, aceite de termos com consentimento e pausa pelo chat. Exige conta WhatsApp Business verificada com número dedicado, aprovação dos modelos (inclusive o tom de meme, que pode ser classificado como marketing e mudar o custo e a regra de consentimento) e custo por mensagem. Provedor a escolher: Meta direto ou intermediário (Twilio, Zenvia, Blip). Não usar automação não oficial do WhatsApp Web: viola os termos e arrisca o banimento do número.

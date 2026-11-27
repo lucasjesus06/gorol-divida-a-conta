@@ -10,6 +10,7 @@ import { payerRequestStatuses } from "../domain/payer-request";
 import { joinRequestStatuses } from "../domain/join";
 import { outingKinds, outingRoles, outingStatuses } from "../domain/outing";
 import { notificationKinds } from "../domain/notification-kinds";
+import { reminderChannels } from "../domain/reminder-channels";
 import { pixKeyTypes } from "../domain/pix-key-types";
 
 const oneOf = (column: AnyPgColumn, values: readonly string[]) =>
@@ -591,4 +592,66 @@ export const pushSubscriptions = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [index("push_subscriptions_person_idx").on(table.personId)],
+).enableRLS();
+
+export const reminderLog = pgTable(
+  "reminder_log",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    debtorId: uuid("debtor_id")
+      .notNull()
+      .references(() => people.id, { onDelete: "restrict" }),
+    creditorId: uuid("creditor_id")
+      .notNull()
+      .references(() => people.id, { onDelete: "restrict" }),
+    sequence: integer("sequence").notNull(),
+    channel: text("channel", { enum: reminderChannels }).notNull(),
+    sentBy: uuid("sent_by")
+      .notNull()
+      .references(() => people.id, { onDelete: "restrict" }),
+    sentAt: timestamp("sent_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    check("reminder_log_channel_valid", oneOf(table.channel, reminderChannels)),
+    check("reminder_log_sequence_positive", sql`${table.sequence} > 0`),
+    check("reminder_log_different_people", sql`${table.debtorId} <> ${table.creditorId}`),
+    index("reminder_log_pair_idx").on(table.debtorId, table.creditorId, table.sentAt),
+  ],
+).enableRLS();
+
+export const reminderPauses = pgTable(
+  "reminder_pauses",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    debtorId: uuid("debtor_id")
+      .notNull()
+      .references(() => people.id, { onDelete: "restrict" }),
+    creditorId: uuid("creditor_id")
+      .notNull()
+      .references(() => people.id, { onDelete: "restrict" }),
+    pausedAt: timestamp("paused_at", { withTimezone: true }).notNull().defaultNow(),
+    pausedUntil: timestamp("paused_until", { withTimezone: true }).notNull(),
+    registeredBy: uuid("registered_by")
+      .notNull()
+      .references(() => people.id, { onDelete: "restrict" }),
+  },
+  (table) => [
+    check("reminder_pauses_after_start", sql`${table.pausedUntil} > ${table.pausedAt}`),
+    index("reminder_pauses_pair_idx").on(table.debtorId, table.creditorId),
+  ],
+).enableRLS();
+
+export const messageTemplates = pgTable(
+  "message_templates",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    position: integer("position").notNull().unique(),
+    body: text("body").notNull(),
+    updatedBy: uuid("updated_by").references(() => people.id, { onDelete: "set null" }),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    check("message_templates_body_size", sql`length(btrim(${table.body})) between 1 and 600`),
+    check("message_templates_position_positive", sql`${table.position} > 0`),
+  ],
 ).enableRLS();

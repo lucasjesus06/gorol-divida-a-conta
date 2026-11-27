@@ -62,3 +62,13 @@ export function billPartTransferred(input: { fromName: string; billName: string;
     `/roles/${input.outingId}/contas/${input.billId}`,
   );
 }
+
+/** To the debtor: a friendly reminder that a Pix is still open. */
+export function paymentReminder(input: { creditorId: string; creditorName: string; amountCents: Cents }) {
+  return draft(
+    "payment_reminder",
+    "E o Pix?",
+    `Você ainda deve ${formatCents(input.amountCents)} a ${input.creditorName}. Toque para ver e pagar.`,
+    `/resumo/${input.creditorId}`,
+  );
+}
