@@ -197,6 +197,27 @@
       "when": 1795819597533,
       "tag": "0027_politicas_arquivos",
       "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1795820951946,
+      "tag": "0028_encerrar_e_sair",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1795820952912,
+      "tag": "0029_politicas_encerrar_e_sair",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1795821209065,
+      "tag": "0030_avisos_de_encerramento_e_saida",
+      "breakpoints": true
     }
   ]
 }

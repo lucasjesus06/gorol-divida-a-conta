@@ -1,5 +1,5 @@
 import "server-only";
-import { and, desc, eq, inArray, isNotNull } from "drizzle-orm";
+import { and, desc, eq, inArray, isNotNull, isNull } from "drizzle-orm";
 import { asService, getDb } from "@/db/client";
 import { expensePayers, expenseShares, expenses, outingParticipants, outings, payments, people } from "@/db/schema";
 import type { Expense } from "@/domain/expense";
@@ -26,7 +26,7 @@ async function loadLedger(personId: string, onlyOutingId?: string): Promise<Ledg
   const mine = await getDb()
     .select({ outingId: outingParticipants.outingId })
     .from(outingParticipants)
-    .where(and(eq(outingParticipants.personId, personId), isNotNull(outingParticipants.confirmedAt)));
+    .where(and(eq(outingParticipants.personId, personId), isNotNull(outingParticipants.confirmedAt), isNull(outingParticipants.leftAt)));
   return loadLedgerForOutings(mine.map((row) => row.outingId).filter((id) => !onlyOutingId || id === onlyOutingId));
 }
 

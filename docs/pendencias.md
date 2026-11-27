@@ -25,7 +25,6 @@ Tudo o que ainda precisa ser feito ou decidido. O que fica para versões futuras
   - **aviso ao dono quando o convidado pede cadastro:** além da marca "pediu cadastro" na lista de participantes, o dono recebe um aviso (GOR-13). A **sessão anônima antiga** do convidado continua existindo no Supabase depois da aprovação, sem uso;
   - **criptografar a chave Pix no banco**, além da política de acesso (ela pode ser o CPF): ainda sem decisão. Hoje a chave fica em texto na tabela `people`, **sem nenhuma permissão de leitura para o usuário**; só o servidor a lê, e só entrega a quem precisa pagar aquela pessoa;
   - **Pix informado manualmente** por quem recusa a conta e tem a receber: definir como fica guardado e por quanto tempo (proposta: só até o acerto do rolê).
-- **Participante que saiu do rolê:** hoje perderia o acesso. Decidir se continua vendo e pagando o que deve.
 - **Remetente de e-mail (GOR-04):** o remetente padrão do Supabase tem limite baixo de envios e só entrega a membros da equipe do projeto, então os testadores exigem um remetente próprio (SMTP de um provedor com plano gratuito). Escolher o provedor.
 - **Acesso por aprovação (GOR-19), o que ficou de fora:**
   - quem pede acesso **não recebe aviso** quando o pedido é decidido; precisa tentar entrar. Avisar por e-mail depende do remetente próprio;
@@ -67,6 +66,14 @@ Tudo o que ainda precisa ser feito ou decidido. O que fica para versões futuras
 - **GOR-19 (resolvido):** a criação de rolê exige conta aprovada (`app.is_account()`), porque o convidado também tem uma pessoa vinculada a uma sessão. As contas que já existiam foram marcadas como aprovadas na migração.
 
 - **Histórico (GOR-26):** hoje lista só os **rolês encerrados**. Confirmar se ele também deve reunir o **histórico financeiro** (dívidas por pessoa, pagamentos e anistias, com a origem de cada valor); se sim, isso entra com a GOR-12.
+- **Encerrar e sair (GOR-16), o que já foi feito (16a):** o dono **encerra o rolê** quando não há nada em aberto (nenhum saldo, pagamento esperando, conta por consumo aberta ou convidado com pedido de cadastro pendente); quem **sai** do rolê ou é **removido pelo dono** só o faz quando não há nada em aberto com **ninguém** (nem com o dono nem com terceiros), nem pagamento esperando, nem itens em conta aberta. O dono não sai. Quem saiu perde o acesso e **não volta sozinho**, mas **o nome continua nas despesas antigas**. Todos são avisados.
+- **Encerrar e sair (GOR-16), o que falta:**
+  - **16b, encerrar com saldo aberto:** votação só de quem tem a receber, com prazo de 3 dias e silêncio valendo como aceite; precisa de um processo que feche a votação vencida (ou fechar ao abrir a tela). Hoje, com saldo em aberto, o rolê **não encerra**;
+  - **16c, contestar depois do encerramento:** prazo de 7 dias, aviso e **reabertura** do rolê. Hoje o rolê encerrado não aceita contestação nem reabre;
+  - **bloqueio de dívida de convidado ao encerrar**: já vale pelo saldo em aberto, mas a escolha do convidado ("criar cadastro ou pagar agora") ao encerrar com dívida ainda não existe;
+  - **corrida entre a conferência e a saída:** o servidor confere os saldos e depois registra a saída; uma despesa lançada no meio exato desses dois passos pode escapar. É uma janela de milissegundos, mas a trava definitiva no banco ainda não existe;
+  - os gatilhos do banco que recusam pessoa de fora em despesa, pagamento e conta nova **ainda não olham quem saiu**; quem os impede hoje é o servidor;
+  - a pergunta "encerrar a conta e também o rolê" ao fechar a única conta por consumo ainda não existe.
 - **Estrutura de navegação (GOR-26), o que ficou de fora:** a navegação tem Início, Rolês, Resumo, Histórico e Configurações (a Administração fica dentro de Configurações, só para o super admin). A visão "Despesas" do rolê ainda é um espaço vazio com aviso e entra na GOR-08; remover participante continua na GOR-16.
 - **Saldos e acertos (GOR-12), o que ficou de fora:** o **aviso ao pagar no sentido contrário** ao do saldo; a **anistia** (GOR-24) e as **despesas compartilhadas permanentes** (GOR-25), que mudam o cálculo; **pagar o total** registra um único pagamento no rolê em que a pessoa mais deve, e o abatimento por rolê no detalhe segue o que foi pago ali; a rota inteligente **ainda não evita transferência entre quem terá despesas compartilhadas permanentes** (GOR-25).
 - **Pagamentos (GOR-11), o que ficou de fora:** o comprovante já **pode ser anexado** (GOR-15), mas a **leitura, a baixa automática e a contestação do credor em 3 dias** dependem do leitor (GOR-17), então por enquanto **só o credor dá a baixa**; as regras de domínio do comprovante já existem. O **aviso de pagamento no sentido contrário ao do saldo** ainda não existe.
@@ -75,7 +82,6 @@ Tudo o que ainda precisa ser feito ou decidido. O que fica para versões futuras
 - **Pedido de pagante (GOR-09), o que ficou de fora:** o aviso ao dono de que há pedido esperando é só o contador no resumo do rolê (a notificação ainda não existe), e o contador da tela inicial ainda não soma os pedidos de pagante.
 - **Despesas (GOR-08), o que ficou de fora:** contestação (GOR-09, segunda parte), divisão por itens (GOR-10), **remover um pagante declarado** e a **página do rolê não mostra ainda saldos** (GOR-12). O ajuste do prazo do rolê encerrado vale a partir da GOR-16.
 - **Rolês (GOR-06), o que ficou de fora:**
-  - **remover participante** e **encerrar rolê** ficam para a GOR-16 (remover com histórico de despesas quebraria os saldos);
   - editar o nome ou o tipo do rolê;
   - **entrada pelo link (GOR-07):** o prazo de 3 dias do link ainda não é parâmetro do sistema (GOR-20), e o limite de tentativas também é fixo. Não foi possível validar neste ambiente a sessão anônima real do Supabase (precisa de **Allow anonymous sign-ins** ligado) nem o compartilhar do celular; teste com o link num celular. O botão "Atualizar" da tela de espera é manual (sem tempo real);
   - a seleção de contatos da agenda usa o Contact Picker, que só existe no Android com Chrome: **não foi possível validar neste ambiente**; teste num Android (o botão "Escolher da agenda" aparece só onde há suporte);

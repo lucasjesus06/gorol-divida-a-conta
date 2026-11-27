@@ -72,3 +72,18 @@ export function paymentReminder(input: { creditorId: string; creditorName: strin
     `/resumo/${input.creditorId}`,
   );
 }
+
+/** To everyone in the outing: the owner closed it. Debts that were left stay between the people. */
+export function outingClosed(input: { outingId: string; outingName: string }) {
+  return draft("outing_closed", "Rolê encerrado", `${input.outingName} foi encerrado. Nada mais é lançado nele.`, `/roles/${input.outingId}`);
+}
+
+/** To the person the owner took out of the outing. */
+export function participantRemoved(input: { outingName: string }) {
+  return draft("participant_removed", "Você saiu de um rolê", `O dono tirou você de ${input.outingName}.`, "/roles");
+}
+
+/** To the owner: someone left the outing on their own. */
+export function participantLeft(input: { personName: string; outingId: string; outingName: string }) {
+  return draft("participant_left", "Alguém saiu do rolê", `${input.personName} saiu de ${input.outingName}.`, `/roles/${input.outingId}?visao=participantes`);
+}

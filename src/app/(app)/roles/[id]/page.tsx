@@ -19,6 +19,9 @@ import { listBills, type BillView } from "@/server/bills";
 import { listExpenses, listPayers, type ExpenseView } from "@/server/expenses";
 import { listPayerRequests, type PayerRequestView } from "@/server/payer-requests";
 import { listPayments, type PaymentView } from "@/server/payments";
+import { getCloseBlockers } from "@/server/outing-lifecycle";
+import type { Blocker } from "@/domain/outing-closing";
+import { CloseOutingButton, LeaveOutingButton, RemoveParticipantButton } from "./lifecycle-controls";
 import { listFiles, type FileView } from "@/server/files";
 import { FileList } from "@/components/files/FileList";
 import { FileUploader } from "@/components/files/FileUploader";
@@ -83,12 +86,14 @@ function Summary({
   pendingPayerRequests,
   paymentsToConfirm,
   expenses,
+  closeBlockers,
 }: {
   outing: OutingDetail;
   pendingRequests: number;
   pendingPayerRequests: number;
   paymentsToConfirm: number;
   expenses: ExpenseView[];
+  closeBlockers: Blocker[] | null;
 }) {
   const active = expenses.filter((expense) => expense.status === "active");
   const total = active.reduce((sum, expense) => sum + expense.totalCents, 0);
@@ -125,6 +130,26 @@ function Summary({
         )}
         {isAdmin && waiting > 0 && <StatCard label="Ainda não entraram" value={waiting} href={`/roles/${outing.id}?visao=participantes`} />}
       </section>
+      {closeBlockers && (
+        <section className="flex flex-col gap-3">
+          <h2 className="text-xl font-bold">Encerrar o rolê</h2>
+          <div className="card-surface flex flex-col gap-3 p-5">
+            {closeBlockers.length > 0 ? (
+              <>
+                <p className="text-sm text-muted-foreground">O rolê só encerra quando não há nada em aberto:</p>
+                <ul className="flex list-disc flex-col gap-1 pl-5 text-sm">
+                  {closeBlockers.map((blocker) => (
+                    <li key={blocker.code}>{blocker.message}</li>
+                  ))}
+                </ul>
+              </>
+            ) : (
+              <p className="text-sm text-muted-foreground">Tudo acertado. Ao encerrar, ninguém lança mais nada aqui; o histórico continua disponível.</p>
+            )}
+            <CloseOutingButton outingId={outing.id} blocked={closeBlockers.length > 0} />
+          </div>
+        </section>
+      )}
     </div>
   );
 }
@@ -428,10 +453,21 @@ function Participants({ outing, payerIds }: { outing: OutingDetail; payerIds: Se
               {outing.role === "admin" && participant.joined && participant.role !== "admin" && !payerIds.has(participant.personId) && (
                 <PayerButton outingId={outing.id} personId={participant.personId} />
               )}
+              {isAdmin && outing.status === "active" && participant.joined && participant.role !== "admin" && (
+                <RemoveParticipantButton outingId={outing.id} personId={participant.personId} name={participant.displayName} />
+              )}
             </li>
           ))}
         </ul>
       </section>
+      {!isAdmin && outing.status === "active" && (
+        <section className="flex flex-col gap-3">
+          <h2 className="text-xl font-bold">Sair do rolê</h2>
+          <div className="card-surface p-5">
+            <LeaveOutingButton outingId={outing.id} />
+          </div>
+        </section>
+      )}
       {isAdmin && outing.status === "active" && (
         <section className="flex flex-col gap-3">
           <h2 className="text-xl font-bold">Adicionar participante</h2>
@@ -502,6 +538,7 @@ async function OutingContent({ params, searchParams }: Pick<PageProps<"/roles/[i
     view === "pagamentos" || view === "resumo" ? listPayments(profile.personId, id) : [],
     view === "acertos" ? getOutingBalances(profile.personId, id) : null,
   ]);
+  const closeBlockers = isAdmin && view === "resumo" && outing.status === "active" ? await getCloseBlockers(profile.personId, id) : null;
   const receipts = view === "pagamentos" ? await listFiles(profile.personId, "payment_receipt", id, payments.map((payment) => payment.id)) : [];
   const payerIds = new Set(people.filter((person) => person.isPayer).map((person) => person.personId));
 
@@ -513,7 +550,7 @@ async function OutingContent({ params, searchParams }: Pick<PageProps<"/roles/[i
         actions={<Pill>{outing.status === "closed" ? "Encerrado" : kindLabels[outing.kind]}</Pill>}
       />
       <Tabs outingId={outing.id} view={view} isAdmin={isAdmin} />
-      {view === "resumo" && <Summary outing={outing} pendingRequests={pendingRequests} expenses={expenses} pendingPayerRequests={payerRequests.filter((request) => request.status === "pending").length} paymentsToConfirm={payments.filter((payment) => payment.canResolve).length} />}
+      {view === "resumo" && <Summary outing={outing} pendingRequests={pendingRequests} expenses={expenses} pendingPayerRequests={payerRequests.filter((request) => request.status === "pending").length} paymentsToConfirm={payments.filter((payment) => payment.canResolve).length} closeBlockers={closeBlockers} />}
       {view === "despesas" && <ExpensesView outing={outing} expenses={expenses} canRegister={payerIds.has(profile.personId)} requests={payerRequests} bills={bills} />}
       {view === "acertos" && balances && <SettlementsView outing={outing} balances={balances} me={profile.personId} route={query.rota === "manual" ? "manual" : "inteligente"} />}
       {view === "pagamentos" && (
