@@ -11,6 +11,7 @@ import { joinRequestStatuses } from "../domain/join";
 import { outingKinds, outingRoles, outingStatuses } from "../domain/outing";
 import { notificationKinds } from "../domain/notification-kinds";
 import { reminderChannels } from "../domain/reminder-channels";
+import { fileKinds, fileStatuses } from "../domain/file-kinds";
 import { pixKeyTypes } from "../domain/pix-key-types";
 
 const oneOf = (column: AnyPgColumn, values: readonly string[]) =>
@@ -653,5 +654,38 @@ export const messageTemplates = pgTable(
   (table) => [
     check("message_templates_body_size", sql`length(btrim(${table.body})) between 1 and 600`),
     check("message_templates_position_positive", sql`${table.position} > 0`),
+  ],
+).enableRLS();
+
+export const files = pgTable(
+  "files",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    kind: text("kind", { enum: fileKinds }).notNull(),
+    ownerId: uuid("owner_id")
+      .notNull()
+      .references(() => people.id, { onDelete: "restrict" }),
+    outingId: uuid("outing_id").references(() => outings.id, { onDelete: "restrict" }),
+    /** The expense (evidence) or payment (receipt) the file belongs to; empty for profile photos. */
+    subjectId: uuid("subject_id"),
+    path: text("path").notNull().unique(),
+    mimeType: text("mime_type").notNull(),
+    sizeBytes: bigint("size_bytes", { mode: "number" }).notNull(),
+    originalName: text("original_name").notNull(),
+    status: text("status", { enum: fileStatuses }).notNull().default("pending"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    check("files_kind_valid", oneOf(table.kind, fileKinds)),
+    check("files_status_valid", oneOf(table.status, fileStatuses)),
+    check("files_size_positive", sql`${table.sizeBytes} > 0`),
+    check("files_name_size", sql`length(btrim(${table.originalName})) between 1 and 200`),
+    check(
+      "files_subject_matches_kind",
+      sql`(${table.kind} = 'profile_photo' and ${table.outingId} is null and ${table.subjectId} is null)
+        or (${table.kind} <> 'profile_photo' and ${table.outingId} is not null and ${table.subjectId} is not null)`,
+    ),
+    index("files_subject_idx").on(table.kind, table.subjectId),
+    index("files_owner_idx").on(table.ownerId, table.kind),
   ],
 ).enableRLS();

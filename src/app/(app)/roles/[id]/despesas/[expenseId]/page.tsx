@@ -4,14 +4,18 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { ListSkeleton } from "@/components/common/ListSkeleton";
 import { Pill } from "@/components/common/Pill";
+import { FileList } from "@/components/files/FileList";
+import { FileUploader } from "@/components/files/FileUploader";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/button";
 import { DomainError } from "@/domain/domain-error";
+import { formatFileSize } from "@/domain/file-rules";
 import { formatCents } from "@/domain/money";
 import { isUuid } from "@/lib/uuid";
 import { getRenderProfile } from "@/server/auth";
 import { listDisputes, type DisputeView } from "@/server/disputes";
 import { getExpense, type ExpenseView } from "@/server/expenses";
+import { listFiles } from "@/server/files";
 import { DisputeDecision, OpenDisputeForm } from "./dispute-forms";
 import { VoidForm } from "./void-form";
 
@@ -114,6 +118,8 @@ async function ExpenseContent({ params }: Pick<PageProps<"/roles/[id]/despesas/[
     throw error;
   }
 
+  const evidence = await listFiles(profile.personId, "expense_evidence", id, [expense.id, ...expense.history.map((version) => version.id)]);
+  const path = `/roles/${id}/despesas/${expenseId}`;
   const paidIt = expense.payers.some((payer) => payer.personId === profile.personId);
   const involved = paidIt || expense.shares.some((share) => share.personId === profile.personId);
 
@@ -122,6 +128,15 @@ async function ExpenseContent({ params }: Pick<PageProps<"/roles/[id]/despesas/[
       <PageHeader title={expense.description} backHref={`/roles/${id}?visao=despesas`} />
       <div className="flex flex-col gap-8">
         <VersionCard expense={expense} />
+        <section className="flex flex-col gap-3">
+          <h2 className="text-xl font-bold">Evidência</h2>
+          {evidence.length === 0 && <p className="text-sm text-muted-foreground">Sem evidência anexada. É opcional: foto da nota ou print da conta ajudam todo mundo a conferir o valor.</p>}
+          <FileList
+            revalidate={path}
+            files={evidence.map((file) => ({ id: file.id, name: file.name, sizeLabel: formatFileSize(file.sizeBytes), canRemove: false }))}
+          />
+          {expense.canChange && <FileUploader kind="expense_evidence" outingId={id} subjectId={expense.id} label="Anexar evidência" revalidate={path} />}
+        </section>
         {expense.canChange && (
           <section className="flex flex-col gap-4">
             <Button asChild variant="secondary">

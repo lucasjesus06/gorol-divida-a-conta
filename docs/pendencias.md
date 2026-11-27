@@ -6,7 +6,6 @@ Tudo o que ainda precisa ser feito ou decidido. O que fica para versões futuras
 
 - **Verificação do login de ponta a ponta (GOR-04 em diante):** o ambiente do agente só sai por HTTPS e não alcança o Postgres do Supabase. O agente verifica com Postgres local e a camada de autenticação simulada, e o Lucas confere o login real, na máquina dele, com um projeto Supabase de desenvolvimento (separado do de produção) e as chaves só no `.env.local`.
 - **Dependências novas além das do Kalu:** pacote de QR code (GOR-07) e Playwright nos testes de contexto (GOR-04).
-- **Arquivos:** Supabase Storage com bucket privado e URL assinada (GOR-15).
 - **Cobrança (GOR-14), o que ficou de fora:**
   - o **aceite dos termos de uso** (com o consentimento para lembretes) ainda não existe; por enquanto a regra que o exige é dispensada (`TERMS_NOT_ENFORCED_YET` em `src/server/charges.ts`). Vira história própria, antes de qualquer envio automático;
   - os **parâmetros** (intervalo de 24 h, janela de 10 h às 20 h, pausa após 3, 3 dias, máximo 2) são fixos no código e viram ajustáveis na tela de parâmetros do sistema (parte 2 da GOR-20);
@@ -14,6 +13,13 @@ Tudo o que ainda precisa ser feito ou decidido. O que fica para versões futuras
   - **não foi possível validar neste ambiente** que o botão "Abrir WhatsApp" abre o app do WhatsApp Business na conversa certa (`wa.me`) nem o aviso no app em um aparelho; teste com seu número e o de um amigo;
   - a fila só inclui **contas**; dívida de convidado sem conta continua só dentro do rolê;
   - o histórico de cobranças ainda não aparece para o devedor nem para o credor.
+- **Arquivos (GOR-15), o que ficou de fora:**
+  - **Web Share Target** (receber o comprovante direto do app do banco, no Android): fica para a GOR-18;
+  - a **foto de perfil** já tem base (tipo, limites e substituição da antiga), mas a **tela de envio e o Avatar com foto** entram na parte 2 da GOR-20;
+  - **arquivos reservados e nunca confirmados** (quem escolheu o arquivo e fechou o app no meio) ficam como pendentes no banco e no armazenamento; falta uma limpeza periódica;
+  - a imagem **não é reduzida no celular** antes do envio (limite de 10 MB); a redução e a retirada dos dados da foto (como localização) entram com a foto de perfil;
+  - o valor e a data lidos do documento (`amountCents`, `documentDate` da evidência) ainda não são informados na tela, então a conferência "valor confere com o total" não aparece;
+  - **não foi possível validar neste ambiente** o envio e a abertura de arquivo de verdade no Supabase Storage (o armazenamento é simulado nos testes). O bucket `arquivos` é criado sozinho no primeiro envio; para validar, anexe uma foto a uma despesa e abra-a em outro aparelho.
 - **Conta por consumo (GOR-10):** o alcance de "fechou, acabou a responsa": vale para a conta ou para o rolê?
 - **Contas temporárias, cadastro e comprovante (GOR-07, GOR-11, GOR-16 e GOR-20):**
   - **aviso ao dono quando o convidado pede cadastro:** além da marca "pediu cadastro" na lista de participantes, o dono recebe um aviso (GOR-13). A **sessão anônima antiga** do convidado continua existindo no Supabase depois da aprovação, sem uso;
@@ -63,11 +69,11 @@ Tudo o que ainda precisa ser feito ou decidido. O que fica para versões futuras
 - **Histórico (GOR-26):** hoje lista só os **rolês encerrados**. Confirmar se ele também deve reunir o **histórico financeiro** (dívidas por pessoa, pagamentos e anistias, com a origem de cada valor); se sim, isso entra com a GOR-12.
 - **Estrutura de navegação (GOR-26), o que ficou de fora:** a navegação tem Início, Rolês, Resumo, Histórico e Configurações (a Administração fica dentro de Configurações, só para o super admin). A visão "Despesas" do rolê ainda é um espaço vazio com aviso e entra na GOR-08; remover participante continua na GOR-16.
 - **Saldos e acertos (GOR-12), o que ficou de fora:** o **aviso ao pagar no sentido contrário** ao do saldo; a **anistia** (GOR-24) e as **despesas compartilhadas permanentes** (GOR-25), que mudam o cálculo; **pagar o total** registra um único pagamento no rolê em que a pessoa mais deve, e o abatimento por rolê no detalhe segue o que foi pago ali; a rota inteligente **ainda não evita transferência entre quem terá despesas compartilhadas permanentes** (GOR-25).
-- **Pagamentos (GOR-11), o que ficou de fora:** o **comprovante** (anexar, leitura, baixa automática e a contestação do credor em 3 dias) depende do armazenamento (GOR-15) e do leitor (GOR-17), então por enquanto **só o credor dá a baixa**; as regras de domínio do comprovante já existem. O **aviso de pagamento no sentido contrário ao do saldo** ainda não existe.
+- **Pagamentos (GOR-11), o que ficou de fora:** o comprovante já **pode ser anexado** (GOR-15), mas a **leitura, a baixa automática e a contestação do credor em 3 dias** dependem do leitor (GOR-17), então por enquanto **só o credor dá a baixa**; as regras de domínio do comprovante já existem. O **aviso de pagamento no sentido contrário ao do saldo** ainda não existe.
 - **Conta por consumo (GOR-10), o que ficou de fora:** **ler a nota por foto** (GOR-17) e os itens só são digitados; **corrigir uma despesa por itens** converte a divisão em valores informados (os itens não são recuperados); a pergunta "encerrar a conta e também o rolê" ao fechar a única conta vem com a GOR-16; quem entra no rolê depois de aberta a conta só entra no rateio se estiver confirmado no fechamento.
-- **Contestação (GOR-09), o que ficou de fora:** contestação **depois do encerramento** do rolê, com o aviso e a reabertura (GOR-16); **evidência da despesa** (GOR-15); a **suspensão da cobrança** de quem tem contestação aberta, cuja regra de domínio (`hasOpenDispute`) já existe e passa a ser usada na GOR-14; e, quando o dono aceita uma contestação de valor ou divisão, a correção da despesa ainda é um passo manual, sem ligar a nova versão à contestação.
+- **Contestação (GOR-09), o que ficou de fora:** contestação **depois do encerramento** do rolê, com o aviso e a reabertura (GOR-16); a **suspensão da cobrança** de quem tem contestação aberta, cuja regra de domínio (`hasOpenDispute`) já existe e passa a ser usada na GOR-14; e, quando o dono aceita uma contestação de valor ou divisão, a correção da despesa ainda é um passo manual, sem ligar a nova versão à contestação.
 - **Pedido de pagante (GOR-09), o que ficou de fora:** o aviso ao dono de que há pedido esperando é só o contador no resumo do rolê (a notificação ainda não existe), e o contador da tela inicial ainda não soma os pedidos de pagante.
-- **Despesas (GOR-08), o que ficou de fora:** contestação (GOR-09, segunda parte), divisão por itens (GOR-10), evidência da despesa (GOR-15), **remover um pagante declarado** e a **página do rolê não mostra ainda saldos** (GOR-12). O ajuste do prazo do rolê encerrado vale a partir da GOR-16.
+- **Despesas (GOR-08), o que ficou de fora:** contestação (GOR-09, segunda parte), divisão por itens (GOR-10), **remover um pagante declarado** e a **página do rolê não mostra ainda saldos** (GOR-12). O ajuste do prazo do rolê encerrado vale a partir da GOR-16.
 - **Rolês (GOR-06), o que ficou de fora:**
   - **remover participante** e **encerrar rolê** ficam para a GOR-16 (remover com histórico de despesas quebraria os saldos);
   - editar o nome ou o tipo do rolê;
