@@ -35,7 +35,7 @@ Ideias e capacidades combinadas para depois da primeira versão validada. Não f
 
 ## Saldos e grupos
 
-- **Compensação de saldos entre rolês** do mesmo grupo (na v1 cada rolê é acertado separado).
+- **Compensação entre várias pessoas e vários rolês ao mesmo tempo**, com rota de menos Pix (na v1 a compensação é só entre duas pessoas).
 - **Visão consolidada** da posição financeira da pessoa em todos os grupos.
 - **Estabilidade da rota inteligente:** manter as mesmas duplas de pagamento depois de pagamentos parciais, quando possível.
 
