@@ -34,15 +34,6 @@ export function RequestForm() {
         Telefone com DDD
         <input name="phone" type="tel" inputMode="tel" autoComplete="tel" required className={inputClass} />
       </label>
-      <label className="flex flex-col gap-2 text-sm font-medium">
-        Quem te indicou ou para que vai usar (opcional)
-        <textarea
-          name="message"
-          maxLength={500}
-          rows={3}
-          className="w-full rounded-2xl border border-input bg-background px-4 py-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        />
-      </label>
       <div aria-hidden className="absolute -left-[9999px] h-0 w-0 overflow-hidden">
         <label>
           Não preencha este campo

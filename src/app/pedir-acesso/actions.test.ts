@@ -12,7 +12,7 @@ function form(values: Record<string, string>) {
   return data;
 }
 
-const pedido = { name: "Maria", email: "maria@exemplo.com", phone: "11999990001", message: "" };
+const pedido = { name: "Maria", email: "maria@exemplo.com", phone: "11999990001" };
 
 beforeEach(() => {
   vi.clearAllMocks();

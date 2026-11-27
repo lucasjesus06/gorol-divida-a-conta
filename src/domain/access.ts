@@ -6,7 +6,6 @@ export type AccessRequestStatus = (typeof accessRequestStatuses)[number];
 export const accessRequestSources = ["request", "invite"] as const;
 export type AccessRequestSource = (typeof accessRequestSources)[number];
 
-export const ACCESS_MESSAGE_MAX_LENGTH = 500;
 export const INVITE_VALIDITY_DAYS = 7;
 
 const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -18,18 +17,6 @@ export function normalizeEmail(value: string): string {
     throw new DomainError("invalid_email", "Informe um e-mail válido.");
   }
   return email;
-}
-
-export function normalizeAccessMessage(value: string): string | null {
-  const message = value.trim();
-  if (message === "") return null;
-  if (message.length > ACCESS_MESSAGE_MAX_LENGTH) {
-    throw new DomainError(
-      "access_message_too_long",
-      `A mensagem pode ter no máximo ${ACCESS_MESSAGE_MAX_LENGTH} caracteres.`,
-    );
-  }
-  return message;
 }
 
 export function inviteExpiry(createdAt: Date): Date {

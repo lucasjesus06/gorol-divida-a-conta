@@ -83,7 +83,6 @@ export const accessRequests = pgTable(
     name: text("name").notNull(),
     email: text("email").notNull(),
     phone: text("phone").notNull(),
-    message: text("message"),
     source: text("source", { enum: accessRequestSources }).notNull().default("request"),
     status: text("status", { enum: accessRequestStatuses }).notNull().default("pending"),
     personId: uuid("person_id").references(() => people.id, { onDelete: "set null" }),

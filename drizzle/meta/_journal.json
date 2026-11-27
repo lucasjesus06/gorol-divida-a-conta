@@ -29,6 +29,13 @@
       "when": 1795800673988,
       "tag": "0003_politicas_acesso_por_aprovacao",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1795803781171,
+      "tag": "0004_pedido_de_acesso_sem_mensagem",
+      "breakpoints": true
     }
   ]
 }
