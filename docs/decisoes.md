@@ -58,7 +58,8 @@ Identificadores do código em inglês; textos para o usuário em português.
 - **Divisão exata:** a soma das partes é sempre o total. O **centavo indivisível fica com quem pagou**, começando por quem pagou mais.
 - **Histórico imutável:** corrigir cria uma nova versão e marca a anterior como substituída; anular guarda quem anulou e o motivo.
 - **Evidência opcional** (foto da notinha, print de fatura, outro): todos veem se a despesa é **com** ou **sem evidência**, e se o valor do documento confere com o total. Evidência nunca é removida e acompanha as versões.
-- **Contestação:** quem participa pode pedir revisão do valor ou da divisão. Só o dono do rolê decide; aprovar leva a uma nova versão. Quem diz **"não participei"** pede para sair da divisão, e a aprovação é do dono do rolê **e de quem pagou a despesa**, se forem pessoas diferentes. Enquanto a contestação está aberta, as cobranças de quem contestou ficam suspensas naquele rolê.
+- **Contestação:** quem participa pode pedir revisão do valor ou da divisão. Só o dono do rolê decide; aprovar leva a uma nova versão. Quem diz **"não participei"** pede para sair da divisão, e a aprovação é do dono do rolê **e de quem pagou a despesa**, se forem pessoas diferentes. Na divisão igual isso é feito **por despesa**: a pessoa só marca que não participou daquela despesa.
+- **Prazo de contestação: 7 dias** depois do encerramento do rolê. Passado o prazo, ainda dá para contestar, mas o app **avisa que isso afeta o histórico das relações e reabre o rolê**, para o dono (que pode sair no prejuízo) avaliar a contestação. Enquanto a contestação está aberta, as cobranças de quem contestou ficam suspensas naquele rolê.
 - **Registrada por / paga por** e datas fazem parte de toda despesa (auditoria).
 
 ### Pagantes do rolê
@@ -78,6 +79,7 @@ Identificadores do código em inglês; textos para o usuário em português.
 - **Fechamento da conta:**
   - com todos os itens marcados, a conta fecha e vira despesa por itens; taxa de serviço e desconto ficam proporcionais ao consumo;
   - antes de fechar, o app **avisa que os itens não atribuídos serão divididos entre todos os participantes**, e quem fecha escolhe: **ratear** entre todos ou **transferir** a parte sem dono a alguém que se manifestou. Quem pagou o cartão e não quer deixar a conta no prejuízo pode **transferir para si mesmo**;
+  - quem recebe a parte transferida **precisa aceitar** (quando quem fecha transfere para si mesmo, não há o que aceitar);
   - não existe "desonerar": a parte sem dono sempre fica com alguém.
 - **Fechou, acabou a responsa:** depois do fechamento, ninguém responde mais por mudanças na marcação.
 
@@ -100,7 +102,7 @@ Identificadores do código em inglês; textos para o usuário em português.
 - **Comprovante (opção B):** pagamento com comprovante, compartilhado direto do app do banco ou enviado, é **confirmado automaticamente**. O credor pode **contestar em até 3 dias**; contestado sai do saldo até ser confirmado ou recusado pelo credor. Sem comprovante, o credor confirma.
 - **Leitura do comprovante:** antes de aceitar, o app lê o documento e **só aceita se for um comprovante de Pix**; qualquer outro documento é rejeitado. Da leitura saem valor, data, destinatário e o código único do Pix, que não pode ser usado em dois pagamentos.
 - **Pagar também por outras pessoas:** quem paga em nome de alguém passa a ser credor dessa pessoa.
-- **Acerto:** a pessoa escolhe entre um **acerto individual** (de um rolê) ou **pagar tudo de uma vez** (o saldo total com aquela pessoa).
+- **Acerto:** a pessoa escolhe entre um **acerto individual por rolê** ou **pagar tudo de uma vez** (o saldo total com aquela pessoa). O acerto por rolê existe para que a pessoa veja **de onde veio** a dívida.
 - **Rota inteligente:** menor número de Pix dentro do rolê; ninguém precisa pagar quem pagou a despesa original. Mínimo exato até 16 pessoas com saldo em aberto; acima disso, maior devedor paga maior credor. A pessoa vê um **resumo** que explica a rota e quantos Pix ela economiza.
 - **Rota manual:** cada um paga diretamente a quem deve, para quem não se sente seguro com a rota inteligente.
 - Pagamentos declarados contam como feitos no planejamento da rota, para ninguém pagar duas vezes enquanto aguarda confirmação.
@@ -112,6 +114,8 @@ Identificadores do código em inglês; textos para o usuário em português.
 - **Encerrar um rolê não apaga dívida.** Ele só deixa de aceitar lançamentos novos; o que ficou em aberto continua na relação entre as pessoas e se soma ao próximo rolê. Quando a dívida inverte, a **cobrança segue a direção atual** e o contador de lembretes e de pausas do par recomeça.
 - **Encerrar com saldo aberto:** o dono encerra sozinho se ele for o único com valor a receber no rolê. Se houver outras pessoas a receber, **todos votam**, cientes de que a dívida entre as pessoas continua e só o rolê se encerra.
 - **Anistia:** só o **credor** perdoa, e só até o que tem a receber naquele momento. É um **lançamento imutável** no histórico (quem, quando e quanto), que reduz o saldo sem apagar nada.
+- **Origem da dívida sempre visível:** cada pessoa vê **a quem deve e quanto**, e ao tocar numa dívida vê o **histórico de rolês** que a formam e, dentro de cada rolê, as despesas. Como o saldo soma vários rolês e pode ter sinais diferentes, a tela mostra o valor de cada rolê com o seu sinal e o total.
+- **Fundo comum:** quem divide o mesmo dinheiro (cônjuges, por exemplo) pode **optar por declarar isso**, e então não há despesa nem pagamento entre essas pessoas, porque o fundo que paga é o mesmo. É sempre opcional. O desenho (consentimento, dívidas anteriores e cobrança) está em [`pendencias.md`](pendencias.md).
 - Ao declarar um pagamento no sentido contrário ao do saldo atual, o app avisa que a outra pessoa é quem deve.
 
 ### Acesso e cadastro

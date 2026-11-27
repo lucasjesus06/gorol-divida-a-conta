@@ -14,12 +14,17 @@ Tudo o que ainda precisa ser feito ou decidido. O que fica para versões futuras
   - custo por mensagem e quem paga: os lembretes seguem até o pagamento, então o custo cresce com os dias em aberto (o intervalo é parâmetro do sistema, GOR-20);
   - consentimento registrado no aceite dos termos, inclusive para convidados sem conta;
   - não usar automação não oficial do WhatsApp Web: viola os termos e arrisca o banimento do número.
-- **Conta por consumo (GOR-10):** quem recebe uma parte transferida precisa **aceitar** (proposta: sim, exceto quando quem fecha a conta transfere para si mesmo)? E o alcance de "fechou, acabou a responsa": vale para a conta ou para o rolê?
-- **Relação de longo prazo (GOR-12, GOR-14, GOR-16 e a história da anistia):** pontos para confirmar:
+- **Conta por consumo (GOR-10):** o alcance de "fechou, acabou a responsa": vale para a conta ou para o rolê?
+- **Relação de longo prazo (GOR-12, GOR-14, GOR-16 e GOR-24):** pontos para confirmar:
   - **votação do encerramento:** quem vota (proposta: só quem tem saldo em aberto no rolê) e se o silêncio por 3 dias vale como aceite (proposta: sim; qualquer "não" mantém o rolê aberto);
-  - **prazo para contestar** uma despesa depois do rolê encerrado (proposta: 7 dias, parâmetro do sistema);
-  - **"não participei":** vale por despesa ou para o rolê inteiro, e se, havendo vários pagadores, todos aprovam (proposta: por despesa, com a aprovação do dono e de todos os pagadores dela);
-  - **acerto individual:** definir se é por rolê ou por despesa (proposta: por rolê).
+  - **"não participei":** a marcação vale na hora ou só depois da aprovação do dono e de quem pagou? Proposta: fica pendente até a aprovação, porque a parte dessa pessoa passaria para os demais e o pagador poderia sair no prejuízo. Com vários pagadores, aprovam todos eles.
+- **Fundo comum (história GOR-25), desenho a confirmar:**
+  - nome na tela (proposta: "fundo comum");
+  - **consentimento:** a outra pessoa precisa aceitar a declaração (proposta: sim, porque ela muda o saldo dela com terceiros);
+  - **dívida anterior entre as duas:** é perdoada no ato da declaração, com um lançamento de anistia visível (proposta: sim, e só vale daí em diante);
+  - **cobrança:** quem recebe o lembrete quando o fundo deve a alguém (proposta: o membro que fez a despesa, ou os dois);
+  - **desfazer:** vale daí em diante, sem reescrever o histórico;
+  - quem enxerga a declaração (proposta: quem divide algum rolê com os dois).
 - **Participante que saiu do rolê:** hoje perderia o acesso. Decidir se continua vendo e pagando o que deve.
 - **Remetente de e-mail (GOR-04):** o remetente padrão do Supabase tem limite baixo de envios e só entrega a membros da equipe do projeto, então os testadores exigem um remetente próprio (SMTP de um provedor com plano gratuito). Escolher o provedor.
 - **Acesso por aprovação (GOR-19), o que ficou de fora:**
