@@ -122,7 +122,8 @@ Identificadores do código em inglês; textos para o usuário em português.
   - **ao pagar a terceiros, a pessoa pode, se quiser, pagar também a parte de quem divide o fundo com ela.** É uma opção, e pode vir sugerida automaticamente, mas não é obrigatória: o cônjuge pode ter renda própria e pagar a sua parte. Pagar pelo cônjuge **não cria dívida entre os dois**;
   - **os lembretes vão para as duas pessoas**, porque cada uma segue sendo uma pessoa; só o fundo é compartilhado;
   - **desfazer** a declaração vale **só daí em diante**: o que foi lançado enquanto ela existia fica como estava, e a anistia já dada continua valendo;
-  - **só as duas pessoas veem a declaração**; quem paga em nome da outra aparece como pagamento normal.
+  - **só as duas pessoas veem a declaração** (quem declarou, desde quando e os detalhes); quem paga em nome da outra aparece como pagamento normal;
+  - **transparência na rota de acerto:** onde a rota deixaria de mostrar uma transferência entre as duas pessoas, o app mostra um aviso que, ao tocar (ou passar o mouse), explica que **não há transferência entre elas porque têm despesas compartilhadas permanentes**, o que torna desnecessários os pagamentos de uma para a outra, já que a origem do dinheiro é a mesma, com exemplos como cônjuges. Assim ninguém estranha a ausência. Os demais participantes veem **só esse aviso**, e não os detalhes da declaração; ao aceitar, as duas pessoas são informadas de que isso aparece nos rolês que dividem.
 - Ao declarar um pagamento no sentido contrário ao do saldo atual, o app avisa que a outra pessoa é quem deve.
 
 ### Acesso e cadastro
