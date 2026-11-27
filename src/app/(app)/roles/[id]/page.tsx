@@ -15,8 +15,10 @@ import { isUuid } from "@/lib/uuid";
 import { getRenderProfile } from "@/server/auth";
 import { getActiveJoinLink, listJoinRequests } from "@/server/join";
 import { listExpenses, listPayers, type ExpenseView } from "@/server/expenses";
+import { listPayerRequests, type PayerRequestView } from "@/server/payer-requests";
 import { getOuting, type OutingDetail } from "@/server/outings";
 import { JoinLinkPanel, JoinRequestItem, ReleaseButton } from "./join-panel";
+import { RequestDecision } from "./despesas/request-item";
 import { ParticipantForm } from "./participant-form";
 import { PayerButton } from "./payer-button";
 
@@ -63,7 +65,17 @@ function Tabs({ outingId, view, isAdmin }: { outingId: string; view: View; isAdm
   );
 }
 
-function Summary({ outing, pendingRequests, expenses }: { outing: OutingDetail; pendingRequests: number; expenses: ExpenseView[] }) {
+function Summary({
+  outing,
+  pendingRequests,
+  pendingPayerRequests,
+  expenses,
+}: {
+  outing: OutingDetail;
+  pendingRequests: number;
+  pendingPayerRequests: number;
+  expenses: ExpenseView[];
+}) {
   const active = expenses.filter((expense) => expense.status === "active");
   const total = active.reduce((sum, expense) => sum + expense.totalCents, 0);
   const joined = outing.participants.filter((participant) => participant.joined).length;
@@ -88,20 +100,81 @@ function Summary({ outing, pendingRequests, expenses }: { outing: OutingDetail; 
             highlight={pendingRequests > 0}
           />
         )}
+        {isAdmin && (
+          <StatCard
+            label="Pedidos de pagante"
+            value={pendingPayerRequests}
+            href={`/roles/${outing.id}?visao=despesas`}
+            highlight={pendingPayerRequests > 0}
+          />
+        )}
         {isAdmin && waiting > 0 && <StatCard label="Ainda não entraram" value={waiting} href={`/roles/${outing.id}?visao=participantes`} />}
       </section>
     </div>
   );
 }
 
-function ExpensesView({ outing, expenses, canRegister }: { outing: OutingDetail; expenses: ExpenseView[]; canRegister: boolean }) {
+const requestStatusLabels = { pending: "Aguardando o dono", approved: "Aprovado", rejected: "Recusado" } as const;
+
+function PayerRequests({ outing, requests }: { outing: OutingDetail; requests: PayerRequestView[] }) {
+  const isAdmin = outing.role === "admin";
+  if (requests.length === 0) {
+    return null;
+  }
+
+  return (
+    <section className="flex flex-col gap-3">
+      <h2 className="text-xl font-bold">{isAdmin ? "Pedidos para virar pagante" : "Seus pedidos"}</h2>
+      <ul className="flex flex-col gap-3">
+        {requests.map((request) => (
+          <li key={request.id} className="card-surface flex flex-col gap-3 p-4">
+            <div className="flex items-center justify-between gap-3">
+              <span className="font-semibold">{request.description}</span>
+              <span className="font-bold">{formatCents(request.totalCents)}</span>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              {isAdmin ? `${request.requestedBy.name} pediu` : "Você pediu"}
+              {request.targetExpenseId ? " para ajustar uma despesa já registrada" : " para registrar uma despesa nova"} ·{" "}
+              {requestStatusLabels[request.status]}
+            </p>
+            <ul className="flex flex-col gap-1 text-sm">
+              {request.payers.map((payer) => (
+                <li key={payer.personId} className="flex justify-between">
+                  <span>{payer.name} pagou</span>
+                  <span className="font-semibold">{formatCents(payer.amountCents)}</span>
+                </li>
+              ))}
+            </ul>
+            {request.decisionNote && <p className="text-sm">Observação do dono: {request.decisionNote}</p>}
+            {isAdmin && request.status === "pending" && <RequestDecision outingId={outing.id} requestId={request.id} />}
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function ExpensesView({
+  outing,
+  expenses,
+  canRegister,
+  requests,
+}: {
+  outing: OutingDetail;
+  expenses: ExpenseView[];
+  canRegister: boolean;
+  requests: PayerRequestView[];
+}) {
   return (
     <div className="flex flex-col gap-4">
-      {canRegister && outing.status === "active" && (
-        <Button asChild className="self-start">
-          <Link href={`/roles/${outing.id}/despesas/nova`}>Nova despesa</Link>
+      {outing.status === "active" && (
+        <Button asChild className="self-start" variant={canRegister ? "default" : "secondary"}>
+          <Link href={canRegister ? `/roles/${outing.id}/despesas/nova` : `/roles/${outing.id}/despesas/pedir`}>
+            {canRegister ? "Nova despesa" : "Pedir para virar pagante"}
+          </Link>
         </Button>
       )}
+      <PayerRequests outing={outing} requests={requests} />
       {expenses.length === 0 ? (
         <p className="card-surface p-5 text-sm text-muted-foreground">
           {canRegister ? "Nenhuma despesa ainda. Registre a primeira." : "Nenhuma despesa registrada ainda."}
@@ -218,10 +291,11 @@ async function OutingContent({ params, searchParams }: Pick<PageProps<"/roles/[i
 
   const isAdmin = outing.role === "admin";
   const view = parseView((await searchParams).visao, isAdmin);
-  const [pendingRequests, expenses, people] = await Promise.all([
+  const [pendingRequests, expenses, people, payerRequests] = await Promise.all([
     isAdmin && view === "resumo" ? listJoinRequests(profile.personId, id).then((requests) => requests.length) : 0,
     view === "resumo" || view === "despesas" ? listExpenses(profile.personId, id) : [],
     listPayers(profile.personId, id),
+    view === "despesas" || view === "resumo" ? listPayerRequests(profile.personId, id) : [],
   ]);
   const payerIds = new Set(people.filter((person) => person.isPayer).map((person) => person.personId));
 
@@ -233,8 +307,8 @@ async function OutingContent({ params, searchParams }: Pick<PageProps<"/roles/[i
         actions={<Pill>{outing.status === "closed" ? "Encerrado" : kindLabels[outing.kind]}</Pill>}
       />
       <Tabs outingId={outing.id} view={view} isAdmin={isAdmin} />
-      {view === "resumo" && <Summary outing={outing} pendingRequests={pendingRequests} expenses={expenses} />}
-      {view === "despesas" && <ExpensesView outing={outing} expenses={expenses} canRegister={payerIds.has(profile.personId)} />}
+      {view === "resumo" && <Summary outing={outing} pendingRequests={pendingRequests} expenses={expenses} pendingPayerRequests={payerRequests.filter((request) => request.status === "pending").length} />}
+      {view === "despesas" && <ExpensesView outing={outing} expenses={expenses} canRegister={payerIds.has(profile.personId)} requests={payerRequests} />}
       {view === "participantes" && <Participants outing={outing} payerIds={payerIds} />}
       {view === "convite" && <Invite outing={outing} personId={profile.personId} />}
     </>
