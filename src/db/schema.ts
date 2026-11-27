@@ -54,6 +54,7 @@ export const outings = pgTable(
       .references(() => people.id, { onDelete: "restrict" }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     closedAt: timestamp("closed_at", { withTimezone: true }),
+    closedBy: uuid("closed_by").references(() => people.id, { onDelete: "restrict" }),
   },
   (table) => [
     check("outings_kind_valid", oneOf(table.kind, outingKinds)),
@@ -77,8 +78,13 @@ export const outingParticipants = pgTable(
     role: text("role", { enum: outingRoles }).notNull().default("member"),
     joinedAt: timestamp("joined_at", { withTimezone: true }).notNull().defaultNow(),
     confirmedAt: timestamp("confirmed_at", { withTimezone: true }).defaultNow(),
+    /** Set when the person left or was removed; the row stays so names in past expenses still resolve. */
+    leftAt: timestamp("left_at", { withTimezone: true }),
+    leftBy: uuid("left_by").references(() => people.id, { onDelete: "restrict" }),
   },
   (table) => [
+    check("outing_participants_left_matches", sql`(${table.leftAt} is null) = (${table.leftBy} is null)`),
+    check("outing_participants_owner_stays", sql`${table.leftAt} is null or ${table.role} <> 'admin'`),
     check("outing_participants_role_valid", oneOf(table.role, outingRoles)),
     check("outing_participants_display_name_filled", sql`length(btrim(${table.displayName})) > 0`),
     uniqueIndex("outing_participants_outing_name_idx").on(table.outingId, sql`lower(${table.displayName})`),
