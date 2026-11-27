@@ -110,10 +110,11 @@ Identificadores do código em inglês; textos para o usuário em português.
 - **Convidado entra sem conta**, pelo link do rolê (ver "Entrada no rolê"). Ele participa do rolê em que foi cadastrado, mas **não cria rolê**. Tecnicamente, recebe uma sessão sem e-mail nem senha que só passa a representar uma pessoa depois que o telefone digitado bate com o cadastrado pelo dono.
 - **Conta só mediante aprovação.** Há duas portas, e as duas terminam no mesmo estado de conta aprovada:
   - **pedido de acesso:** a pessoa toca em "enviar para análise" e o pedido chega a um **painel de super administrador**, onde o Lucas aprova ou recusa;
-  - **convite:** o Lucas gera o convite e a pessoa se cadastra por ele.
+  - **convite:** o Lucas gera o convite e a pessoa se cadastra por ele. O convite é de **uso único**, vale por **7 dias** e só o resumo (hash) dele fica guardado; o link aparece uma única vez, na hora de gerar.
+  - a aprovação cria o acesso no Supabase e a pessoa pelo telefone (assumindo a que um dono de rolê já tivesse cadastrado), tudo ou nada: se o banco falhar, o acesso é desfeito.
 - Só quem tem conta aprovada **cria rolê**. Depois de aprovada, a pessoa faz o cadastro e o login pela própria aplicação, **sem senha: por código de 6 dígitos enviado por e-mail** (sem custo). Um link mágico não serve bem a quem usa o app instalado, porque no iPhone o link abre no navegador e não no app. **Senha comum** só entra se o envio de e-mail se mostrar inviável.
 - **Sem cotas nem limites de uso no MVP:** serão poucos testadores. A leitura de documentos tem custo, então o controle de gasto fica no próprio provedor, e não no app.
-- **Super administrador:** papel de sistema, só o Lucas no MVP. Vê pedidos, convites e contas, e **toda aprovação ou recusa fica registrada** (quem, quando).
+- **Super administrador:** papel de sistema, só o Lucas no MVP, marcado direto no banco (tabela `super_admins`), sem tela. Vê pedidos, convites e contas, e **toda aprovação ou recusa fica registrada** (quem, quando).
 
 ### Configurações
 

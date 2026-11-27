@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import { check, index, pgTable, text, timestamp, uniqueIndex, uuid, type AnyPgColumn } from "drizzle-orm/pg-core";
 import { authUsers } from "drizzle-orm/supabase";
+import { accessRequestSources, accessRequestStatuses } from "../domain/access";
 import { outingKinds, outingRoles, outingStatuses } from "../domain/outing";
 
 const oneOf = (column: AnyPgColumn, values: readonly string[]) =>
@@ -15,6 +16,7 @@ export const people = pgTable(
     userId: uuid("user_id")
       .unique()
       .references(() => authUsers.id, { onDelete: "set null" }),
+    accountApprovedAt: timestamp("account_approved_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
@@ -65,4 +67,57 @@ export const outingParticipants = pgTable(
       .where(sql`${table.role} = 'admin'`),
     index("outing_participants_person_idx").on(table.personId),
   ],
+).enableRLS();
+
+export const superAdmins = pgTable("super_admins", {
+  userId: uuid("user_id")
+    .primaryKey()
+    .references(() => authUsers.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}).enableRLS();
+
+export const accessRequests = pgTable(
+  "access_requests",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    name: text("name").notNull(),
+    email: text("email").notNull(),
+    phone: text("phone").notNull(),
+    message: text("message"),
+    source: text("source", { enum: accessRequestSources }).notNull().default("request"),
+    status: text("status", { enum: accessRequestStatuses }).notNull().default("pending"),
+    personId: uuid("person_id").references(() => people.id, { onDelete: "set null" }),
+    decidedBy: uuid("decided_by").references(() => people.id, { onDelete: "set null" }),
+    decidedAt: timestamp("decided_at", { withTimezone: true }),
+    decisionNote: text("decision_note"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("access_requests_one_pending_per_email_idx")
+      .on(table.email)
+      .where(sql`${table.status} = 'pending'`),
+    index("access_requests_status_idx").on(table.status, table.createdAt),
+    check("access_requests_source_valid", oneOf(table.source, accessRequestSources)),
+    check("access_requests_status_valid", oneOf(table.status, accessRequestStatuses)),
+    check("access_requests_phone_e164", sql`${table.phone} ~ '^\\+[1-9][0-9]{7,14}$'`),
+    check("access_requests_email_shape", sql`${table.email} ~ '^[^[:space:]@]+@[^[:space:]@]+\\.[^[:space:]@]+$' and length(${table.email}) <= 254 and ${table.email} = lower(${table.email})`),
+    check("access_requests_name_filled", sql`length(btrim(${table.name})) > 0`),
+    check("access_requests_decided_matches_status", sql`(${table.status} = 'pending') = (${table.decidedAt} is null)`),
+  ],
+).enableRLS();
+
+export const accessInvites = pgTable(
+  "access_invites",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tokenHash: text("token_hash").notNull().unique(),
+    createdBy: uuid("created_by")
+      .notNull()
+      .references(() => people.id, { onDelete: "restrict" }),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    usedAt: timestamp("used_at", { withTimezone: true }),
+    requestId: uuid("request_id").references(() => accessRequests.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [check("access_invites_token_hash_shape", sql`${table.tokenHash} ~ '^[0-9a-f]{64}$'`)],
 ).enableRLS();

@@ -15,6 +15,20 @@
       "when": 1795734001574,
       "tag": "0001_politicas_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1795800569986,
+      "tag": "0002_acesso_por_aprovacao",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1795800673988,
+      "tag": "0003_politicas_acesso_por_aprovacao",
+      "breakpoints": true
     }
   ]
 }

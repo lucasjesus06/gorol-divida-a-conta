@@ -1,6 +1,7 @@
 import { PGlite } from "@electric-sql/pglite";
 import { drizzle } from "drizzle-orm/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
+import { eq, sql } from "drizzle-orm";
 import * as schema from "@/db/schema";
 
 export async function createTestDatabase() {
@@ -30,4 +31,11 @@ export async function seedOuting(db: TestDatabase, phones: [string, string] = ["
     { outingId: outing.id, personId: maria.id, role: "member" },
   ]);
   return { outing, lucas, maria };
+}
+
+export async function approveAccount(db: TestDatabase, personId: string) {
+  const userId = crypto.randomUUID();
+  await db.execute(sql`insert into auth.users (id, email) values (${userId}, ${`${userId}@teste.local`})`);
+  await db.update(schema.people).set({ userId, accountApprovedAt: new Date() }).where(eq(schema.people.id, personId));
+  return userId;
 }

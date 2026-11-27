@@ -1,7 +1,7 @@
 import { eq, sql } from "drizzle-orm";
 import { beforeAll, describe, expect, it } from "vitest";
 import { outingParticipants, outings, people } from "@/db/schema";
-import { createTestDatabase, seedOuting } from "@/test/database";
+import { approveAccount, createTestDatabase, seedOuting } from "@/test/database";
 
 type TestDb = Awaited<ReturnType<typeof createTestDatabase>>;
 type Tx = Parameters<Parameters<TestDb["transaction"]>[0]>[0];
@@ -33,6 +33,7 @@ beforeAll(async () => {
   bruno = second.maria.id;
   churrasco = first.outing.id;
   outroRole = second.outing.id;
+  await approveAccount(db, bruno);
 });
 
 describe("quem é de fora não enxerga nada", () => {
@@ -131,6 +132,7 @@ describe("criar um rolê", () => {
 
   it("quem criou e depois saiu deixa de ver o rolê", async () => {
     const [edu] = await db.insert(people).values({ displayName: "Edu", phone: "+5511900000012" }).returning();
+    await approveAccount(db, edu.id);
     const outing = await as(edu.id, async (tx) => {
       const [created] = await tx.insert(outings).values({ name: "Cinema", kind: "event", createdBy: edu.id }).returning({ id: outings.id });
       await tx.insert(outingParticipants).values({ outingId: created.id, personId: edu.id, role: "admin" });
@@ -138,6 +140,29 @@ describe("criar um rolê", () => {
     });
     await as(edu.id, (tx) => tx.delete(outingParticipants).where(eq(outingParticipants.outingId, outing)));
     expect(await as(edu.id, (tx) => count(tx, outings))).toBe(0);
+  });
+
+  it("convidado sem conta aprovada não cria rolê", async () => {
+    const [guest] = await db.insert(people).values({ displayName: "Convidado", phone: "+5511900000013" }).returning();
+    await expect(
+      as(guest.id, (tx) => tx.insert(outings).values({ name: "Bar", kind: "event", createdBy: guest.id })),
+    ).rejects.toThrow();
+  });
+
+  it("conta ainda não aprovada não cria rolê", async () => {
+    const [pending] = await db.insert(people).values({ displayName: "Pendente", phone: "+5511900000014" }).returning();
+    const userId = crypto.randomUUID();
+    await db.execute(sql`insert into auth.users (id, email) values (${userId}, 'pendente@teste.local')`);
+    await db.update(people).set({ userId }).where(eq(people.id, pending.id));
+    await expect(
+      as(pending.id, (tx) => tx.insert(outings).values({ name: "Bar", kind: "event", createdBy: pending.id })),
+    ).rejects.toThrow();
+  });
+
+  it("ninguém lê as tabelas de acesso pelo cliente comum", async () => {
+    for (const table of ["super_admins", "access_requests", "access_invites"]) {
+      await expect(as(bruno, (tx) => tx.execute(sql.raw(`select * from ${table}`)))).rejects.toThrow();
+    }
   });
 
   it("não cria rolê em nome de outra pessoa", async () => {
