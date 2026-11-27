@@ -1,5 +1,5 @@
 import "server-only";
-import { and, asc, desc, eq, sql } from "drizzle-orm";
+import { and, asc, desc, eq, isNotNull, sql } from "drizzle-orm";
 import { asService, getDb } from "@/db/client";
 import { outingParticipants, outings, people } from "@/db/schema";
 import { DomainError } from "@/domain/domain-error";
@@ -16,7 +16,7 @@ export type OutingDetail = {
   kind: OutingKind;
   status: OutingStatus;
   role: OutingRole;
-  participants: { id: string; displayName: string; role: OutingRole; phone: string | null }[];
+  participants: { id: string; displayName: string; role: OutingRole; phone: string | null; joined: boolean }[];
 };
 
 export async function createOuting(owner: { personId: string; displayName: string }, input: { name: string; kind: string }) {
@@ -42,16 +42,18 @@ export async function listOutings(personId: string): Promise<OutingSummary[]> {
     .select({ id: outings.id, name: outings.name, kind: outings.kind, status: outings.status, role: outingParticipants.role })
     .from(outings)
     .innerJoin(outingParticipants, eq(outingParticipants.outingId, outings.id))
-    .where(eq(outingParticipants.personId, personId))
+    .where(and(eq(outingParticipants.personId, personId), isNotNull(outingParticipants.confirmedAt)))
     .orderBy(desc(outings.createdAt));
 }
 
-async function findOuting(personId: string, outingId: string) {
+export async function findOuting(personId: string, outingId: string) {
   const [row] = await getDb()
     .select({ id: outings.id, name: outings.name, kind: outings.kind, status: outings.status, role: outingParticipants.role })
     .from(outings)
     .innerJoin(outingParticipants, eq(outingParticipants.outingId, outings.id))
-    .where(and(eq(outings.id, outingId), eq(outingParticipants.personId, personId)));
+    .where(
+      and(eq(outings.id, outingId), eq(outingParticipants.personId, personId), isNotNull(outingParticipants.confirmedAt)),
+    );
   const membership: Membership = row ? { role: row.role, status: "active" } : null;
   assertParticipant(membership);
   return row;
@@ -60,13 +62,18 @@ async function findOuting(personId: string, outingId: string) {
 export async function getOuting(personId: string, outingId: string): Promise<OutingDetail> {
   const outing = await findOuting(personId, outingId);
   const participants = await getDb()
-    .select({ id: outingParticipants.id, displayName: outingParticipants.displayName, role: outingParticipants.role })
+    .select({
+      id: outingParticipants.id,
+      displayName: outingParticipants.displayName,
+      role: outingParticipants.role,
+      confirmedAt: outingParticipants.confirmedAt,
+    })
     .from(outingParticipants)
     .where(eq(outingParticipants.outingId, outingId))
     .orderBy(asc(outingParticipants.joinedAt));
 
   if (outing.role !== "admin") {
-    return { ...outing, participants: participants.map((participant) => ({ ...participant, phone: null })) };
+    return { ...outing, participants: participants.map(({ confirmedAt, ...participant }) => ({ ...participant, phone: null, joined: confirmedAt !== null })) };
   }
 
   const phones = await asService(() =>
@@ -79,7 +86,11 @@ export async function getOuting(personId: string, outingId: string): Promise<Out
   const phoneByParticipant = new Map(phones.map((row) => [row.id, row.phone]));
   return {
     ...outing,
-    participants: participants.map((participant) => ({ ...participant, phone: phoneByParticipant.get(participant.id) ?? null })),
+    participants: participants.map(({ confirmedAt, ...participant }) => ({
+      ...participant,
+      phone: phoneByParticipant.get(participant.id) ?? null,
+      joined: confirmedAt !== null,
+    })),
   };
 }
 
@@ -93,7 +104,11 @@ export async function addParticipant(personId: string, outingId: string, input: 
 
   await asService(() =>
     getDb().transaction(async (tx) => {
-      const [existing] = await tx.select({ id: people.id }).from(people).where(eq(people.phone, participant.phone)).for("update");
+      const [existing] = await tx
+        .select({ id: people.id, accountApprovedAt: people.accountApprovedAt })
+        .from(people)
+        .where(eq(people.phone, participant.phone))
+        .for("update");
       const participantPersonId =
         existing?.id ??
         (
@@ -102,6 +117,7 @@ export async function addParticipant(personId: string, outingId: string, input: 
             .values({ displayName: participant.displayName, phone: participant.phone })
             .returning({ id: people.id })
         )[0].id;
+      const hasApprovedAccount = existing?.accountApprovedAt != null;
 
       const [alreadyIn] = await tx
         .select({ id: outingParticipants.id })
@@ -126,7 +142,12 @@ export async function addParticipant(personId: string, outingId: string, input: 
 
       await tx
         .insert(outingParticipants)
-        .values({ outingId, personId: participantPersonId, displayName: participant.displayName });
+        .values({
+          outingId,
+          personId: participantPersonId,
+          displayName: participant.displayName,
+          confirmedAt: hasApprovedAccount ? sql`now()` : null,
+        });
     }),
   );
 }
