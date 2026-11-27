@@ -7,7 +7,13 @@ Tudo o que ainda precisa ser feito ou decidido. O que fica para versões futuras
 - **Verificação do login de ponta a ponta (GOR-04 em diante):** o ambiente do agente só sai por HTTPS e não alcança o Postgres do Supabase. O agente verifica com Postgres local e a camada de autenticação simulada, e o Lucas confere o login real, na máquina dele, com um projeto Supabase de desenvolvimento (separado do de produção) e as chaves só no `.env.local`.
 - **Dependências novas além das do Kalu:** pacote de QR code (GOR-07) e Playwright nos testes de contexto (GOR-04).
 - **Arquivos:** Supabase Storage com bucket privado e URL assinada (GOR-15).
-- **Cobrança na v1:** web push e lista de avisos, com WhatsApp pela API oficial depois (GOR-13 e GOR-14).
+- **WhatsApp desde o MVP (GOR-14, GOR-21 e GOR-22):**
+  - provedor: API oficial da Meta direto ou um intermediário (Twilio, Zenvia, Blip etc.);
+  - conta WhatsApp Business verificada, com número dedicado: é o item mais demorado e **depende do Lucas**, então deve começar já (confirmar com a Meta quais documentos pedem);
+  - modelos de mensagem aprovados pela Meta, incluindo o tom de meme: se a Meta classificar como marketing em vez de utilidade, o custo e a regra de consentimento mudam, então é preciso testar;
+  - custo por mensagem e quem paga: os lembretes seguem até o pagamento, então o custo cresce com os dias em aberto (o intervalo é parâmetro do sistema, GOR-20);
+  - consentimento registrado no aceite dos termos, inclusive para convidados sem conta;
+  - não usar automação não oficial do WhatsApp Web: viola os termos e arrisca o banimento do número.
 - **Pagantes (GOR-09):** forma de divisão padrão do rolê, definida pelo dono e usada nas despesas dos pagantes.
 - **Conta por consumo (GOR-10):**
   - quando o dono não pagou a conta, ele só desonera os demais se for pagante dela, ou quita sozinho, ou precisa do aceite de quem pagou;
@@ -39,7 +45,8 @@ Tudo o que ainda precisa ser feito ou decidido. O que fica para versões futuras
 
 - **GOR-04:** ao criar o `src/proxy.ts`, incluir `/manifest.webmanifest` e `/sw.js` entre os caminhos públicos (o app só instala se o manifesto abrir sem login).
 - **GOR-06:** acrescentar os atalhos (`shortcuts`) ao manifesto quando existirem as rotas de rolês.
-- **GOR-13:** o `sw.js` já trata `push` e clique, mas o registro do service worker e a inscrição de push entram nessa história.
+- **GOR-13:** o `sw.js` já trata `push` e clique, mas o registro do service worker e a inscrição de push entram nessa história (alertas internos do app, não a cobrança).
+- **GOR-06 e GOR-19:** a política de criação de rolê hoje só confere o dono. Ela precisa exigir **conta aprovada**, porque o convidado também tem uma pessoa vinculada a uma sessão.
 
 ## 3. Fora do escopo desta versão
 
