@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { billPartTransferred, guestRequestedAccount, joinRequested, paymentDeclared, paymentReminder } from "./notification";
+import { billPartTransferred, guestRequestedAccount, joinRequested, outingClosed, participantLeft, participantRemoved, paymentDeclared, paymentReminder } from "./notification";
 
 const outingId = "11111111-1111-4111-8111-111111111111";
 
@@ -33,5 +33,11 @@ describe("avisos", () => {
     const notice = paymentReminder({ creditorId: "c1", creditorName: "Lucas", amountCents: 5000 });
     expect(notice.url).toBe("/resumo/c1");
     expect(notice.body).toContain("50,00");
+  });
+
+  it("avisos de encerramento e saída levam ao rolê ou à lista de rolês", () => {
+    expect(outingClosed({ outingId, outingName: "Churrasco" }).url).toBe(`/roles/${outingId}`);
+    expect(participantRemoved({ outingName: "Churrasco" }).url).toBe("/roles");
+    expect(participantLeft({ personName: "Maria", outingId, outingName: "Churrasco" }).url).toBe(`/roles/${outingId}?visao=participantes`);
   });
 });

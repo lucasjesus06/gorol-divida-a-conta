@@ -1,5 +1,5 @@
 import "server-only";
-import { and, asc, desc, eq, isNotNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, isNotNull, isNull, sql } from "drizzle-orm";
 import { asService, getDb } from "@/db/client";
 import { accessRequests, outingParticipants, outings, people } from "@/db/schema";
 import { DomainError } from "@/domain/domain-error";
@@ -42,7 +42,7 @@ export async function listOutings(personId: string): Promise<OutingSummary[]> {
     .select({ id: outings.id, name: outings.name, kind: outings.kind, status: outings.status, role: outingParticipants.role })
     .from(outings)
     .innerJoin(outingParticipants, eq(outingParticipants.outingId, outings.id))
-    .where(and(eq(outingParticipants.personId, personId), isNotNull(outingParticipants.confirmedAt)))
+    .where(and(eq(outingParticipants.personId, personId), isNotNull(outingParticipants.confirmedAt), isNull(outingParticipants.leftAt)))
     .orderBy(desc(outings.createdAt));
 }
 
@@ -52,7 +52,7 @@ export async function findOuting(personId: string, outingId: string) {
     .from(outings)
     .innerJoin(outingParticipants, eq(outingParticipants.outingId, outings.id))
     .where(
-      and(eq(outings.id, outingId), eq(outingParticipants.personId, personId), isNotNull(outingParticipants.confirmedAt)),
+      and(eq(outings.id, outingId), eq(outingParticipants.personId, personId), isNotNull(outingParticipants.confirmedAt), isNull(outingParticipants.leftAt)),
     );
   const membership: Membership = row ? { role: row.role, status: "active" } : null;
   assertParticipant(membership);
@@ -70,7 +70,7 @@ export async function getOuting(personId: string, outingId: string): Promise<Out
       confirmedAt: outingParticipants.confirmedAt,
     })
     .from(outingParticipants)
-    .where(eq(outingParticipants.outingId, outingId))
+    .where(and(eq(outingParticipants.outingId, outingId), isNull(outingParticipants.leftAt)))
     .orderBy(asc(outingParticipants.joinedAt));
 
   if (outing.role !== "admin") {

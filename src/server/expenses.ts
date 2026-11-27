@@ -48,19 +48,21 @@ export type ExpenseDetail = ExpenseView & { history: ExpenseView[]; canChange: b
 
 export async function outingContext(personId: string, outingId: string) {
   const outing = await findOuting(personId, outingId);
-  const [participants, declared] = await Promise.all([
+  const [everyone, declared] = await Promise.all([
     getDb()
-      .select({ personId: outingParticipants.personId, name: outingParticipants.displayName, role: outingParticipants.role })
+      .select({ personId: outingParticipants.personId, name: outingParticipants.displayName, role: outingParticipants.role, leftAt: outingParticipants.leftAt })
       .from(outingParticipants)
       .where(and(eq(outingParticipants.outingId, outingId), isNotNull(outingParticipants.confirmedAt))),
     getDb().select({ personId: outingPayers.personId }).from(outingPayers).where(eq(outingPayers.outingId, outingId)),
   ]);
+  // Whoever left stays in `names`, so past expenses still show their name, but cannot take part in anything new.
+  const participants = everyone.filter((participant) => participant.leftAt === null);
   const declaredIds = new Set(declared.map((row) => row.personId));
   const allowedPayers = participants.filter((participant) => participant.role === "admin" || declaredIds.has(participant.personId));
   return {
     outing,
     participants,
-    names: new Map(participants.map((participant) => [participant.personId, participant.name])),
+    names: new Map(everyone.map((participant) => [participant.personId, participant.name])),
     participantIds: new Set(participants.map((participant) => participant.personId)),
     declaredIds,
     allowedPayers,

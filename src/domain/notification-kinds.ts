@@ -4,6 +4,9 @@ export const notificationKinds = [
   "payment_declared",
   "bill_part_transferred",
   "payment_reminder",
+  "outing_closed",
+  "participant_removed",
+  "participant_left",
 ] as const;
 
 export type NotificationKind = (typeof notificationKinds)[number];

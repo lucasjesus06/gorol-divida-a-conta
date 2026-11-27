@@ -1,5 +1,5 @@
 import "server-only";
-import { and, eq, inArray, isNotNull } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, isNull } from "drizzle-orm";
 import { asService, getDb } from "@/db/client";
 import { expenses, files, outingParticipants, payments } from "@/db/schema";
 import { DomainError } from "@/domain/domain-error";
@@ -149,7 +149,7 @@ async function canSee(personId: string, file: { outingId: string | null; ownerId
   const mine = await getDb()
     .select({ outingId: outingParticipants.outingId })
     .from(outingParticipants)
-    .where(and(eq(outingParticipants.personId, personId), isNotNull(outingParticipants.confirmedAt)));
+    .where(and(eq(outingParticipants.personId, personId), isNotNull(outingParticipants.confirmedAt), isNull(outingParticipants.leftAt)));
   if (mine.length === 0) {
     return false;
   }
@@ -160,6 +160,7 @@ async function canSee(personId: string, file: { outingId: string | null; ownerId
       and(
         eq(outingParticipants.personId, file.ownerId),
         isNotNull(outingParticipants.confirmedAt),
+        isNull(outingParticipants.leftAt),
         inArray(outingParticipants.outingId, mine.map((row) => row.outingId)),
       ),
     );

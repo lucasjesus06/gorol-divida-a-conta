@@ -148,7 +148,7 @@ async function submitGuestAccessRequestImpl(guestUserId: string, input: { email:
     .from(outingParticipants)
     .innerJoin(people, eq(people.id, outingParticipants.personId))
     .innerJoin(outings, eq(outings.id, outingParticipants.outingId))
-    .where(and(eq(people.userId, guestUserId), isNotNull(outingParticipants.confirmedAt)));
+    .where(and(eq(people.userId, guestUserId), isNotNull(outingParticipants.confirmedAt), isNull(outingParticipants.leftAt)));
   await Promise.all(
     memberships.map((membership) =>
       notifyOutingOwners(

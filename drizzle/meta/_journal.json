@@ -211,6 +211,13 @@
       "when": 1795820952912,
       "tag": "0029_politicas_encerrar_e_sair",
       "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1795821209065,
+      "tag": "0030_avisos_de_encerramento_e_saida",
+      "breakpoints": true
     }
   ]
 }
