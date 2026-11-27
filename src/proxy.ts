@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { identityFromClaims } from "@/domain/identity";
 import { isPublicPath } from "@/lib/public-paths";
 import { supabaseEnv } from "@/lib/supabase/env";
 
@@ -22,7 +23,8 @@ export async function proxy(request: NextRequest) {
   });
 
   const { data } = await supabase.auth.getClaims();
-  const isAuthenticated = Boolean(data?.claims);
+  const identity = identityFromClaims(data?.claims);
+  const isAuthenticated = identity !== null;
   const { pathname } = request.nextUrl;
 
   if (!isAuthenticated && !isPublicPath(pathname)) {
@@ -33,7 +35,7 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(login);
   }
 
-  if (isAuthenticated && pathname === "/login") {
+  if (identity?.kind === "account" && pathname === "/login") {
     return NextResponse.redirect(new URL("/", request.url));
   }
 
