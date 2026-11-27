@@ -18,7 +18,7 @@ describe("avisos", () => {
   });
 
   it("leva direto à conta quando uma parte é transferida", () => {
-    const notice = billPartTransferred({ fromName: "Caio", itemName: "Picanha", outingId, billId: "b1" });
+    const notice = billPartTransferred({ fromName: "Caio", billName: "Picanha", outingId, billId: "b1" });
     expect(notice.url).toBe(`/roles/${outingId}/contas/b1`);
     expect(notice.body).toContain("Picanha");
   });

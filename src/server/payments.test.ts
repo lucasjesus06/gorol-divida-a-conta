@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { payments, people } from "@/db/schema";
+import { notifications, payments, people } from "@/db/schema";
 import { approveAccount, createTestDatabase } from "@/test/database";
 
 const state = vi.hoisted(() => ({ db: undefined as unknown }));
@@ -47,6 +47,18 @@ describe("declarar pagamento", () => {
     expect(forCreditor.to.name).toBe("Lucas");
     expect((await server.listPayments(caio, outingId))[0].canResolve).toBe(false);
     expect((await server.listPayments(maria, outingId))[0].canResolve).toBe(false);
+  });
+
+  it("avisa quem recebe, e só na primeira vez quando o pedido se repete", async () => {
+    const idempotencyKey = crypto.randomUUID();
+    await server.declarePayment(maria, outingId, { toId: lucas, amountCents: 2500, idempotencyKey });
+    await server.declarePayment(maria, outingId, { toId: lucas, amountCents: 2500, idempotencyKey });
+
+    const notices = await db().select().from(notifications);
+    expect(notices).toHaveLength(1);
+    expect(notices[0]).toMatchObject({ personId: lucas, kind: "payment_declared", url: `/roles/${outingId}?visao=pagamentos` });
+    expect(notices[0].body).toContain("Maria");
+    expect(notices[0].body).toContain("25,00");
   });
 
   it("pagar em nome de outra pessoa guarda quem foi quitado", async () => {

@@ -1,12 +1,14 @@
 import "server-only";
 import { and, desc, eq, gt, isNotNull, isNull, sql } from "drizzle-orm";
 import { asService, getDb } from "@/db/client";
-import { accessInvites, accessRequests, outingParticipants, people, superAdmins } from "@/db/schema";
+import { accessInvites, accessRequests, outingParticipants, outings, people, superAdmins } from "@/db/schema";
 import { inviteExpiry, normalizeEmail } from "@/domain/access";
 import { DomainError } from "@/domain/domain-error";
+import { guestRequestedAccount } from "@/domain/notification";
 import { normalizeDisplayName } from "@/domain/person";
 import { normalizePhone } from "@/domain/phone";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { notifyOutingOwners } from "./push";
 import { hashToken, newToken } from "./token";
 
 type Tx = Parameters<Parameters<ReturnType<typeof getDb>["transaction"]>[0]>[0];
@@ -132,10 +134,29 @@ async function submitGuestAccessRequestImpl(guestUserId: string, input: { email:
   if (!guest || guest.accountApprovedAt !== null) {
     throw new DomainError("guest_without_person", "Entre primeiro em um rolê para criar o cadastro.");
   }
-  await getDb()
+  const created = await getDb()
     .insert(accessRequests)
     .values({ name: guest.name, email, phone: guest.phone, guestUserId })
-    .onConflictDoNothing();
+    .onConflictDoNothing()
+    .returning({ id: accessRequests.id });
+  if (created.length === 0) {
+    return;
+  }
+
+  const memberships = await getDb()
+    .select({ outingId: outings.id, outingName: outings.name })
+    .from(outingParticipants)
+    .innerJoin(people, eq(people.id, outingParticipants.personId))
+    .innerJoin(outings, eq(outings.id, outingParticipants.outingId))
+    .where(and(eq(people.userId, guestUserId), isNotNull(outingParticipants.confirmedAt)));
+  await Promise.all(
+    memberships.map((membership) =>
+      notifyOutingOwners(
+        membership.outingId,
+        guestRequestedAccount({ guestName: guest.name, outingId: membership.outingId, outingName: membership.outingName }),
+      ),
+    ),
+  );
 }
 
 async function getGuestSummaryImpl(guestUserId: string) {

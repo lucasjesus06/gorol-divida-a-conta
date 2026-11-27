@@ -53,12 +53,12 @@ export function paymentDeclared(input: { fromName: string; amountCents: Cents; o
   );
 }
 
-/** To the person who received the part of an item someone else gave up in a consumption bill. */
-export function billPartTransferred(input: { fromName: string; itemName: string; outingId: string; billId: string }) {
+/** To the person a consumption bill's leftover was handed to, who must accept or refuse it. */
+export function billPartTransferred(input: { fromName: string; billName: string; outingId: string; billId: string }) {
   return draft(
     "bill_part_transferred",
-    "Uma parte da conta passou para você",
-    `${input.fromName} deixou a parte de "${input.itemName}" e ela ficou com você.`,
+    "Sobrou uma parte da conta para você",
+    `${input.fromName} passou para você o que sobrou da conta "${input.billName}". Quer aceitar?`,
     `/roles/${input.outingId}/contas/${input.billId}`,
   );
 }

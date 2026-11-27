@@ -14,8 +14,10 @@ import { assertBillOpen, assertCanClaimFor, assertCanCloseBill } from "@/domain/
 import { createExpense } from "@/domain/expense";
 import { assertCanRegisterExpense, assertPayersAllowed, assertPeopleInOuting } from "@/domain/expense-access";
 import { Fraction } from "@/domain/fraction";
+import { billPartTransferred } from "@/domain/notification";
 import type { BillStatus } from "@/domain/bill-status";
 import { assertActiveOuting, insertVersion, outingContext, type Tx } from "./expenses";
+import { notify } from "./push";
 
 export type BillInput = {
   description: string;
@@ -332,6 +334,15 @@ export async function closeBill(personId: string, outingId: string, billId: stri
         .update(consumptionBills)
         .set({ status: "closing", leftoverMode: "transfer", leftoverTo: leftover.personId })
         .where(and(eq(consumptionBills.id, billId), eq(consumptionBills.status, "open"))),
+    );
+    await notify(
+      leftover.personId,
+      billPartTransferred({
+        fromName: context.names.get(personId) ?? "Alguém",
+        billName: loaded.bill.description,
+        outingId,
+        billId,
+      }),
     );
     return { status: "awaiting_acceptance" };
   }

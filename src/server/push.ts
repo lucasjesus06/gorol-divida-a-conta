@@ -1,8 +1,8 @@
 import "server-only";
-import { and, desc, eq, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, isNotNull, isNull, sql } from "drizzle-orm";
 import { sendNotification } from "web-push";
 import { asService, getDb } from "@/db/client";
-import { notifications, pushSubscriptions } from "@/db/schema";
+import { notifications, outingParticipants, pushSubscriptions } from "@/db/schema";
 import { DomainError } from "@/domain/domain-error";
 import type { NotificationDraft } from "@/domain/notification";
 
@@ -63,6 +63,27 @@ export async function notify(personId: string, notice: NotificationDraft): Promi
     });
   } catch {
     // The list entry and the push are best effort; the caller's work has already been saved.
+  }
+}
+
+/** Tells every confirmed owner of the outing; the owner is who approves and follows what happens in it. */
+export async function notifyOutingOwners(outingId: string, notice: NotificationDraft): Promise<void> {
+  try {
+    const owners = await asService(() =>
+      getDb()
+        .select({ personId: outingParticipants.personId })
+        .from(outingParticipants)
+        .where(
+          and(
+            eq(outingParticipants.outingId, outingId),
+            eq(outingParticipants.role, "admin"),
+            isNotNull(outingParticipants.confirmedAt),
+          ),
+        ),
+    );
+    await Promise.all(owners.map((owner) => notify(owner.personId, notice)));
+  } catch {
+    // Same rule as notify: the caller's work is already saved.
   }
 }
 

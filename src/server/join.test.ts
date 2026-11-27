@@ -1,6 +1,6 @@
 import { eq, sql } from "drizzle-orm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { outingJoinAttempts, outingJoinLinks, outingParticipants, people } from "@/db/schema";
+import { notifications, outingJoinAttempts, outingJoinLinks, outingParticipants, people } from "@/db/schema";
 import { MAX_FAILED_ATTEMPTS_PER_PARTICIPANT } from "@/domain/join";
 import { approveAccount, createTestDatabase } from "@/test/database";
 
@@ -86,6 +86,17 @@ describe("link do rolê", () => {
 });
 
 describe("pedir para entrar", () => {
+  it("avisa o dono do rolê que alguém quer entrar, só quando o pedido vale", async () => {
+    const token = await join.createJoinLink(lucas.personId, outingId);
+    await expect(join.requestJoin(token, await guest(), { participantId: biaParticipant, phone: "11999999999" })).rejects.toThrow();
+    expect(await db().$count(notifications)).toBe(0);
+
+    await join.requestJoin(token, await guest(), { participantId: biaParticipant, phone: "(11) 98888-0002" });
+    const [notice] = await db().select().from(notifications);
+    expect(notice).toMatchObject({ personId: lucas.personId, kind: "join_requested", url: `/roles/${outingId}?visao=participantes` });
+    expect(notice.body).toBe("Bia quer entrar em Churrasco.");
+  });
+
   it("com o telefone certo, o pedido fica pendente e o nome some da lista", async () => {
     const token = await join.createJoinLink(lucas.personId, outingId);
     await join.requestJoin(token, await guest(), { participantId: biaParticipant, phone: "(11) 98888-0002" });
