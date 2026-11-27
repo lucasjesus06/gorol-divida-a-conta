@@ -54,6 +54,9 @@ Identificadores do código em inglês; textos para o usuário em português.
   - **valores informados** por participante (a soma tem que fechar com o total);
   - **cada um paga o que consumiu**: só disponível quando a conta tem itens, vindos da leitura da notinha ou digitados. Regras em "Conta por consumo".
 - A despesa pode ter **só o valor total**, sem itens nem foto.
+- **Quem registra:** só o **dono do rolê** e os **pagantes** que ele declara (na lista de participantes, "Tornar pagante"). Quem pagou numa despesa precisa ser o dono ou um pagante declarado. Corrigir e anular é de quem registrou ou do dono, e a anulação exige o motivo.
+- **Duas formas de dividir entram na GOR-08:** igual e valores informados. A divisão por itens entra com a conta por consumo (GOR-10).
+- **Registro seguro contra duplicidade:** cada formulário leva uma chave única, então um toque duplo ou um reenvio não cria duas despesas. O banco confere que pagamentos e partes somam o total, que todos estão no rolê confirmados e que os pagantes são permitidos, e **não deixa alterar nem apagar** o histórico financeiro.
 - **Taxa de serviço**, quando houver, entra no total e é rateada junto com o resto (na conta por consumo, proporcional ao consumo de cada um).
 - **Divisão exata:** a soma das partes é sempre o total. O **centavo indivisível fica com quem pagou**, começando por quem pagou mais.
 - **Histórico imutável:** corrigir cria uma nova versão e marca a anterior como substituída; anular guarda quem anulou e o motivo.
