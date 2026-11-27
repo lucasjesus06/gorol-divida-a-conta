@@ -99,6 +99,7 @@ function Participants({ outing }: { outing: OutingDetail }) {
                   {participant.displayName}
                   {participant.role === "admin" && <span className="ml-2 text-xs font-normal text-muted-foreground">dono</span>}
                   {!participant.joined && <span className="ml-2 text-xs font-normal text-muted-foreground">ainda não entrou</span>}
+                  {participant.accountRequested && <span className="ml-2 text-xs font-normal text-primary-glow">pediu cadastro</span>}
                 </span>
                 {participant.phone && <span className="text-xs text-muted-foreground">{participant.phone}</span>}
               </div>

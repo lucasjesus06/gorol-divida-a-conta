@@ -1,7 +1,7 @@
 import "server-only";
 import { and, asc, desc, eq, isNotNull, sql } from "drizzle-orm";
 import { asService, getDb } from "@/db/client";
-import { outingParticipants, outings, people } from "@/db/schema";
+import { accessRequests, outingParticipants, outings, people } from "@/db/schema";
 import { DomainError } from "@/domain/domain-error";
 import { normalizeOutingName, parseOutingKind, type OutingKind, type OutingRole, type OutingStatus } from "@/domain/outing";
 import { assertAdmin, assertParticipant, type Membership } from "@/domain/outing-access";
@@ -16,7 +16,7 @@ export type OutingDetail = {
   kind: OutingKind;
   status: OutingStatus;
   role: OutingRole;
-  participants: { id: string; displayName: string; role: OutingRole; phone: string | null; joined: boolean; releasable: boolean }[];
+  participants: { id: string; displayName: string; role: OutingRole; phone: string | null; joined: boolean; releasable: boolean; accountRequested: boolean }[];
 };
 
 export async function createOuting(owner: { personId: string; displayName: string }, input: { name: string; kind: string }) {
@@ -73,26 +73,40 @@ export async function getOuting(personId: string, outingId: string): Promise<Out
     .orderBy(asc(outingParticipants.joinedAt));
 
   if (outing.role !== "admin") {
-    return { ...outing, participants: participants.map(({ confirmedAt, ...participant }) => ({ ...participant, phone: null, joined: confirmedAt !== null, releasable: false })) };
+    return { ...outing, participants: participants.map(({ confirmedAt, ...participant }) => ({ ...participant, phone: null, joined: confirmedAt !== null, releasable: false, accountRequested: false })) };
   }
 
   const phones = await asService(() =>
     getDb()
-      .select({ id: outingParticipants.id, phone: people.phone, accountApprovedAt: people.accountApprovedAt })
+      .select({ id: outingParticipants.id, phone: people.phone, accountApprovedAt: people.accountApprovedAt, userId: people.userId })
       .from(outingParticipants)
       .innerJoin(people, eq(people.id, outingParticipants.personId))
       .where(eq(outingParticipants.outingId, outingId)),
   );
   const contactByParticipant = new Map(phones.map((row) => [row.id, row]));
+  const requestedAccounts = new Set(
+    (
+      await asService(() =>
+        getDb()
+          .select({ guestUserId: accessRequests.guestUserId })
+          .from(accessRequests)
+          .where(eq(accessRequests.status, "pending")),
+      )
+    ).map((row) => row.guestUserId),
+  );
   return {
     ...outing,
-    participants: participants.map(({ confirmedAt, ...participant }) => ({
-      ...participant,
-      phone: contactByParticipant.get(participant.id)?.phone ?? null,
-      joined: confirmedAt !== null,
-      releasable:
-        confirmedAt !== null && participant.role === "member" && contactByParticipant.get(participant.id)?.accountApprovedAt == null,
-    })),
+    participants: participants.map(({ confirmedAt, ...participant }) => {
+      const contact = contactByParticipant.get(participant.id);
+      const guestUserId = contact?.userId ?? null;
+      return {
+        ...participant,
+        phone: contact?.phone ?? null,
+        joined: confirmedAt !== null,
+        accountRequested: guestUserId !== null && requestedAccounts.has(guestUserId),
+        releasable: confirmedAt !== null && participant.role === "member" && contact?.accountApprovedAt == null,
+      };
+    }),
   };
 }
 

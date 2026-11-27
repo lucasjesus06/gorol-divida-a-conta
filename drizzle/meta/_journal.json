@@ -57,6 +57,13 @@
       "when": 1795809392691,
       "tag": "0007_politicas_entrada_por_link",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1795811272436,
+      "tag": "0008_pedido_de_acesso_do_convidado",
+      "breakpoints": true
     }
   ]
 }

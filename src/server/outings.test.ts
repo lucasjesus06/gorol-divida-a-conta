@@ -39,7 +39,7 @@ describe("criar rolê", () => {
     const detail = await getOuting(lucas.personId, id);
     expect(detail).toMatchObject({ name: "Churrasco de sábado", kind: "event", status: "active", role: "admin" });
     expect(detail.participants).toEqual([
-      { id: expect.any(String), displayName: "Lucas", role: "admin", phone: "+5511999990000", joined: true, releasable: false },
+      { id: expect.any(String), displayName: "Lucas", role: "admin", phone: "+5511999990000", joined: true, releasable: false, accountRequested: false },
     ]);
   });
 

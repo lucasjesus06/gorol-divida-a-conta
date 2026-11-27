@@ -91,6 +91,7 @@ export const accessRequests = pgTable(
     source: text("source", { enum: accessRequestSources }).notNull().default("request"),
     status: text("status", { enum: accessRequestStatuses }).notNull().default("pending"),
     personId: uuid("person_id").references(() => people.id, { onDelete: "set null" }),
+    guestUserId: uuid("guest_user_id").references(() => authUsers.id, { onDelete: "set null" }),
     decidedBy: uuid("decided_by").references(() => people.id, { onDelete: "set null" }),
     decidedAt: timestamp("decided_at", { withTimezone: true }),
     decisionNote: text("decision_note"),
@@ -100,6 +101,9 @@ export const accessRequests = pgTable(
     uniqueIndex("access_requests_one_pending_per_email_idx")
       .on(table.email)
       .where(sql`${table.status} = 'pending'`),
+    uniqueIndex("access_requests_one_pending_per_guest_idx")
+      .on(table.guestUserId)
+      .where(sql`${table.status} = 'pending' and ${table.guestUserId} is not null`),
     index("access_requests_status_idx").on(table.status, table.createdAt),
     check("access_requests_source_valid", oneOf(table.source, accessRequestSources)),
     check("access_requests_status_valid", oneOf(table.status, accessRequestStatuses)),

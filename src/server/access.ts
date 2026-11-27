@@ -35,7 +35,33 @@ async function removeAuthUser(userId: string) {
   await createSupabaseAdminClient().auth.admin.deleteUser(userId);
 }
 
-async function approvePerson(tx: Tx, userId: string, data: AccountData) {
+async function approveGuestPerson(tx: Tx, userId: string, data: AccountData, guestUserId: string) {
+  const [guest] = await tx
+    .select({ id: people.id, accountApprovedAt: people.accountApprovedAt })
+    .from(people)
+    .where(eq(people.userId, guestUserId))
+    .for("update");
+  if (!guest || guest.accountApprovedAt !== null) {
+    return null;
+  }
+  await tx
+    .update(people)
+    .set({ userId, displayName: data.name, accountApprovedAt: sql`now()` })
+    .where(eq(people.id, guest.id));
+  await tx
+    .update(outingParticipants)
+    .set({ confirmedAt: sql`now()` })
+    .where(and(eq(outingParticipants.personId, guest.id), isNull(outingParticipants.confirmedAt)));
+  return guest.id;
+}
+
+async function approvePerson(tx: Tx, userId: string, data: AccountData, guestUserId: string | null) {
+  if (guestUserId) {
+    const guestPersonId = await approveGuestPerson(tx, userId, data, guestUserId);
+    if (guestPersonId) {
+      return guestPersonId;
+    }
+  }
   const [byPhone] = await tx
     .select({ id: people.id, userId: people.userId })
     .from(people)
@@ -62,10 +88,14 @@ async function approvePerson(tx: Tx, userId: string, data: AccountData) {
   return created.id;
 }
 
-async function provision<T>(data: AccountData, record: (tx: Tx, personId: string) => Promise<T>) {
+async function provision<T>(
+  data: AccountData,
+  record: (tx: Tx, personId: string) => Promise<T>,
+  guestUserId: string | null = null,
+) {
   const userId = await createAuthUser(data.email);
   try {
-    return await getDb().transaction(async (tx) => record(tx, await approvePerson(tx, userId, data)));
+    return await getDb().transaction(async (tx) => record(tx, await approvePerson(tx, userId, data, guestUserId)));
   } catch (error) {
     await removeAuthUser(userId);
     throw error;
@@ -93,6 +123,39 @@ async function submitAccessRequestImpl(input: { name: string; email: string; pho
     .onConflictDoNothing();
 }
 
+async function submitGuestAccessRequestImpl(guestUserId: string, input: { email: string }) {
+  const email = normalizeEmail(input.email);
+  const [guest] = await getDb()
+    .select({ name: people.displayName, phone: people.phone, accountApprovedAt: people.accountApprovedAt })
+    .from(people)
+    .where(eq(people.userId, guestUserId));
+  if (!guest || guest.accountApprovedAt !== null) {
+    throw new DomainError("guest_without_person", "Entre primeiro em um rolê para criar o cadastro.");
+  }
+  await getDb()
+    .insert(accessRequests)
+    .values({ name: guest.name, email, phone: guest.phone, guestUserId })
+    .onConflictDoNothing();
+}
+
+async function getGuestSummaryImpl(guestUserId: string) {
+  const [guest] = await getDb()
+    .select({ name: people.displayName, phone: people.phone, accountApprovedAt: people.accountApprovedAt })
+    .from(people)
+    .where(eq(people.userId, guestUserId));
+  return guest && guest.accountApprovedAt === null ? { name: guest.name, phone: guest.phone } : null;
+}
+
+async function getGuestAccessRequestImpl(guestUserId: string) {
+  const [latest] = await getDb()
+    .select({ status: accessRequests.status })
+    .from(accessRequests)
+    .where(eq(accessRequests.guestUserId, guestUserId))
+    .orderBy(desc(accessRequests.createdAt))
+    .limit(1);
+  return latest ?? null;
+}
+
 async function listAccessRequestsImpl() {
   return getDb().select().from(accessRequests).orderBy(desc(accessRequests.createdAt));
 }
@@ -117,6 +180,7 @@ async function approveAccessRequestImpl(requestId: string, decidedBy: string) {
         throw new DomainError("request_not_pending", "Este pedido já foi decidido.");
       }
     },
+    request.guestUserId,
   );
 }
 
@@ -212,6 +276,9 @@ async function listAccountsImpl() {
 export const isSuperAdmin = (...args: Parameters<typeof isSuperAdminImpl>) => asService(() => isSuperAdminImpl(...args));
 export const isApprovedPerson = (...args: Parameters<typeof isApprovedPersonImpl>) => asService(() => isApprovedPersonImpl(...args));
 export const submitAccessRequest = (...args: Parameters<typeof submitAccessRequestImpl>) => asService(() => submitAccessRequestImpl(...args));
+export const submitGuestAccessRequest = (...args: Parameters<typeof submitGuestAccessRequestImpl>) => asService(() => submitGuestAccessRequestImpl(...args));
+export const getGuestSummary = (...args: Parameters<typeof getGuestSummaryImpl>) => asService(() => getGuestSummaryImpl(...args));
+export const getGuestAccessRequest = (...args: Parameters<typeof getGuestAccessRequestImpl>) => asService(() => getGuestAccessRequestImpl(...args));
 export const listAccessRequests = () => asService(listAccessRequestsImpl);
 export const approveAccessRequest = (...args: Parameters<typeof approveAccessRequestImpl>) => asService(() => approveAccessRequestImpl(...args));
 export const rejectAccessRequest = (...args: Parameters<typeof rejectAccessRequestImpl>) => asService(() => rejectAccessRequestImpl(...args));
