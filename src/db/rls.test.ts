@@ -104,18 +104,18 @@ describe("administração do rolê", () => {
   it("só o dono inclui participantes", async () => {
     const [carla] = await db.insert(people).values({ displayName: "Carla", phone: "+5511900000010" }).returning();
     await expect(
-      as(maria, (tx) => tx.insert(outingParticipants).values({ outingId: churrasco, personId: carla.id })),
+      as(maria, (tx) => tx.insert(outingParticipants).values({ outingId: churrasco, personId: carla.id, displayName: "Carla" })),
     ).rejects.toThrow();
     await expect(
-      as(ana, (tx) => tx.insert(outingParticipants).values({ outingId: churrasco, personId: ana })),
+      as(ana, (tx) => tx.insert(outingParticipants).values({ outingId: churrasco, personId: ana, displayName: "Ana" })),
     ).rejects.toThrow();
-    await as(lucas, (tx) => tx.insert(outingParticipants).values({ outingId: churrasco, personId: carla.id }));
+    await as(lucas, (tx) => tx.insert(outingParticipants).values({ outingId: churrasco, personId: carla.id, displayName: "Carla" }));
     expect(await as(carla.id, (tx) => count(tx, outings))).toBe(1);
   });
 
   it("ninguém vira dono de um rolê que não criou", async () => {
     await expect(
-      as(ana, (tx) => tx.insert(outingParticipants).values({ outingId: churrasco, personId: ana, role: "admin" })),
+      as(ana, (tx) => tx.insert(outingParticipants).values({ outingId: churrasco, personId: ana, displayName: "Ana", role: "admin" })),
     ).rejects.toThrow();
   });
 });
@@ -124,7 +124,7 @@ describe("criar um rolê", () => {
   it("cria em nome próprio e já entra como dono", async () => {
     const created = await as(bruno, async (tx) => {
       const [outing] = await tx.insert(outings).values({ name: "Pizza", kind: "event", createdBy: bruno }).returning({ id: outings.id });
-      await tx.insert(outingParticipants).values({ outingId: outing.id, personId: bruno, role: "admin" });
+      await tx.insert(outingParticipants).values({ outingId: outing.id, personId: bruno, displayName: "Bruno", role: "admin" });
       return outing.id;
     });
     expect(await as(bruno, (tx) => tx.$count(outingParticipants, eq(outingParticipants.outingId, created)))).toBe(1);
@@ -135,7 +135,7 @@ describe("criar um rolê", () => {
     await approveAccount(db, edu.id);
     const outing = await as(edu.id, async (tx) => {
       const [created] = await tx.insert(outings).values({ name: "Cinema", kind: "event", createdBy: edu.id }).returning({ id: outings.id });
-      await tx.insert(outingParticipants).values({ outingId: created.id, personId: edu.id, role: "admin" });
+      await tx.insert(outingParticipants).values({ outingId: created.id, personId: edu.id, displayName: "Edu", role: "admin" });
       return created.id;
     });
     await as(edu.id, (tx) => tx.delete(outingParticipants).where(eq(outingParticipants.outingId, outing)));
@@ -175,7 +175,7 @@ describe("criar um rolê", () => {
 describe("sair do rolê", () => {
   it("cada um sai por conta própria, e quem sai deixa de ver o rolê", async () => {
     const [dani] = await db.insert(people).values({ displayName: "Dani", phone: "+5511900000011" }).returning();
-    await db.insert(outingParticipants).values({ outingId: outroRole, personId: dani.id });
+    await db.insert(outingParticipants).values({ outingId: outroRole, personId: dani.id, displayName: "Dani" });
     expect(await as(dani.id, (tx) => count(tx, outings))).toBe(1);
     await as(dani.id, (tx) => tx.delete(outingParticipants).where(eq(outingParticipants.personId, dani.id)));
     expect(await as(dani.id, (tx) => count(tx, outings))).toBe(0);

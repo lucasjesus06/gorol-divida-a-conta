@@ -36,6 +36,13 @@
       "when": 1795803781171,
       "tag": "0004_pedido_de_acesso_sem_mensagem",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1795805614455,
+      "tag": "0005_nome_do_participante_no_role",
+      "breakpoints": true
     }
   ]
 }
