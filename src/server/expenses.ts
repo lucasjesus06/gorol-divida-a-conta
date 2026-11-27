@@ -46,7 +46,7 @@ export type ExpenseView = {
 
 export type ExpenseDetail = ExpenseView & { history: ExpenseView[]; canChange: boolean };
 
-async function outingContext(personId: string, outingId: string) {
+export async function outingContext(personId: string, outingId: string) {
   const outing = await findOuting(personId, outingId);
   const [participants, declared] = await Promise.all([
     getDb()
@@ -68,13 +68,13 @@ async function outingContext(personId: string, outingId: string) {
   };
 }
 
-function assertActiveOuting(status: string) {
+export function assertActiveOuting(status: string) {
   if (status !== "active") {
     throw new DomainError("outing_closed", "Este rolê já foi encerrado.");
   }
 }
 
-function toDomainInput(input: ExpenseInput): { payers: Payer[]; split: SplitRule } {
+export function toDomainInput(input: ExpenseInput): { payers: Payer[]; split: SplitRule } {
   return {
     payers: input.payers.map((payer) => ({ participantId: payer.personId, amountCents: payer.amountCents })),
     split:
@@ -137,9 +137,9 @@ export async function declarePayer(personId: string, outingId: string, payerPers
   await getDb().insert(outingPayers).values({ outingId, personId: payerPersonId, declaredBy: personId });
 }
 
-type Tx = Parameters<Parameters<ReturnType<typeof getDb>["transaction"]>[0]>[0];
+export type Tx = Parameters<Parameters<ReturnType<typeof getDb>["transaction"]>[0]>[0];
 
-async function insertVersion(tx: Tx, outingId: string, personId: string, expense: Expense, idempotencyKey: string | undefined) {
+export async function insertVersion(tx: Tx, outingId: string, personId: string, expense: Expense, idempotencyKey: string | undefined) {
   await tx.insert(expenses).values({
     id: expense.id,
     outingId,
@@ -168,9 +168,9 @@ async function findByKey(outingId: string, key: string) {
   return existing?.id ?? null;
 }
 
-function validate(context: Awaited<ReturnType<typeof outingContext>>, expense: Expense) {
+export function validate(context: Awaited<ReturnType<typeof outingContext>>, expense: Expense, extraPayerIds: string[] = []) {
   assertPeopleInOuting(peopleInExpense(expense.payers, expense.split), context.participantIds);
-  assertPayersAllowed(expense.payers, context.allowedPayerIds);
+  assertPayersAllowed(expense.payers, new Set([...context.allowedPayerIds, ...extraPayerIds]));
 }
 
 export async function registerExpense(personId: string, outingId: string, input: ExpenseInput): Promise<string> {
@@ -209,7 +209,7 @@ export async function registerExpense(personId: string, outingId: string, input:
   return expense.id;
 }
 
-async function loadCurrent(outingId: string, expenseId: string, names: Map<string, string>) {
+export async function loadCurrent(outingId: string, expenseId: string, names: Map<string, string>) {
   const [view] = await loadViews(outingId, names, [expenseId]);
   if (!view) {
     throw new DomainError("expense_not_found", "Despesa não encontrada.");
