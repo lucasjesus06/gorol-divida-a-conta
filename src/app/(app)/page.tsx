@@ -5,7 +5,7 @@ import { Pill } from "@/components/common/Pill";
 import { StatCard } from "@/components/common/StatCard";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/button";
-import { isApprovedPerson, isSuperAdmin, listAccessRequests } from "@/server/access";
+import { getGuestAccessRequest, isApprovedPerson, isSuperAdmin, listAccessRequests } from "@/server/access";
 import { getIdentity, getRenderProfile } from "@/server/auth";
 import { countPendingJoinRequests } from "@/server/join";
 import { listOutings } from "@/server/outings";
@@ -23,6 +23,7 @@ async function Dashboard() {
     countPendingJoinRequests(profile.personId),
     identity ? isSuperAdmin(identity.userId) : false,
   ]);
+  const guestRequest = identity?.kind === "guest" ? await getGuestAccessRequest(identity.userId) : null;
   const pendingAccess = admin ? (await listAccessRequests()).filter((request) => request.status === "pending").length : 0;
   const active = outings.filter((outing) => outing.status === "active");
 
@@ -42,10 +43,19 @@ async function Dashboard() {
 
       {identity?.kind === "guest" && (
         <div className="card-surface flex flex-col gap-3 p-4">
-          <p className="text-sm">Você entrou como convidado. Quer ter conta e instalar o app para uma experiência completa?</p>
-          <Button asChild variant="secondary">
-            <Link href="/pedir-acesso">Pedir acesso</Link>
-          </Button>
+          {guestRequest?.status === "pending" ? (
+            <p className="text-sm">Seu pedido de cadastro foi enviado e está aguardando aprovação.</p>
+          ) : (
+            <>
+              <p className="text-sm">
+                Você entrou como convidado. Crie o seu cadastro para manter o histórico dos seus rolês e das suas dívidas e ter a
+                experiência completa. Sem cadastro, as dívidas precisam ser acertadas dentro do rolê.
+              </p>
+              <Button asChild>
+                <Link href="/pedir-acesso">Criar cadastro</Link>
+              </Button>
+            </>
+          )}
         </div>
       )}
 

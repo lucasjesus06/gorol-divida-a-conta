@@ -1,10 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DomainError } from "@/domain/domain-error";
 
-const access = vi.hoisted(() => ({ submitAccessRequest: vi.fn() }));
+const access = vi.hoisted(() => ({ submitAccessRequest: vi.fn(), submitGuestAccessRequest: vi.fn() }));
+const auth = vi.hoisted(() => ({ getIdentity: vi.fn() }));
 vi.mock("@/server/access", () => access);
+vi.mock("@/server/auth", () => auth);
 
-const { requestAccess } = await import("./actions");
+const { requestAccess, requestGuestAccess } = await import("./actions");
 
 function form(values: Record<string, string>) {
   const data = new FormData();
@@ -17,6 +19,8 @@ const pedido = { name: "Maria", email: "maria@exemplo.com", phone: "11999990001"
 beforeEach(() => {
   vi.clearAllMocks();
   access.submitAccessRequest.mockResolvedValue(undefined);
+  access.submitGuestAccessRequest.mockResolvedValue(undefined);
+  auth.getIdentity.mockResolvedValue({ kind: "guest", userId: "g1" });
 });
 
 describe("requestAccess", () => {
@@ -38,5 +42,23 @@ describe("requestAccess", () => {
   it("não esconde erro inesperado", async () => {
     access.submitAccessRequest.mockRejectedValue(new Error("banco fora"));
     await expect(requestAccess({}, form(pedido))).rejects.toThrow("banco fora");
+  });
+});
+
+describe("requestGuestAccess", () => {
+  it("pede o cadastro pela sessão do convidado, só com o e-mail", async () => {
+    expect(await requestGuestAccess({}, form({ email: "bia@exemplo.com", name: "Outro", phone: "11900000000" }))).toEqual({ done: true });
+    expect(access.submitGuestAccessRequest).toHaveBeenCalledWith("g1", { email: "bia@exemplo.com" });
+  });
+
+  it("quem não é convidado é avisado e nada é pedido", async () => {
+    auth.getIdentity.mockResolvedValue(null);
+    expect((await requestGuestAccess({}, form({ email: "bia@exemplo.com" }))).error).toContain("convidado");
+    expect(access.submitGuestAccessRequest).not.toHaveBeenCalled();
+  });
+
+  it("mostra o aviso da regra de negócio", async () => {
+    access.submitGuestAccessRequest.mockRejectedValue(new DomainError("invalid_email", "Informe um e-mail válido."));
+    expect(await requestGuestAccess({}, form({ email: "x" }))).toEqual({ error: "Informe um e-mail válido." });
   });
 });

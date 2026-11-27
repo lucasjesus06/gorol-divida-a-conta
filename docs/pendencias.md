@@ -16,7 +16,7 @@ Tudo o que ainda precisa ser feito ou decidido. O que fica para versões futuras
   - não usar automação não oficial do WhatsApp Web: viola os termos e arrisca o banimento do número.
 - **Conta por consumo (GOR-10):** o alcance de "fechou, acabou a responsa": vale para a conta ou para o rolê?
 - **Contas temporárias, cadastro e comprovante (GOR-07, GOR-11, GOR-16 e GOR-20):**
-  - **vínculo do histórico:** o convidado que cria cadastro leva o histórico pela **própria sessão**, e não pelo telefone (telefone é pouco para identidade). Isso muda como a aprovação de conta liga a pessoa, e o ajuste na GOR-07 está anotado no card;
+  - **aviso ao dono quando o convidado pede cadastro:** hoje é só a marca "pediu cadastro" na lista de participantes; o aviso ativo (notificação) vem com a GOR-13. A **sessão anônima antiga** do convidado continua existindo no Supabase depois da aprovação, sem uso;
   - **criptografar a chave Pix no banco**, além da política de acesso (ela pode ser o CPF): ainda sem decisão;
   - **Pix informado manualmente** por quem recusa a conta e tem a receber: definir como fica guardado e por quanto tempo (proposta: só até o acerto do rolê).
 - **Participante que saiu do rolê:** hoje perderia o acesso. Decidir se continua vendo e pagando o que deve.

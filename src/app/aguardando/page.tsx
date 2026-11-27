@@ -20,8 +20,14 @@ async function Status() {
   if (status.status === "approved") {
     return (
       <div className="flex flex-col gap-4">
-        <p className="text-sm">Você entrou no rolê {status.outingName}.</p>
+        <p className="text-sm">
+          Você entrou no rolê {status.outingName}. Crie o seu cadastro agora para ter histórico: sem ele, as dívidas
+          precisam ser acertadas dentro do rolê.
+        </p>
         <Button asChild>
+          <Link href="/pedir-acesso">Criar cadastro</Link>
+        </Button>
+        <Button asChild variant="secondary">
           <Link href="/">Ver meus rolês</Link>
         </Button>
       </div>

@@ -138,6 +138,14 @@ async function submitGuestAccessRequestImpl(guestUserId: string, input: { email:
     .onConflictDoNothing();
 }
 
+async function getGuestSummaryImpl(guestUserId: string) {
+  const [guest] = await getDb()
+    .select({ name: people.displayName, phone: people.phone, accountApprovedAt: people.accountApprovedAt })
+    .from(people)
+    .where(eq(people.userId, guestUserId));
+  return guest && guest.accountApprovedAt === null ? { name: guest.name, phone: guest.phone } : null;
+}
+
 async function getGuestAccessRequestImpl(guestUserId: string) {
   const [latest] = await getDb()
     .select({ status: accessRequests.status })
@@ -269,6 +277,7 @@ export const isSuperAdmin = (...args: Parameters<typeof isSuperAdminImpl>) => as
 export const isApprovedPerson = (...args: Parameters<typeof isApprovedPersonImpl>) => asService(() => isApprovedPersonImpl(...args));
 export const submitAccessRequest = (...args: Parameters<typeof submitAccessRequestImpl>) => asService(() => submitAccessRequestImpl(...args));
 export const submitGuestAccessRequest = (...args: Parameters<typeof submitGuestAccessRequestImpl>) => asService(() => submitGuestAccessRequestImpl(...args));
+export const getGuestSummary = (...args: Parameters<typeof getGuestSummaryImpl>) => asService(() => getGuestSummaryImpl(...args));
 export const getGuestAccessRequest = (...args: Parameters<typeof getGuestAccessRequestImpl>) => asService(() => getGuestAccessRequestImpl(...args));
 export const listAccessRequests = () => asService(listAccessRequestsImpl);
 export const approveAccessRequest = (...args: Parameters<typeof approveAccessRequestImpl>) => asService(() => approveAccessRequestImpl(...args));
