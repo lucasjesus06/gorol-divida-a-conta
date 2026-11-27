@@ -189,6 +189,7 @@ Há três níveis de configuração, todos em telas do aplicativo:
 ### Cobrança pelo WhatsApp
 
 - **O lembrete por WhatsApp faz parte do MVP**, pois a cobrança é o centro do produto. Sai pela **API oficial do WhatsApp** desde a primeira versão, por modelos de mensagem aprovados pela Meta, e o **tom de meme é mantido** nos textos. Push e lista de avisos no app servem aos alertas internos (como a pendência que chega ao dono), e não substituem a cobrança.
+- **Avisos no app (GOR-13):** cada aviso fica numa **lista** da pessoa (só ela lê; ninguém cria aviso pelo acesso do usuário, só o servidor) e, se ela ligou o push no aparelho, também chega como notificação. O endereço do aviso é sempre **interno ao app**. A inscrição é **por aparelho**, e o aparelho que o navegador informa como expirado é removido sozinho. **Falha ao avisar nunca desfaz** o pagamento, a despesa ou o pedido que a causou. As chaves VAPID ficam só em variáveis de ambiente.
 - É **função do app**, não marketing. O consentimento vem nos **termos e condições aceitos no primeiro acesso**, que incluem o recebimento de lembretes de pagamento.
 - Lembretes amigáveis, em tom de meme ("e o Pix, nada ainda?"), até o pagamento ser confirmado.
 - **Regra de frequência:** intervalo mínimo entre lembretes (padrão 24 h) e horário comercial no fuso de São Paulo (padrão 10 h–20 h).
