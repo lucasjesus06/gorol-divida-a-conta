@@ -30,3 +30,21 @@ export function sumCents(values: Iterable<Cents>): Cents {
   }
   return total;
 }
+
+/** Reads what a person types, such as "25,90" or "R$ 1.234,50", into integer cents. */
+export function parseMoneyToCents(input: string): Cents {
+  const cleaned = input.trim().replace(/^R\$\s*/i, "").replace(/\s/g, "");
+  const match = /^(\d{1,3}(?:\.\d{3})+|\d+)(?:,(\d{1,2}))?$/.exec(cleaned) ?? /^(\d+)(?:\.(\d{1,2}))?$/.exec(cleaned);
+  if (!match) {
+    throw new DomainError("invalid_amount", "Informe um valor válido, como 25,90.");
+  }
+  const reais = Number(match[1].replace(/\./g, ""));
+  const cents = Number((match[2] ?? "").padEnd(2, "0"));
+  const total = reais * 100 + cents;
+  assertPositiveCents(total, "O valor");
+  return total;
+}
+
+export function formatCents(cents: Cents): string {
+  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(cents / 100);
+}

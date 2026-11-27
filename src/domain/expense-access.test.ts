@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { Fraction } from "./fraction";
-import { assertCanChangeExpense, assertPeopleInOuting, peopleInExpense } from "./expense-access";
+import {
+  assertCanChangeExpense,
+  assertCanRegisterExpense,
+  assertPayersAllowed,
+  assertPeopleInOuting,
+  peopleInExpense,
+} from "./expense-access";
 
 describe("peopleInExpense", () => {
   const payers = [{ participantId: "ana", amountCents: 1000 }];
@@ -62,6 +68,36 @@ describe("assertCanChangeExpense", () => {
   it("does not let other participants change it", () => {
     expect(() => assertCanChangeExpense("ana", "bia", "member")).toThrowError(
       expect.objectContaining({ code: "only_registrant_or_admin_changes_expense" }),
+    );
+  });
+});
+
+describe("assertCanRegisterExpense", () => {
+  it("lets the admin and declared payers register", () => {
+    expect(() => assertCanRegisterExpense("admin", false)).not.toThrow();
+    expect(() => assertCanRegisterExpense("member", true)).not.toThrow();
+  });
+
+  it("does not let other participants register", () => {
+    expect(() => assertCanRegisterExpense("member", false)).toThrowError(
+      expect.objectContaining({ code: "only_payers_register_expense" }),
+    );
+  });
+});
+
+describe("assertPayersAllowed", () => {
+  const payers = [
+    { participantId: "ana", amountCents: 600 },
+    { participantId: "bia", amountCents: 400 },
+  ];
+
+  it("accepts when everyone who paid is allowed", () => {
+    expect(() => assertPayersAllowed(payers, new Set(["ana", "bia", "caio"]))).not.toThrow();
+  });
+
+  it("rejects someone who is not the admin or a declared payer", () => {
+    expect(() => assertPayersAllowed(payers, new Set(["ana"]))).toThrowError(
+      expect.objectContaining({ code: "payer_not_declared" }),
     );
   });
 });
