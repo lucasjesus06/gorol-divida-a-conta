@@ -64,6 +64,20 @@
       "when": 1795811272436,
       "tag": "0008_pedido_de_acesso_do_convidado",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1795811544831,
+      "tag": "0009_despesas_e_pagantes",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1795811545754,
+      "tag": "0010_politicas_despesas",
+      "breakpoints": true
     }
   ]
 }

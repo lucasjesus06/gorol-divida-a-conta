@@ -1,9 +1,10 @@
 import { DomainError } from "./domain-error";
 import { assertPositiveCents, sumCents, type Cents } from "./money";
 import { validateEvidence, type ExpenseEvidence } from "./evidence";
+import { expenseStatuses } from "./expense-status";
 import { computeShares, type Payer, type SplitRule } from "./split";
 
-export type ExpenseStatus = "active" | "superseded" | "voided";
+export type ExpenseStatus = (typeof expenseStatuses)[number];
 
 /**
  * A shared expense inside an outing (rolê). Financial history is never edited
