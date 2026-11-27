@@ -1,9 +1,6 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
 import { Suspense } from "react";
-import { Shell } from "@/components/layout/Shell";
-import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/layout/PageHeader";
 import { inviteState } from "@/domain/access";
 import { listAccessRequests, listAccounts, listInvites } from "@/server/access";
 import { requireSuperAdmin } from "@/server/auth";
@@ -75,20 +72,11 @@ async function AdminContent() {
 
 export default function AdminPage() {
   return (
-    <Shell
-      back={
-        <Button asChild variant="ghost" size="icon" aria-label="Voltar" title="Voltar">
-          <Link href="/">
-            <ArrowLeft />
-          </Link>
-        </Button>
-      }
-      hideLogo
-    >
-      <h1 className="mt-4 mb-6 text-3xl font-extrabold tracking-tight">Administração</h1>
+    <>
+      <PageHeader title="Administração" description="Pedidos de acesso, convites e contas." />
       <Suspense fallback={null}>
         <AdminContent />
       </Suspense>
-    </Shell>
+    </>
   );
 }

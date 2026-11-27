@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
-import { Shell } from "@/components/layout/Shell";
+import { PageHeader } from "@/components/layout/PageHeader";
 import { requireAccount } from "@/server/auth";
 import { loadProfile } from "@/server/profiles";
 import { ProfileForm } from "./profile-form";
@@ -20,20 +20,16 @@ async function ProfileGate() {
 
 export default function ProfilePage() {
   return (
-    <Shell>
-      <section className="mt-4 flex flex-col gap-6">
-        <div className="flex flex-col gap-2">
-          <h1 className="text-3xl font-extrabold tracking-tight">Seu cadastro</h1>
-          <p className="text-sm text-muted-foreground">
-            O telefone identifica você nos rolês: é por ele que quem organiza o rolê te encontra.
-          </p>
-        </div>
-        <div className="card-surface p-6">
-          <Suspense fallback={null}>
-            <ProfileGate />
-          </Suspense>
-        </div>
-      </section>
-    </Shell>
+    <>
+      <PageHeader
+        title="Seu cadastro"
+        description="O telefone identifica você nos rolês: é por ele que quem organiza o rolê te encontra."
+      />
+      <div className="card-surface p-6">
+        <Suspense fallback={null}>
+          <ProfileGate />
+        </Suspense>
+      </div>
+    </>
   );
 }
