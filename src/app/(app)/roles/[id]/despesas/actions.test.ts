@@ -3,6 +3,7 @@ import { DomainError } from "@/domain/domain-error";
 
 const auth = vi.hoisted(() => ({ getRenderProfile: vi.fn() }));
 const requests = vi.hoisted(() => ({ createPayerRequest: vi.fn(), decidePayerRequest: vi.fn() }));
+const disputes = vi.hoisted(() => ({ openDispute: vi.fn(), decideDispute: vi.fn() }));
 const expensesServer = vi.hoisted(() => ({ declarePayer: vi.fn(), registerExpense: vi.fn(), reviseExpense: vi.fn(), voidExpense: vi.fn() }));
 const navigation = vi.hoisted(() => ({
   redirect: vi.fn((path: string) => {
@@ -12,6 +13,7 @@ const navigation = vi.hoisted(() => ({
 
 vi.mock("@/server/auth", () => auth);
 vi.mock("@/server/payer-requests", () => requests);
+vi.mock("@/server/disputes", () => disputes);
 vi.mock("@/server/expenses", () => expensesServer);
 vi.mock("next/navigation", () => navigation);
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
@@ -32,6 +34,8 @@ beforeEach(() => {
   auth.getRenderProfile.mockResolvedValue({ personId: "p1", displayName: "Maria" });
   requests.createPayerRequest.mockResolvedValue("r1");
   requests.decidePayerRequest.mockResolvedValue(undefined);
+  disputes.openDispute.mockResolvedValue("d1");
+  disputes.decideDispute.mockResolvedValue(undefined);
 });
 
 describe("requestPayerAction", () => {
@@ -69,5 +73,33 @@ describe("decidePayerRequestAction", () => {
     expect(await actions.decidePayerRequestAction({}, form({ outingId, requestId: "r1", decision: "approve" }))).toEqual({
       error: "Este pedido já foi decidido.",
     });
+  });
+});
+
+describe("openDisputeAction", () => {
+  it("contesta em nome de quem está logado", async () => {
+    expect(await actions.openDisputeAction({}, form({ outingId, expenseId: "e1", subject: "not_participated", message: "Não fui" }))).toEqual({});
+    expect(disputes.openDispute).toHaveBeenCalledWith("p1", outingId, "e1", { subject: "not_participated", message: "Não fui" });
+  });
+
+  it("recusa um motivo inventado sem consultar nada", async () => {
+    expect((await actions.openDisputeAction({}, form({ outingId, expenseId: "e1", subject: "golpe", message: "x" }))).error).toContain("motivo");
+    expect(disputes.openDispute).not.toHaveBeenCalled();
+  });
+
+  it("mostra o aviso da regra de negócio", async () => {
+    disputes.openDispute.mockRejectedValue(new DomainError("dispute_already_open", "Você já tem uma contestação aberta para esta despesa."));
+    expect(await actions.openDisputeAction({}, form({ outingId, expenseId: "e1", subject: "amount", message: "x" }))).toEqual({
+      error: "Você já tem uma contestação aberta para esta despesa.",
+    });
+  });
+});
+
+describe("decideDisputeAction", () => {
+  it("aceita e recusa em nome de quem está logado", async () => {
+    await actions.decideDisputeAction({}, form({ outingId, disputeId: "d1", decision: "approve", note: "ok" }));
+    await actions.decideDisputeAction({}, form({ outingId, disputeId: "d2", decision: "reject", note: "" }));
+    expect(disputes.decideDispute).toHaveBeenNthCalledWith(1, "p1", outingId, "d1", { approve: true, note: "ok" });
+    expect(disputes.decideDispute).toHaveBeenNthCalledWith(2, "p1", outingId, "d2", { approve: false, note: "" });
   });
 });
