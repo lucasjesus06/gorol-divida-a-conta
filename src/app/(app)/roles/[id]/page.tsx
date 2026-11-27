@@ -19,6 +19,10 @@ import { listBills, type BillView } from "@/server/bills";
 import { listExpenses, listPayers, type ExpenseView } from "@/server/expenses";
 import { listPayerRequests, type PayerRequestView } from "@/server/payer-requests";
 import { listPayments, type PaymentView } from "@/server/payments";
+import { listFiles, type FileView } from "@/server/files";
+import { FileList } from "@/components/files/FileList";
+import { FileUploader } from "@/components/files/FileUploader";
+import { formatFileSize } from "@/domain/file-rules";
 import { getOuting, type OutingDetail } from "@/server/outings";
 import { JoinLinkPanel, JoinRequestItem, ReleaseButton } from "./join-panel";
 import { DeclarePaymentForm, PixReveal, ResolvePayment } from "./pagamentos/payment-forms";
@@ -246,9 +250,11 @@ function PaymentsView({
   people,
   me,
   defaults,
+  receipts,
 }: {
   outing: OutingDetail;
   payments: PaymentView[];
+  receipts: FileView[];
   people: { personId: string; name: string }[];
   me: string;
   defaults: { toId?: string; amount?: string };
@@ -281,6 +287,15 @@ function PaymentsView({
                   {paymentStatusLabels[payment.status]}
                   {payment.onBehalfOf ? ` · em nome de ${payment.onBehalfOf.name}` : ""}
                 </p>
+                <FileList
+                  revalidate={`/roles/${outing.id}`}
+                  files={receipts
+                    .filter((file) => file.subjectId === payment.id)
+                    .map((file) => ({ id: file.id, name: file.name, sizeLabel: formatFileSize(file.sizeBytes), canRemove: file.ownerId === me }))}
+                />
+                {payment.from.id === me && payment.status === "declared" && (
+                  <FileUploader kind="payment_receipt" outingId={outing.id} subjectId={payment.id} label="Anexar comprovante (opcional)" revalidate={`/roles/${outing.id}`} />
+                )}
                 {payment.canResolve && <ResolvePayment outingId={outing.id} paymentId={payment.id} />}
               </li>
             ))}
@@ -487,6 +502,7 @@ async function OutingContent({ params, searchParams }: Pick<PageProps<"/roles/[i
     view === "pagamentos" || view === "resumo" ? listPayments(profile.personId, id) : [],
     view === "acertos" ? getOutingBalances(profile.personId, id) : null,
   ]);
+  const receipts = view === "pagamentos" ? await listFiles(profile.personId, "payment_receipt", id, payments.map((payment) => payment.id)) : [];
   const payerIds = new Set(people.filter((person) => person.isPayer).map((person) => person.personId));
 
   return (
@@ -504,6 +520,7 @@ async function OutingContent({ params, searchParams }: Pick<PageProps<"/roles/[i
         <PaymentsView
           outing={outing}
           payments={payments}
+          receipts={receipts}
           people={people}
           me={profile.personId}
           defaults={{ toId: typeof query.para === "string" ? query.para : undefined, amount: typeof query.valor === "string" ? query.valor : undefined }}

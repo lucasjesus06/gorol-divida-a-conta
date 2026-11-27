@@ -66,3 +66,11 @@ export function validateStoredFile(kind: FileKind, bytes: Uint8Array, totalSizeB
   }
   return detected;
 }
+
+/** "850 KB" or "2,3 MB", for the screen. */
+export function formatFileSize(bytes: number): string {
+  if (bytes < MB) {
+    return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+  }
+  return `${(bytes / MB).toFixed(1).replace(".", ",")} MB`;
+}

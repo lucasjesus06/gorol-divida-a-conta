@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { detectMime, fileRules, validateStoredFile, validateUploadRequest } from "./file-rules";
+import { detectMime, fileRules, formatFileSize, validateStoredFile, validateUploadRequest } from "./file-rules";
 
 const jpeg = Uint8Array.from([0xff, 0xd8, 0xff, 0xe0, 0, 0]);
 const png = Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0]);
@@ -50,5 +50,13 @@ describe("validateStoredFile", () => {
   it("recusa PNG como foto de perfil e arquivo acima do limite", () => {
     expect(() => validateStoredFile("profile_photo", png, 500)).toThrow("JPEG, WebP");
     expect(() => validateStoredFile("profile_photo", jpeg, 3 * 1024 * 1024)).toThrow("2 MB");
+  });
+});
+
+describe("formatFileSize", () => {
+  it("mostra KB abaixo de 1 MB e MB com vírgula acima", () => {
+    expect(formatFileSize(500)).toBe("1 KB");
+    expect(formatFileSize(850 * 1024)).toBe("850 KB");
+    expect(formatFileSize(2.3 * 1024 * 1024)).toBe("2,3 MB");
   });
 });
