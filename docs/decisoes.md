@@ -115,12 +115,14 @@ Identificadores do código em inglês; textos para o usuário em português.
 - **Encerrar com saldo aberto:** o dono encerra sozinho se ele for o único com valor a receber no rolê. Se houver outras pessoas a receber, **votam só as que têm a receber** (quem deve não vota), cientes de que a dívida entre as pessoas continua e só o rolê se encerra. **O silêncio por 3 dias vale como aceite**; um "não" mantém o rolê aberto.
 - **Anistia:** só o **credor** perdoa, e só até o que tem a receber naquele momento. É um **lançamento imutável** no histórico (quem, quando e quanto), que reduz o saldo sem apagar nada.
 - **Origem da dívida sempre visível:** cada pessoa vê **a quem deve e quanto**, e ao tocar numa dívida vê o **histórico de rolês** que a formam e, dentro de cada rolê, as despesas. Como o saldo soma vários rolês e pode ter sinais diferentes, a tela mostra o valor de cada rolê com o seu sinal e o total.
-- **Fundo comum:** quem divide o mesmo dinheiro (cônjuges, por exemplo) pode **optar por declarar isso**. É sempre opcional, e a outra pessoa precisa **aceitar**, porque a declaração muda o saldo dela. Regras:
+- **Despesas compartilhadas permanentes** (motor de despesas compartilhadas permanentes): quem divide o mesmo fundo pagador (cônjuges, por exemplo) pode **optar por declarar isso**, numa seção das **configurações da pessoa**. É sempre opcional, e a outra pessoa precisa **aceitar**, porque a declaração muda o saldo dela. Regras:
   - **a divisão do rolê não muda para ninguém.** Com 5 pessoas e divisão igual, a conta é dividida por 5, como sempre. Cada pessoa do fundo continua sendo uma pessoa, com a sua parte e o seu consumo; quem tem cônjuge e quer, marca o consumo dele e o do cônjuge. **Os demais participantes não sentem diferença nenhuma** e os valores que devem ficam inalterados;
   - **só a relação entre as duas pessoas do fundo é neutra:** entre elas não há dívida, Pix nem pagamento. Se uma paga a conta, a outra não lhe deve nada pela parte dela;
   - **a dívida que já existia entre as duas é perdoada no ato**, com uma anistia visível, e **só entre as duas**; a dívida de cada uma com terceiros não muda;
   - **ao pagar a terceiros, a pessoa pode, se quiser, pagar também a parte de quem divide o fundo com ela.** É uma opção, e pode vir sugerida automaticamente, mas não é obrigatória: o cônjuge pode ter renda própria e pagar a sua parte. Pagar pelo cônjuge **não cria dívida entre os dois**;
-  - **os lembretes vão para as duas pessoas**, porque cada uma segue sendo uma pessoa; só o fundo é compartilhado.
+  - **os lembretes vão para as duas pessoas**, porque cada uma segue sendo uma pessoa; só o fundo é compartilhado;
+  - **desfazer** a declaração vale **só daí em diante**: o que foi lançado enquanto ela existia fica como estava, e a anistia já dada continua valendo;
+  - **só as duas pessoas veem a declaração**; quem paga em nome da outra aparece como pagamento normal.
 - Ao declarar um pagamento no sentido contrário ao do saldo atual, o app avisa que a outra pessoa é quem deve.
 
 ### Acesso e cadastro
@@ -137,7 +139,7 @@ Identificadores do código em inglês; textos para o usuário em português.
 ### Configurações
 
 Há três níveis de configuração, todos em telas do aplicativo:
-- **Pessoa:** dados do cadastro (nome, telefone e e-mail), **chave Pix**, preferências de notificação e de exibição. A chave Pix é usada para gerar o Pix copia e cola e **só aparece para quem deve a essa pessoa**.
+- **Pessoa:** dados do cadastro (nome, telefone e e-mail), **chave Pix**, preferências de notificação e de exibição e a declaração de **despesas compartilhadas permanentes**. A chave Pix é usada para gerar o Pix copia e cola e **só aparece para quem deve a essa pessoa**.
 - **Rolê (dono do rolê):** rota de acerto sugerida e taxa de serviço padrão, entre outros ajustes do rolê. A forma de divisão não é ajuste do rolê: é escolhida em cada despesa.
 - **Sistema (super administrador):** os parâmetros dos **motores de regras**, como os da cobrança (intervalo, janela de horário, quando oferecer pausa, duração e número de pausas) e o prazo para contestar um comprovante.
 - Cada parâmetro tem **valor padrão e limites mínimo e máximo**, e toda mudança é registrada. Mudar um parâmetro vale daí em diante e **não reescreve o histórico**.
