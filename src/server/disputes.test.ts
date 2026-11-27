@@ -147,9 +147,10 @@ describe("decidir", () => {
     expect((await db().select().from(expenseDisputes).where(eq(expenseDisputes.id, open.id)))[0].status).toBe("open");
   });
 
-  it("rolê encerrado não aceita contestação", async () => {
+  it("rolê encerrado há pouco aceita a contestação e continua encerrado (a regra dos 7 dias está em dispute-after-closing)", async () => {
     const { outings } = await import("@/db/schema");
     await db().update(outings).set({ status: "closed", closedAt: new Date() });
-    await expect(server.openDispute(maria, outingId, expenseId, { subject: "amount", message: "a" })).rejects.toMatchObject({ code: "outing_closed" });
+    await expect(server.openDispute(maria, outingId, expenseId, { subject: "amount", message: "a" })).resolves.toBeTruthy();
+    expect((await db().select().from(outings))[0].status).toBe("closed");
   });
 });

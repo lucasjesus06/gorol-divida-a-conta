@@ -1,7 +1,7 @@
 import "server-only";
 import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { asService, getDb } from "@/db/client";
-import { expenseDisputeApprovals, expenseDisputes, expenses } from "@/db/schema";
+import { expenseDisputeApprovals, expenseDisputes, expenses, outingReopenings, outings } from "@/db/schema";
 import {
   disputeOutcome,
   equalSplitWithout,
@@ -12,9 +12,12 @@ import {
   type DisputeSubject,
   type ExpenseDispute,
 } from "@/domain/dispute";
+import { assertLateDisputeConfirmed, disputeWindow } from "@/domain/dispute-window";
 import { DomainError } from "@/domain/domain-error";
+import { outingReopened } from "@/domain/notification";
 import { reviseExpense as reviseExpenseDomain } from "@/domain/expense";
-import { assertActiveOuting, insertVersion, loadCurrent, outingContext, toDomainInput } from "./expenses";
+import { insertVersion, loadCurrent, outingContext, toDomainInput } from "./expenses";
+import { notify } from "./push";
 
 export type DisputeView = {
   id: string;
@@ -33,10 +36,14 @@ export async function openDispute(
   personId: string,
   outingId: string,
   expenseId: string,
-  input: { subject: DisputeSubject; message: string },
+  input: { subject: DisputeSubject; message: string; confirmLate?: boolean },
+  now: Date = new Date(),
 ): Promise<string> {
   const context = await outingContext(personId, outingId);
-  assertActiveOuting(context.outing.status);
+  const closed = context.outing.status !== "active";
+  const [closing] = closed ? await getDb().select({ closedAt: outings.closedAt, closedBy: outings.closedBy }).from(outings).where(eq(outings.id, outingId)) : [];
+  const window = disputeWindow(closing?.closedAt ?? null, now);
+  assertLateDisputeConfirmed(window, input.confirmLate === true);
   const current = await loadCurrent(outingId, expenseId, context.names);
 
   const openOnes = await getDb()
@@ -52,17 +59,37 @@ export async function openDispute(
   const adminIds = context.participants.filter((participant) => participant.role === "admin").map((participant) => participant.personId);
   const approvers = requiredApprovers(input.subject, adminIds, current.payers.map((payer) => payer.participantId));
 
-  await getDb().transaction(async (tx) => {
-    await tx.insert(expenseDisputes).values({
-      id: dispute.id,
-      outingId,
-      expenseId,
-      openedBy: personId,
-      subject: dispute.subject,
-      message: dispute.message,
-    });
-    await tx.insert(expenseDisputeApprovals).values(approvers.map((approver) => ({ disputeId: dispute.id, personId: approver })));
-  });
+  // On a closed outing the database policies (written for open ones) refuse the insert, so the
+  // write goes through the server after every check above.
+  const run = closed ? asService : <T,>(work: () => Promise<T>) => work();
+  await run(() =>
+    getDb().transaction(async (tx) => {
+      await tx.insert(expenseDisputes).values({
+        id: dispute.id,
+        outingId,
+        expenseId,
+        openedBy: personId,
+        subject: dispute.subject,
+        message: dispute.message,
+      });
+      await tx.insert(expenseDisputeApprovals).values(approvers.map((approver) => ({ disputeId: dispute.id, personId: approver })));
+      if (window === "late" && closing?.closedAt) {
+        await tx.update(outings).set({ status: "active", closedAt: null, closedBy: null }).where(and(eq(outings.id, outingId), eq(outings.status, "closed")));
+        await tx.insert(outingReopenings).values({
+          outingId,
+          disputeId: dispute.id,
+          reopenedBy: personId,
+          reopenedAt: now,
+          previousClosedAt: closing.closedAt,
+          previousClosedBy: closing.closedBy,
+        });
+      }
+    }),
+  );
+  if (window === "late") {
+    const notice = outingReopened({ outingId, outingName: context.outing.name, personName: context.names.get(personId) ?? "Alguém" });
+    await Promise.all(context.participants.filter((participant) => participant.personId !== personId).map((participant) => notify(participant.personId, notice)));
+  }
   return dispute.id;
 }
 
@@ -102,7 +129,6 @@ export async function listDisputes(personId: string, outingId: string, expenseId
 
 export async function decideDispute(personId: string, outingId: string, disputeId: string, decision: { approve: boolean; note: string }) {
   const context = await outingContext(personId, outingId);
-  assertActiveOuting(context.outing.status);
   const adminId = context.participants.find((participant) => participant.role === "admin")?.personId;
   if (!adminId) {
     throw new DomainError("outing_not_found", "Rolê não encontrado.");
