@@ -17,8 +17,10 @@ import { getActiveJoinLink, listJoinRequests } from "@/server/join";
 import { listBills, type BillView } from "@/server/bills";
 import { listExpenses, listPayers, type ExpenseView } from "@/server/expenses";
 import { listPayerRequests, type PayerRequestView } from "@/server/payer-requests";
+import { listPayments, type PaymentView } from "@/server/payments";
 import { getOuting, type OutingDetail } from "@/server/outings";
 import { JoinLinkPanel, JoinRequestItem, ReleaseButton } from "./join-panel";
+import { DeclarePaymentForm, ResolvePayment } from "./pagamentos/payment-forms";
 import { RequestDecision } from "./despesas/request-item";
 import { ParticipantForm } from "./participant-form";
 import { PayerButton } from "./payer-button";
@@ -30,11 +32,12 @@ export const metadata: Metadata = {
 const kindLabels = { event: "Pontual", recurring: "Recorrente" } as const;
 const dateFormat = new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short", timeZone: "America/Sao_Paulo" });
 
-type View = "resumo" | "despesas" | "participantes" | "convite";
+type View = "resumo" | "despesas" | "pagamentos" | "participantes" | "convite";
 
 function parseView(value: string | string[] | undefined, isAdmin: boolean): View {
   if (value === "participantes") return "participantes";
   if (value === "despesas") return "despesas";
+  if (value === "pagamentos") return "pagamentos";
   if (value === "convite" && isAdmin) return "convite";
   return "resumo";
 }
@@ -43,6 +46,7 @@ function Tabs({ outingId, view, isAdmin }: { outingId: string; view: View; isAdm
   const tabs: { view: View; label: string }[] = [
     { view: "resumo", label: "Resumo" },
     { view: "despesas", label: "Despesas" },
+    { view: "pagamentos", label: "Pagamentos" },
     { view: "participantes", label: "Participantes" },
     ...(isAdmin ? [{ view: "convite" as const, label: "Convite" }] : []),
   ];
@@ -70,11 +74,13 @@ function Summary({
   outing,
   pendingRequests,
   pendingPayerRequests,
+  paymentsToConfirm,
   expenses,
 }: {
   outing: OutingDetail;
   pendingRequests: number;
   pendingPayerRequests: number;
+  paymentsToConfirm: number;
   expenses: ExpenseView[];
 }) {
   const active = expenses.filter((expense) => expense.status === "active");
@@ -101,6 +107,7 @@ function Summary({
             highlight={pendingRequests > 0}
           />
         )}
+        {paymentsToConfirm > 0 && <StatCard label="Pagamentos a confirmar" value={paymentsToConfirm} href={`/roles/${outing.id}?visao=pagamentos`} highlight />}
         {isAdmin && (
           <StatCard
             label="Pedidos de pagante"
@@ -228,6 +235,57 @@ function ExpensesView({
   );
 }
 
+const paymentStatusLabels = { declared: "Aguardando confirmação", confirmed: "Confirmado", contested: "Contestado", rejected: "Recusado" } as const;
+
+function PaymentsView({
+  outing,
+  payments,
+  people,
+  me,
+}: {
+  outing: OutingDetail;
+  payments: PaymentView[];
+  people: { personId: string; name: string }[];
+  me: string;
+}) {
+  return (
+    <div className="flex flex-col gap-8">
+      {outing.status === "active" && (
+        <section className="flex flex-col gap-3">
+          <h2 className="text-xl font-bold">Declarar um pagamento</h2>
+          <div className="card-surface p-6">
+            <DeclarePaymentForm outingId={outing.id} people={people} me={me} idempotencyKey={crypto.randomUUID()} />
+          </div>
+        </section>
+      )}
+      <section className="flex flex-col gap-3">
+        <h2 className="text-xl font-bold">Pagamentos do rolê</h2>
+        {payments.length === 0 ? (
+          <p className="card-surface p-5 text-sm text-muted-foreground">Nenhum pagamento declarado ainda.</p>
+        ) : (
+          <ul className="flex flex-col gap-3">
+            {payments.map((payment) => (
+              <li key={payment.id} className="card-surface flex flex-col gap-3 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-sm font-semibold">
+                    {payment.from.name} → {payment.to.name}
+                  </span>
+                  <span className="font-bold">{formatCents(payment.amountCents)}</span>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {paymentStatusLabels[payment.status]}
+                  {payment.onBehalfOf ? ` · em nome de ${payment.onBehalfOf.name}` : ""}
+                </p>
+                {payment.canResolve && <ResolvePayment outingId={outing.id} paymentId={payment.id} />}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    </div>
+  );
+}
+
 function Participants({ outing, payerIds }: { outing: OutingDetail; payerIds: Set<string> }) {
   const isAdmin = outing.role === "admin";
 
@@ -318,12 +376,13 @@ async function OutingContent({ params, searchParams }: Pick<PageProps<"/roles/[i
 
   const isAdmin = outing.role === "admin";
   const view = parseView((await searchParams).visao, isAdmin);
-  const [pendingRequests, expenses, people, payerRequests, bills] = await Promise.all([
+  const [pendingRequests, expenses, people, payerRequests, bills, payments] = await Promise.all([
     isAdmin && view === "resumo" ? listJoinRequests(profile.personId, id).then((requests) => requests.length) : 0,
     view === "resumo" || view === "despesas" ? listExpenses(profile.personId, id) : [],
     listPayers(profile.personId, id),
     view === "despesas" || view === "resumo" ? listPayerRequests(profile.personId, id) : [],
     view === "despesas" ? listBills(profile.personId, id) : [],
+    view === "pagamentos" || view === "resumo" ? listPayments(profile.personId, id) : [],
   ]);
   const payerIds = new Set(people.filter((person) => person.isPayer).map((person) => person.personId));
 
@@ -335,8 +394,9 @@ async function OutingContent({ params, searchParams }: Pick<PageProps<"/roles/[i
         actions={<Pill>{outing.status === "closed" ? "Encerrado" : kindLabels[outing.kind]}</Pill>}
       />
       <Tabs outingId={outing.id} view={view} isAdmin={isAdmin} />
-      {view === "resumo" && <Summary outing={outing} pendingRequests={pendingRequests} expenses={expenses} pendingPayerRequests={payerRequests.filter((request) => request.status === "pending").length} />}
+      {view === "resumo" && <Summary outing={outing} pendingRequests={pendingRequests} expenses={expenses} pendingPayerRequests={payerRequests.filter((request) => request.status === "pending").length} paymentsToConfirm={payments.filter((payment) => payment.canResolve).length} />}
       {view === "despesas" && <ExpensesView outing={outing} expenses={expenses} canRegister={payerIds.has(profile.personId)} requests={payerRequests} bills={bills} />}
+      {view === "pagamentos" && <PaymentsView outing={outing} payments={payments} people={people} me={profile.personId} />}
       {view === "participantes" && <Participants outing={outing} payerIds={payerIds} />}
       {view === "convite" && <Invite outing={outing} personId={profile.personId} />}
     </>

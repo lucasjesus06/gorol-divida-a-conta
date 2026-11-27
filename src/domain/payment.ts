@@ -1,4 +1,5 @@
 import { DomainError } from "./domain-error";
+import { confirmationSources, paymentStatuses } from "./payment-status";
 import { assertPositiveCents, type Cents } from "./money";
 
 /**
@@ -7,9 +8,9 @@ import { assertPositiveCents, type Cents } from "./money";
  * - contested: the creditor says the money did not arrive; does not count.
  * - rejected: the creditor refused it; does not count.
  */
-export type PaymentStatus = "declared" | "confirmed" | "contested" | "rejected";
+export type PaymentStatus = (typeof paymentStatuses)[number];
 
-export type ConfirmationSource = "creditor" | "receipt";
+export type ConfirmationSource = (typeof confirmationSources)[number];
 
 /** How long the creditor has to contest a payment confirmed by a receipt. */
 export const RECEIPT_CONTEST_DAYS = 3;
