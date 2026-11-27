@@ -23,7 +23,7 @@ export type PayerRequestView = {
   requestedBy: { id: string; name: string };
   description: string;
   totalCents: number;
-  splitMethod: "equal" | "exact";
+  splitMethod: "equal" | "exact" | "itemized";
   occurredAt: Date;
   status: PayerRequestStatus;
   decisionNote: string | null;
@@ -90,7 +90,7 @@ export async function createPayerRequest(
         requestedBy: personId,
         description: proposal.description,
         totalCents: proposal.totalCents,
-        splitMethod: proposal.split.method === "equal" ? "equal" : "exact",
+        splitMethod: proposal.split.method,
         occurredAt: proposal.occurredAt,
         idempotencyKey: input.idempotencyKey,
       });
