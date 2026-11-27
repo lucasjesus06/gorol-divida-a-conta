@@ -16,7 +16,7 @@ export type OutingDetail = {
   kind: OutingKind;
   status: OutingStatus;
   role: OutingRole;
-  participants: { id: string; displayName: string; role: OutingRole; phone: string | null; joined: boolean }[];
+  participants: { id: string; displayName: string; role: OutingRole; phone: string | null; joined: boolean; releasable: boolean }[];
 };
 
 export async function createOuting(owner: { personId: string; displayName: string }, input: { name: string; kind: string }) {
@@ -73,23 +73,25 @@ export async function getOuting(personId: string, outingId: string): Promise<Out
     .orderBy(asc(outingParticipants.joinedAt));
 
   if (outing.role !== "admin") {
-    return { ...outing, participants: participants.map(({ confirmedAt, ...participant }) => ({ ...participant, phone: null, joined: confirmedAt !== null })) };
+    return { ...outing, participants: participants.map(({ confirmedAt, ...participant }) => ({ ...participant, phone: null, joined: confirmedAt !== null, releasable: false })) };
   }
 
   const phones = await asService(() =>
     getDb()
-      .select({ id: outingParticipants.id, phone: people.phone })
+      .select({ id: outingParticipants.id, phone: people.phone, accountApprovedAt: people.accountApprovedAt })
       .from(outingParticipants)
       .innerJoin(people, eq(people.id, outingParticipants.personId))
       .where(eq(outingParticipants.outingId, outingId)),
   );
-  const phoneByParticipant = new Map(phones.map((row) => [row.id, row.phone]));
+  const contactByParticipant = new Map(phones.map((row) => [row.id, row]));
   return {
     ...outing,
     participants: participants.map(({ confirmedAt, ...participant }) => ({
       ...participant,
-      phone: phoneByParticipant.get(participant.id) ?? null,
+      phone: contactByParticipant.get(participant.id)?.phone ?? null,
       joined: confirmedAt !== null,
+      releasable:
+        confirmedAt !== null && participant.role === "member" && contactByParticipant.get(participant.id)?.accountApprovedAt == null,
     })),
   };
 }

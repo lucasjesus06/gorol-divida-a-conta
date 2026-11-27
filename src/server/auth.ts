@@ -44,7 +44,7 @@ async function currentProfile(): Promise<Profile> {
   const identity = await requireIdentity();
   const profile = await loadProfile(identity.userId);
   if (!profile) {
-    redirect(identity.kind === "account" ? "/perfil" : "/login");
+    redirect(identity.kind === "account" ? "/perfil" : "/aguardando");
   }
   await bindRequestPerson(profile.personId);
   return profile;

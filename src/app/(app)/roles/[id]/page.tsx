@@ -11,6 +11,8 @@ import { DomainError } from "@/domain/domain-error";
 import { isUuid } from "@/lib/uuid";
 import { getRenderProfile } from "@/server/auth";
 import { getOuting } from "@/server/outings";
+import { getActiveJoinLink, listJoinRequests } from "@/server/join";
+import { JoinLinkPanel, JoinRequestItem, ReleaseButton } from "./join-panel";
 import { ParticipantForm } from "./participant-form";
 
 export const metadata: Metadata = {
@@ -18,6 +20,7 @@ export const metadata: Metadata = {
 };
 
 const kindLabels = { event: "Pontual", recurring: "Recorrente" } as const;
+const dateFormat = new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short", timeZone: "America/Sao_Paulo" });
 
 async function OutingContent({ params }: Pick<PageProps<"/roles/[id]">, "params">) {
   const { id } = await params;
@@ -36,6 +39,9 @@ async function OutingContent({ params }: Pick<PageProps<"/roles/[id]">, "params"
     throw error;
   }
   const isAdmin = outing.role === "admin";
+  const [requests, link] = isAdmin
+    ? await Promise.all([listJoinRequests(profile.personId, id), getActiveJoinLink(profile.personId, id)])
+    : [[], null];
 
   return (
     <div className="flex flex-col gap-8">
@@ -57,13 +63,35 @@ async function OutingContent({ params }: Pick<PageProps<"/roles/[id]">, "params"
                 <span className="truncate text-sm font-semibold">
                   {participant.displayName}
                   {participant.role === "admin" && <span className="ml-2 text-xs font-normal text-muted-foreground">dono</span>}
+                  {!participant.joined && <span className="ml-2 text-xs font-normal text-muted-foreground">ainda não entrou</span>}
                 </span>
                 {participant.phone && <span className="text-xs text-muted-foreground">{participant.phone}</span>}
               </div>
+              {participant.releasable && <ReleaseButton outingId={outing.id} participantId={participant.id} />}
             </li>
           ))}
         </ul>
       </section>
+
+      {isAdmin && requests.length > 0 && (
+        <section className="flex flex-col gap-3">
+          <h2 className="text-xl font-bold">Pedidos para entrar</h2>
+          <ul className="flex flex-col gap-3">
+            {requests.map((request) => (
+              <JoinRequestItem key={request.id} outingId={outing.id} request={{ id: request.id, name: request.name }} />
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {isAdmin && outing.status === "active" && (
+        <section className="flex flex-col gap-3">
+          <h2 className="text-xl font-bold">Link do rolê</h2>
+          <div className="card-surface p-6">
+            <JoinLinkPanel outingId={outing.id} activeUntil={link ? dateFormat.format(link.expiresAt) : null} />
+          </div>
+        </section>
+      )}
 
       {isAdmin && outing.status === "active" && (
         <section className="flex flex-col gap-3">
