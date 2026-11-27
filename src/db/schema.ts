@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import { bigint, boolean, check, index, integer, pgTable, primaryKey, text, timestamp, uniqueIndex, uuid, type AnyPgColumn } from "drizzle-orm/pg-core";
 import { authUsers } from "drizzle-orm/supabase";
 import { accessRequestSources, accessRequestStatuses } from "../domain/access";
+import { billStatuses, leftoverModes } from "../domain/bill-status";
 import { approvalDecisions, disputeStatuses, disputeSubjects } from "../domain/dispute-status";
 import { expenseSplitMethods, expenseStatuses } from "../domain/expense-status";
 import { payerRequestStatuses } from "../domain/payer-request";
@@ -413,5 +414,98 @@ export const expenseDisputeApprovals = pgTable(
     primaryKey({ columns: [table.disputeId, table.personId] }),
     check("expense_dispute_approvals_decision_valid", oneOf(table.decision, approvalDecisions)),
     check("expense_dispute_approvals_decided_matches", sql`(${table.decision} = 'pending') = (${table.decidedAt} is null)`),
+  ],
+).enableRLS();
+
+export const consumptionBills = pgTable(
+  "consumption_bills",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    outingId: uuid("outing_id")
+      .notNull()
+      .references(() => outings.id, { onDelete: "restrict" }),
+    description: text("description").notNull(),
+    status: text("status", { enum: billStatuses }).notNull().default("open"),
+    openedBy: uuid("opened_by")
+      .notNull()
+      .references(() => people.id, { onDelete: "restrict" }),
+    occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull(),
+    serviceChargeCents: bigint("service_charge_cents", { mode: "number" }).notNull().default(0),
+    discountCents: bigint("discount_cents", { mode: "number" }).notNull().default(0),
+    leftoverMode: text("leftover_mode", { enum: leftoverModes }),
+    leftoverTo: uuid("leftover_to").references(() => people.id, { onDelete: "restrict" }),
+    resultExpenseId: uuid("result_expense_id").references(() => expenses.id, { onDelete: "restrict" }),
+    idempotencyKey: text("idempotency_key"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    closedAt: timestamp("closed_at", { withTimezone: true }),
+  },
+  (table) => [
+    check("consumption_bills_status_valid", oneOf(table.status, billStatuses)),
+    check("consumption_bills_leftover_mode_valid", sql`${table.leftoverMode} is null or ${table.leftoverMode} in ('spread', 'transfer')`),
+    check("consumption_bills_description_filled", sql`length(btrim(${table.description})) > 0`),
+    check("consumption_bills_amounts_non_negative", sql`${table.serviceChargeCents} >= 0 and ${table.discountCents} >= 0`),
+    check("consumption_bills_closed_matches_status", sql`(${table.status} = 'closed') = (${table.closedAt} is not null)`),
+    check("consumption_bills_transfer_has_target", sql`(${table.leftoverMode} = 'transfer') = (${table.leftoverTo} is not null)`),
+    uniqueIndex("consumption_bills_idempotency_idx")
+      .on(table.outingId, table.idempotencyKey)
+      .where(sql`${table.idempotencyKey} is not null`),
+    index("consumption_bills_outing_idx").on(table.outingId, table.status),
+  ],
+).enableRLS();
+
+export const billPayers = pgTable(
+  "bill_payers",
+  {
+    billId: uuid("bill_id")
+      .notNull()
+      .references(() => consumptionBills.id, { onDelete: "restrict" }),
+    personId: uuid("person_id")
+      .notNull()
+      .references(() => people.id, { onDelete: "restrict" }),
+    amountCents: bigint("amount_cents", { mode: "number" }).notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.billId, table.personId] }), check("bill_payers_amount_positive", sql`${table.amountCents} > 0`)],
+).enableRLS();
+
+export const billItems = pgTable(
+  "bill_items",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    billId: uuid("bill_id")
+      .notNull()
+      .references(() => consumptionBills.id, { onDelete: "restrict" }),
+    position: integer("position").notNull(),
+    description: text("description").notNull(),
+    totalCents: bigint("total_cents", { mode: "number" }).notNull(),
+    quantityNum: bigint("quantity_num", { mode: "number" }).notNull(),
+    quantityDen: bigint("quantity_den", { mode: "number" }).notNull(),
+  },
+  (table) => [
+    check("bill_items_total_positive", sql`${table.totalCents} > 0`),
+    check("bill_items_quantity_positive", sql`${table.quantityNum} > 0 and ${table.quantityDen} > 0`),
+    check("bill_items_description_filled", sql`length(btrim(${table.description})) > 0`),
+    uniqueIndex("bill_items_position_idx").on(table.billId, table.position),
+  ],
+).enableRLS();
+
+export const billClaims = pgTable(
+  "bill_claims",
+  {
+    itemId: uuid("item_id")
+      .notNull()
+      .references(() => billItems.id, { onDelete: "restrict" }),
+    personId: uuid("person_id")
+      .notNull()
+      .references(() => people.id, { onDelete: "restrict" }),
+    quantityNum: bigint("quantity_num", { mode: "number" }).notNull(),
+    quantityDen: bigint("quantity_den", { mode: "number" }).notNull(),
+    markedBy: uuid("marked_by")
+      .notNull()
+      .references(() => people.id, { onDelete: "restrict" }),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.itemId, table.personId] }),
+    check("bill_claims_quantity_positive", sql`${table.quantityNum} > 0 and ${table.quantityDen} > 0`),
   ],
 ).enableRLS();

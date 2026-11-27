@@ -36,7 +36,7 @@ export type ExpenseView = {
   status: ExpenseStatus;
   description: string;
   totalCents: number;
-  splitMethod: "equal" | "exact";
+  splitMethod: "equal" | "exact" | "itemized";
   occurredAt: Date;
   registeredBy: { id: string; name: string };
   payers: { personId: string; name: string; amountCents: number }[];
@@ -149,7 +149,7 @@ export async function insertVersion(tx: Tx, outingId: string, personId: string, 
     previousVersionId: expense.previousVersionId,
     description: expense.description,
     totalCents: expense.totalCents,
-    splitMethod: expense.split.method === "equal" ? "equal" : "exact",
+    splitMethod: expense.split.method,
     occurredAt: expense.occurredAt,
     registeredBy: personId,
     idempotencyKey,

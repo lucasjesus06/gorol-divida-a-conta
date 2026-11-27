@@ -48,7 +48,7 @@ async function EditExpense({ params }: Pick<PageProps<"/roles/[id]/despesas/[exp
               description: expense.description,
               total: centsToText(expense.totalCents),
               date: expense.occurredAt.toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" }),
-              method: expense.splitMethod,
+              method: expense.splitMethod === "equal" ? "equal" : "exact",
               payers: Object.fromEntries(expense.payers.map((payer) => [payer.personId, centsToText(payer.amountCents)])),
               shares: Object.fromEntries(expense.shares.map((share) => [share.personId, centsToText(share.amountCents)])),
             }}

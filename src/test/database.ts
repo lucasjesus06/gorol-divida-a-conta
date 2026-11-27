@@ -73,3 +73,44 @@ export async function insertExpense(
     return expense;
   });
 }
+
+export async function insertBill(
+  db: TestDatabase,
+  input: {
+    outingId: string;
+    openedBy: string;
+    payers: Record<string, number>;
+    items: { description: string; totalCents: number; num?: number; den?: number }[];
+    serviceChargeCents?: number;
+    discountCents?: number;
+  },
+) {
+  return db.transaction(async (tx) => {
+    const [bill] = await tx
+      .insert(schema.consumptionBills)
+      .values({
+        outingId: input.outingId,
+        openedBy: input.openedBy,
+        description: "Bar do Zé",
+        occurredAt: new Date(),
+        serviceChargeCents: input.serviceChargeCents ?? 0,
+        discountCents: input.discountCents ?? 0,
+      })
+      .returning();
+    await tx.insert(schema.billPayers).values(Object.entries(input.payers).map(([personId, amountCents]) => ({ billId: bill.id, personId, amountCents })));
+    const items = await tx
+      .insert(schema.billItems)
+      .values(
+        input.items.map((item, position) => ({
+          billId: bill.id,
+          position,
+          description: item.description,
+          totalCents: item.totalCents,
+          quantityNum: item.num ?? 1,
+          quantityDen: item.den ?? 1,
+        })),
+      )
+      .returning();
+    return { bill, items };
+  });
+}
