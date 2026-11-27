@@ -21,6 +21,21 @@ export class Fraction {
     return new Fraction((sign * num) / divisor, (sign * den) / divisor);
   }
 
+  /** Reads what a person types, such as "2", "0,5" or "1/3". */
+  static parse(input: string): Fraction {
+    const text = input.trim().replace(",", ".");
+    const ratio = /^(\d+)\/(\d+)$/.exec(text);
+    if (ratio) {
+      return Fraction.of(BigInt(ratio[1]), BigInt(ratio[2]));
+    }
+    const decimal = /^(\d+)(?:\.(\d{1,3}))?$/.exec(text);
+    if (decimal) {
+      const decimals = decimal[2] ?? "";
+      return Fraction.of(BigInt(decimal[1] + decimals), 10n ** BigInt(decimals.length));
+    }
+    throw new DomainError("invalid_quantity", "Informe a quantidade como 1, 0,5 ou 1/3.");
+  }
+
   static readonly ZERO = Fraction.of(0);
 
   add(other: Fraction): Fraction {
@@ -46,6 +61,10 @@ export class Fraction {
 
   equals(other: Fraction): boolean {
     return this.numerator === other.numerator && this.denominator === other.denominator;
+  }
+
+  toText(): string {
+    return this.denominator === 1n ? `${this.numerator}` : `${this.numerator}/${this.denominator}`;
   }
 
   isZero(): boolean {
