@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { billPartTransferred, guestRequestedAccount, joinRequested, outingClosed, participantLeft, participantRemoved, paymentDeclared, paymentReminder } from "./notification";
+import { billPartTransferred, closingVoteRequested, closingVoteResolved, guestRequestedAccount, joinRequested, outingClosed, participantLeft, participantRemoved, paymentDeclared, paymentReminder } from "./notification";
 
 const outingId = "11111111-1111-4111-8111-111111111111";
 
@@ -39,5 +39,12 @@ describe("avisos", () => {
     expect(outingClosed({ outingId, outingName: "Churrasco" }).url).toBe(`/roles/${outingId}`);
     expect(participantRemoved({ outingName: "Churrasco" }).url).toBe("/roles");
     expect(participantLeft({ personName: "Maria", outingId, outingName: "Churrasco" }).url).toBe(`/roles/${outingId}?visao=participantes`);
+  });
+
+  it("avisos da votação de encerramento explicam o prazo e o resultado", () => {
+    expect(closingVoteRequested({ outingId, outingName: "Churrasco", ownerName: "Lucas" }).body).toContain("3 dias");
+    expect(closingVoteResolved({ outingId, outingName: "Churrasco", result: "approved" }).title).toBe("Rolê encerrado");
+    expect(closingVoteResolved({ outingId, outingName: "Churrasco", result: "rejected" }).body).toContain("continua aberto");
+    expect(closingVoteResolved({ outingId, outingName: "Churrasco", result: "cancelled" }).body).toContain("mudaram");
   });
 });
