@@ -1,6 +1,6 @@
 import "server-only";
 import { and, desc, eq, isNull, sql } from "drizzle-orm";
-import webpush from "web-push";
+import { sendNotification } from "web-push";
 import { asService, getDb } from "@/db/client";
 import { notifications, pushSubscriptions } from "@/db/schema";
 import { DomainError } from "@/domain/domain-error";
@@ -33,7 +33,7 @@ async function pushTo(personId: string, notice: NotificationDraft, tag: string) 
   await Promise.allSettled(
     subscriptions.map(async (subscription) => {
       try {
-        await webpush.sendNotification(
+        await sendNotification(
           { endpoint: subscription.endpoint, keys: { p256dh: subscription.p256dh, auth: subscription.auth } },
           payload,
           { vapidDetails: keys, TTL: 60 * 60 * 24 },
@@ -84,7 +84,9 @@ export async function listNotifications(personId: string) {
 }
 
 export async function countUnread(personId: string): Promise<number> {
-  return getDb().$count(notifications, and(eq(notifications.personId, personId), isNull(notifications.readAt)));
+  return asService(() =>
+    getDb().$count(notifications, and(eq(notifications.personId, personId), isNull(notifications.readAt))),
+  );
 }
 
 export async function markRead(personId: string, notificationId: string): Promise<void> {

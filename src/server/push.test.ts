@@ -8,7 +8,7 @@ vi.mock("@/db/client", () => ({
   getServiceDb: () => state.db,
   asService: <T>(work: () => Promise<T>) => work(),
 }));
-vi.mock("web-push", () => ({ default: { sendNotification: state.send } }));
+vi.mock("web-push", () => ({ sendNotification: state.send }));
 
 const server = await import("./push");
 

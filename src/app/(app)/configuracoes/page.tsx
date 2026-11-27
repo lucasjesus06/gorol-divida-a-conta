@@ -1,4 +1,4 @@
-import { ChevronRight, KeyRound, ShieldCheck } from "lucide-react";
+import { Bell, ChevronRight, KeyRound, ShieldCheck } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { ReactNode } from "react";
@@ -49,6 +49,12 @@ export default function SettingsPage() {
           icon={<KeyRound className="size-5" />}
           title="Chave Pix"
           description="É a chave que seus amigos usam para te pagar."
+        />
+        <SettingsLink
+          href="/configuracoes/avisos"
+          icon={<Bell className="size-5" />}
+          title="Avisos no aparelho"
+          description="Ligue para ser avisado no celular."
         />
         <Suspense fallback={null}>
           <AdminLink />

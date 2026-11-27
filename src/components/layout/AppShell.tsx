@@ -1,4 +1,5 @@
-import { LogOut } from "lucide-react";
+import { Bell, LogOut } from "lucide-react";
+import Link from "next/link";
 import type { ReactNode } from "react";
 import { Suspense } from "react";
 import { Avatar } from "@/components/common/Avatar";
@@ -9,6 +10,33 @@ import { Button } from "@/components/ui/button";
 import { signOut } from "@/app/login/actions";
 import { getIdentity } from "@/server/auth";
 import { loadProfile } from "@/server/profiles";
+import { countUnread } from "@/server/push";
+
+async function unreadCount() {
+  const identity = await getIdentity();
+  const profile = identity?.kind === "account" ? await loadProfile(identity.userId) : null;
+  return profile ? countUnread(profile.personId) : null;
+}
+
+async function NoticesNav() {
+  const unread = await unreadCount();
+  return unread === null ? null : <NavLink href="/avisos" label="Avisos" icon="bell" variant="side" badge={unread} />;
+}
+
+async function NoticesBell() {
+  const unread = await unreadCount();
+  if (unread === null) {
+    return null;
+  }
+  return (
+    <Button asChild variant="ghost" size="icon" aria-label={unread > 0 ? `Avisos, ${unread} não lidos` : "Avisos"} title="Avisos" className="relative">
+      <Link href="/avisos">
+        <Bell />
+        {unread > 0 && <span className="absolute right-1.5 top-1.5 size-2.5 rounded-full bg-primary-glow" />}
+      </Link>
+    </Button>
+  );
+}
 
 function SignOutButton() {
   return (
@@ -46,6 +74,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <NavLink href="/roles" label="Rolês" icon="outings" variant="side" />
             <NavLink href="/resumo" label="Resumo" icon="summary" variant="side" />
             <NavLink href="/historico" label="Histórico" icon="history" variant="side" />
+            <NoticesNav />
             <NavLink href="/configuracoes" label="Configurações" icon="settings" variant="side" />
           </Suspense>
         </nav>
@@ -57,7 +86,12 @@ export function AppShell({ children }: { children: ReactNode }) {
       <div className="relative md:pl-64">
         <header className="mx-auto flex w-full max-w-3xl items-center justify-between px-5 pt-6 md:hidden">
           <Logo />
-          <SignOutButton />
+          <div className="flex items-center gap-1">
+            <Suspense fallback={null}>
+              <NoticesBell />
+            </Suspense>
+            <SignOutButton />
+          </div>
         </header>
 
         <main className="mx-auto w-full max-w-3xl px-5 pb-28 pt-6 md:px-10 md:pb-12 md:pt-10">{children}</main>
