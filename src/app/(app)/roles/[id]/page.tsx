@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
 import { isUuid } from "@/lib/uuid";
 import { getRenderProfile } from "@/server/auth";
 import { getActiveJoinLink, listJoinRequests } from "@/server/join";
+import { listBills, type BillView } from "@/server/bills";
 import { listExpenses, listPayers, type ExpenseView } from "@/server/expenses";
 import { listPayerRequests, type PayerRequestView } from "@/server/payer-requests";
 import { getOuting, type OutingDetail } from "@/server/outings";
@@ -159,12 +160,15 @@ function ExpensesView({
   expenses,
   canRegister,
   requests,
+  bills,
 }: {
   outing: OutingDetail;
   expenses: ExpenseView[];
   canRegister: boolean;
   requests: PayerRequestView[];
+  bills: BillView[];
 }) {
+  const openBills = bills.filter((bill) => bill.status !== "closed");
   return (
     <div className="flex flex-col gap-4">
       {outing.status === "active" && (
@@ -173,6 +177,29 @@ function ExpensesView({
             {canRegister ? "Nova despesa" : "Pedir para virar pagante"}
           </Link>
         </Button>
+      )}
+      {canRegister && outing.status === "active" && (
+        <Button asChild variant="secondary" className="self-start">
+          <Link href={`/roles/${outing.id}/contas/nova`}>Nova conta por consumo</Link>
+        </Button>
+      )}
+      {openBills.length > 0 && (
+        <section className="flex flex-col gap-2">
+          <h2 className="text-xl font-bold">Contas abertas</h2>
+          <ul className="flex flex-col gap-2">
+            {openBills.map((bill) => (
+              <li key={bill.id}>
+                <Link href={`/roles/${outing.id}/contas/${bill.id}`} className="card-surface flex items-center justify-between gap-3 p-4">
+                  <span className="flex min-w-0 flex-col">
+                    <span className="truncate font-semibold">{bill.description}</span>
+                    <span className="text-xs text-muted-foreground">{bill.status === "closing" ? "Aguardando aceite" : "Marque o que você consumiu"}</span>
+                  </span>
+                  <span className="font-bold">{formatCents(bill.totalCents)}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
       <PayerRequests outing={outing} requests={requests} />
       {expenses.length === 0 ? (
@@ -291,11 +318,12 @@ async function OutingContent({ params, searchParams }: Pick<PageProps<"/roles/[i
 
   const isAdmin = outing.role === "admin";
   const view = parseView((await searchParams).visao, isAdmin);
-  const [pendingRequests, expenses, people, payerRequests] = await Promise.all([
+  const [pendingRequests, expenses, people, payerRequests, bills] = await Promise.all([
     isAdmin && view === "resumo" ? listJoinRequests(profile.personId, id).then((requests) => requests.length) : 0,
     view === "resumo" || view === "despesas" ? listExpenses(profile.personId, id) : [],
     listPayers(profile.personId, id),
     view === "despesas" || view === "resumo" ? listPayerRequests(profile.personId, id) : [],
+    view === "despesas" ? listBills(profile.personId, id) : [],
   ]);
   const payerIds = new Set(people.filter((person) => person.isPayer).map((person) => person.personId));
 
@@ -308,7 +336,7 @@ async function OutingContent({ params, searchParams }: Pick<PageProps<"/roles/[i
       />
       <Tabs outingId={outing.id} view={view} isAdmin={isAdmin} />
       {view === "resumo" && <Summary outing={outing} pendingRequests={pendingRequests} expenses={expenses} pendingPayerRequests={payerRequests.filter((request) => request.status === "pending").length} />}
-      {view === "despesas" && <ExpensesView outing={outing} expenses={expenses} canRegister={payerIds.has(profile.personId)} requests={payerRequests} />}
+      {view === "despesas" && <ExpensesView outing={outing} expenses={expenses} canRegister={payerIds.has(profile.personId)} requests={payerRequests} bills={bills} />}
       {view === "participantes" && <Participants outing={outing} payerIds={payerIds} />}
       {view === "convite" && <Invite outing={outing} personId={profile.personId} />}
     </>
