@@ -218,6 +218,22 @@ describe("decisão do dono", () => {
   });
 });
 
+describe("pedidos esperando o dono", () => {
+  it("conta só os pedidos pendentes dos rolês de que a pessoa é dona", async () => {
+    const token = await join.createJoinLink(lucas.personId, outingId);
+    await join.requestJoin(token, await guest(), { participantId: biaParticipant, phone: "11988880002" });
+    await join.requestJoin(token, await guest(), { participantId: await participantByName("Caio"), phone: "11977770003" });
+    expect(await join.countPendingJoinRequests(lucas.personId)).toBe(2);
+
+    const [request] = await join.listJoinRequests(lucas.personId, outingId);
+    await join.decideJoinRequest(lucas.personId, outingId, request.id, false);
+    expect(await join.countPendingJoinRequests(lucas.personId)).toBe(1);
+
+    const [bia] = await db().select().from(people).where(eq(people.phone, "+5511988880002"));
+    expect(await join.countPendingJoinRequests(bia.id)).toBe(0);
+  });
+});
+
 describe("pessoa que já tem conta", () => {
   it("entra no rolê direto, sem aprovação do dono, e fica fora da lista do link", async () => {
     const [dani] = await db().insert(people).values({ displayName: "Dani", phone: "+5511966660004" }).returning();
