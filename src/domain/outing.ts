@@ -24,3 +24,10 @@ export function normalizeOutingName(value: string): string {
   }
   return name;
 }
+
+export function parseOutingKind(value: unknown): OutingKind {
+  if (outingKinds.includes(value as OutingKind)) {
+    return value as OutingKind;
+  }
+  throw new DomainError("invalid_outing_kind", "Escolha se o rolê é pontual ou recorrente.");
+}
