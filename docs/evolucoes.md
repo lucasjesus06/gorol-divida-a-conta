@@ -17,6 +17,8 @@ Ideias e capacidades combinadas para depois da primeira versão validada. Não f
 
 ## Pagamentos
 
+- **Comprovante pelo WhatsApp:** aceitar o comprovante enviado por mensagem, no mesmo canal da cobrança.
+- **Baixa automática pela integração bancária (Open Finance, se viável):** o sistema deixa de depender do comprovante enviado e confirma o Pix pelo banco.
 - **Comprovante, opção C completa:** além de verificar que é um comprovante de Pix e guardar o identificador único (já previstos na v1, ver `decisoes.md`), conferir de forma automática valor, recebedor e data contra o pagamento declarado e bloquear a confirmação quando não baterem.
 - **Open Finance (v2):**
   - **Iniciação de pagamento:** o devedor autoriza o Pix no app do banco dele, o dinheiro vai direto para o credor (o app não toca no dinheiro) e o app recebe a confirmação oficial, sem comprovante.
