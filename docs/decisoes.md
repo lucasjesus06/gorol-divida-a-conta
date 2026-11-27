@@ -221,6 +221,7 @@ Histórias `GOR-01` a `GOR-16`, uma branch e um PR cada (`feat/GOR-XX-nome`), na
 ## 6. Forma de trabalho
 
 - Regras do agente em [`../CLAUDE.md`](../CLAUDE.md): investigar antes, apresentar estratégia e plano de commits, implementar só com autorização, validar cada commit.
+- **Ciclos de teste:** durante o desenvolvimento, cada commit roda **só o type-check, o lint e os testes ligados à mudança** (por exemplo `npx vitest related <arquivos>` ou a pasta tocada). A **suíte inteira e o build** rodam **no fechamento de cada história**, antes de entregar o link do PR, e os **testes e2e** entram nesses mesmos ciclos, e não a cada commit.
 - **Branches:** `feat/GOR-XX-descricao` para as histórias (minúsculas, hífen); `fix/`, `chore/` e `docs/` para o resto.
 - **Commits:** mensagens em português, autor **lucasjesus06 <79674116+lucasjesus06@users.noreply.github.com>**, sem coautoria nem menção a ferramentas.
 - **PRs:** abertos e integrados pelo Lucas. Antes de dizer onde um commit foi parar, conferir o estado real do PR. Trabalho novo depois de um merge vai numa branch nova a partir da `main`.
