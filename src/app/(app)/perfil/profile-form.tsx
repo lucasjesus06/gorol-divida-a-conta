@@ -2,10 +2,8 @@
 
 import { useActionState } from "react";
 import { Button } from "@/components/ui/button";
+import { inputClass } from "@/components/ui/field-styles";
 import { saveProfileAction, type ProfileState } from "./actions";
-
-const inputClass =
-  "h-11 w-full rounded-2xl border border-input bg-background px-4 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
 export function ProfileForm() {
   const [state, action, pending] = useActionState<ProfileState, FormData>(saveProfileAction, {});

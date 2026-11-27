@@ -1,10 +1,11 @@
 import "server-only";
 import { cache } from "react";
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { connection } from "next/server";
 import { bindRequestPerson } from "@/db/client";
 import { identityFromClaims, type Identity } from "@/domain/identity";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { isSuperAdmin } from "./access";
 import { loadProfile, type Profile } from "./profiles";
 
 export async function getIdentity(): Promise<Identity | null> {
@@ -28,6 +29,15 @@ export async function requireAccount(): Promise<Extract<Identity, { kind: "accou
     redirect("/login");
   }
   return identity;
+}
+
+export async function requireSuperAdmin(): Promise<{ userId: string; personId: string }> {
+  const identity = await requireAccount();
+  const profile = await loadProfile(identity.userId);
+  if (!profile || !(await isSuperAdmin(identity.userId))) {
+    notFound();
+  }
+  return { userId: identity.userId, personId: profile.personId };
 }
 
 async function currentProfile(): Promise<Profile> {

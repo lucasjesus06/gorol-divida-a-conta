@@ -21,8 +21,11 @@ Tudo o que ainda precisa ser feito ou decidido. O que fica para versões futuras
   - o dono pode ratear a pendência entre todos da conta?
 - **Participante que saiu do rolê:** hoje perderia o acesso. Decidir se continua vendo e pagando o que deve.
 - **Remetente de e-mail (GOR-04):** o remetente padrão do Supabase tem limite baixo de envios e só entrega a membros da equipe do projeto, então os testadores exigem um remetente próprio (SMTP de um provedor com plano gratuito). Escolher o provedor.
-- **Super administrador (GOR-19):** como o papel é atribuído ao Lucas (proposta: marcado direto no banco, sem tela) e qual o escopo do painel além de pedidos, convites e contas.
-- **Convite (GOR-19):** validade do convite e se é de uso único (proposta: uso único e com prazo).
+- **Acesso por aprovação (GOR-19), o que ficou de fora:**
+  - quem pede acesso **não recebe aviso** quando o pedido é decidido; precisa tentar entrar. Avisar por e-mail depende do remetente próprio;
+  - o formulário público só tem o campo-armadilha e um pedido pendente por e-mail; **limite real de tentativas por IP** fica para quando houver o mecanismo da GOR-07;
+  - o painel lista pedidos, convites e contas, mas ainda não **revoga** uma conta, não cancela convite nem mostra os pedidos já decididos.
+- **Senha SMTP do Brevo:** a chave gerada vence em **27/11/2027**, e também expira após 90 dias sem uso. Renovar no Brevo e atualizar em **Authentication → SMTP Settings** no Supabase.
 - **Configurações (GOR-20):**
   - confirmar a lista de parâmetros ajustáveis (cobrança, prazo de contestação do comprovante, forma de divisão, rota e taxa de serviço padrão);
   - **não são configuráveis** os invariantes financeiros: centavos exatos, histórico imutável, saldo calculado do histórico, só pagamento confirmado entra no saldo e quem não participa não vê o rolê;
@@ -46,7 +49,7 @@ Tudo o que ainda precisa ser feito ou decidido. O que fica para versões futuras
 - **GOR-04:** ao criar o `src/proxy.ts`, incluir `/manifest.webmanifest` e `/sw.js` entre os caminhos públicos (o app só instala se o manifesto abrir sem login).
 - **GOR-06:** acrescentar os atalhos (`shortcuts`) ao manifesto quando existirem as rotas de rolês.
 - **GOR-13:** o `sw.js` já trata `push` e clique, mas o registro do service worker e a inscrição de push entram nessa história (alertas internos do app, não a cobrança).
-- **GOR-06 e GOR-19:** a política de criação de rolê hoje só confere o dono. Ela precisa exigir **conta aprovada**, porque o convidado também tem uma pessoa vinculada a uma sessão.
+- **GOR-19 (resolvido):** a criação de rolê exige conta aprovada (`app.is_account()`), porque o convidado também tem uma pessoa vinculada a uma sessão. As contas que já existiam foram marcadas como aprovadas na migração.
 
 ## 3. Fora do escopo desta versão
 

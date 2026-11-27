@@ -1,11 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState } from "react";
 import { Button } from "@/components/ui/button";
+import { inputClass } from "@/components/ui/field-styles";
 import { sendCode, verifyCode, type SendCodeState, type VerifyCodeState } from "./actions";
-
-const inputClass =
-  "h-11 w-full rounded-2xl border border-input bg-background px-4 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
 export function LoginForm({ next }: { next: string }) {
   const [sent, sendAction, sending] = useActionState<SendCodeState, FormData>(sendCode, {});
@@ -64,6 +63,12 @@ export function LoginForm({ next }: { next: string }) {
       <Button type="submit" disabled={sending}>
         Enviar código
       </Button>
+      <p className="text-center text-sm text-muted-foreground">
+        Ainda não tem conta?{" "}
+        <Link href="/pedir-acesso" className="font-semibold text-primary-glow hover:underline">
+          Peça acesso
+        </Link>
+      </p>
     </form>
   );
 }
