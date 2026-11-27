@@ -1,14 +1,16 @@
+import { approvalDecisions, disputeStatuses, disputeSubjects } from "./dispute-status";
 import { DomainError } from "./domain-error";
 import type { Expense } from "./expense";
+import type { SplitRule } from "./split";
 
 /** What the participant disagrees with. */
-export type DisputeSubject = "amount" | "split" | "other";
+export type DisputeSubject = (typeof disputeSubjects)[number];
 
-export type DisputeStatus = "open" | "approved" | "rejected";
+export type DisputeStatus = (typeof disputeStatuses)[number];
 
 /**
- * A participant asking the outing admin to review an expense. If approved, the
- * admin records a new version of the expense; either way the history is kept.
+ * A participant asking for an expense to be reviewed. If accepted, a new
+ * version of the expense is recorded; either way the history is kept.
  */
 export type ExpenseDispute = {
   id: string;
@@ -47,6 +49,12 @@ export function openDispute(
   if (input.message.trim() === "") {
     throw new DomainError("dispute_message_required", "Explique o que precisa ser revisto.");
   }
+  if (input.subject === "not_participated") {
+    equalSplitWithout(expense, input.openedBy);
+    if (expense.payers.some((payer) => payer.participantId === input.openedBy)) {
+      throw new DomainError("payer_cannot_opt_out", "Quem pagou a despesa participou dela.");
+    }
+  }
   const alreadyOpen = existing.some(
     (dispute) =>
       dispute.expenseId === expense.id &&
@@ -71,24 +79,34 @@ export function openDispute(
   };
 }
 
-/** Only the outing admin decides. Approving means the expense will be revised. */
-export function resolveDispute(
-  dispute: ExpenseDispute,
-  decision: { by: string; outingAdminId: string; approved: boolean; note: string; at: Date },
-): ExpenseDispute {
-  if (dispute.status !== "open") {
-    throw new DomainError("dispute_already_resolved", "Esta contestação já foi decidida.");
+export type ApprovalDecision = (typeof approvalDecisions)[number];
+
+/**
+ * Who has to agree before a dispute is accepted. Amount and split disputes are
+ * decided by the outing admin alone; "I did not take part" also needs everyone
+ * who paid, because their share would move to the others.
+ */
+export function requiredApprovers(subject: DisputeSubject, adminIds: string[], payerIds: string[]): string[] {
+  return [...new Set(subject === "not_participated" ? [...adminIds, ...payerIds] : adminIds)];
+}
+
+/** Accepted only when every approver agrees; one refusal rejects it. */
+export function disputeOutcome(decisions: ApprovalDecision[]): DisputeStatus {
+  if (decisions.some((decision) => decision === "rejected")) {
+    return "rejected";
   }
-  if (decision.by !== decision.outingAdminId) {
-    throw new DomainError("only_admin_resolves", "Só o dono do rolê pode decidir a contestação.");
+  if (decisions.length > 0 && decisions.every((decision) => decision === "approved")) {
+    return "approved";
   }
-  return {
-    ...dispute,
-    status: decision.approved ? "approved" : "rejected",
-    resolvedBy: decision.by,
-    resolvedAt: decision.at,
-    resolutionNote: decision.note.trim() === "" ? null : decision.note.trim(),
-  };
+  return "open";
+}
+
+/** The equal split of an expense once someone who did not take part is taken out. */
+export function equalSplitWithout(expense: Expense, personId: string): SplitRule {
+  if (expense.split.method !== "equal") {
+    throw new DomainError("not_participated_needs_equal_split", "Esta opção vale para despesas divididas por igual.");
+  }
+  return { method: "equal", participantIds: expense.split.participantIds.filter((id) => id !== personId) };
 }
 
 /** While someone has an open dispute in an outing, their payment reminders are on hold. */

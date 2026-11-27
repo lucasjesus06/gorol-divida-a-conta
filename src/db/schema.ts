@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import { bigint, boolean, check, index, integer, pgTable, primaryKey, text, timestamp, uniqueIndex, uuid, type AnyPgColumn } from "drizzle-orm/pg-core";
 import { authUsers } from "drizzle-orm/supabase";
 import { accessRequestSources, accessRequestStatuses } from "../domain/access";
+import { approvalDecisions, disputeStatuses, disputeSubjects } from "../domain/dispute-status";
 import { expenseSplitMethods, expenseStatuses } from "../domain/expense-status";
 import { payerRequestStatuses } from "../domain/payer-request";
 import { joinRequestStatuses } from "../domain/join";
@@ -361,4 +362,56 @@ export const payerRequestShares = pgTable(
     amountCents: bigint("amount_cents", { mode: "number" }).notNull(),
   },
   (table) => [primaryKey({ columns: [table.requestId, table.personId] }), check("payer_request_shares_amount_non_negative", sql`${table.amountCents} >= 0`)],
+).enableRLS();
+
+export const expenseDisputes = pgTable(
+  "expense_disputes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    outingId: uuid("outing_id")
+      .notNull()
+      .references(() => outings.id, { onDelete: "restrict" }),
+    expenseId: uuid("expense_id")
+      .notNull()
+      .references(() => expenses.id, { onDelete: "restrict" }),
+    openedBy: uuid("opened_by")
+      .notNull()
+      .references(() => people.id, { onDelete: "restrict" }),
+    subject: text("subject", { enum: disputeSubjects }).notNull(),
+    message: text("message").notNull(),
+    status: text("status", { enum: disputeStatuses }).notNull().default("open"),
+    decidedAt: timestamp("decided_at", { withTimezone: true }),
+    resultExpenseId: uuid("result_expense_id").references(() => expenses.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    check("expense_disputes_subject_valid", oneOf(table.subject, disputeSubjects)),
+    check("expense_disputes_status_valid", oneOf(table.status, disputeStatuses)),
+    check("expense_disputes_message_filled", sql`length(btrim(${table.message})) > 0`),
+    check("expense_disputes_decided_matches_status", sql`(${table.status} = 'open') = (${table.decidedAt} is null)`),
+    uniqueIndex("expense_disputes_one_open_per_person_idx")
+      .on(table.expenseId, table.openedBy)
+      .where(sql`${table.status} = 'open'`),
+    index("expense_disputes_outing_idx").on(table.outingId, table.status),
+  ],
+).enableRLS();
+
+export const expenseDisputeApprovals = pgTable(
+  "expense_dispute_approvals",
+  {
+    disputeId: uuid("dispute_id")
+      .notNull()
+      .references(() => expenseDisputes.id, { onDelete: "restrict" }),
+    personId: uuid("person_id")
+      .notNull()
+      .references(() => people.id, { onDelete: "restrict" }),
+    decision: text("decision", { enum: approvalDecisions }).notNull().default("pending"),
+    note: text("note"),
+    decidedAt: timestamp("decided_at", { withTimezone: true }),
+  },
+  (table) => [
+    primaryKey({ columns: [table.disputeId, table.personId] }),
+    check("expense_dispute_approvals_decision_valid", oneOf(table.decision, approvalDecisions)),
+    check("expense_dispute_approvals_decided_matches", sql`(${table.decision} = 'pending') = (${table.decidedAt} is null)`),
+  ],
 ).enableRLS();
