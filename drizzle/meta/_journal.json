@@ -176,6 +176,13 @@
       "when": 1795818298384,
       "tag": "0024_politicas_cobranca_manual",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1795818375214,
+      "tag": "0025_aviso_lembrete_de_pagamento",
+      "breakpoints": true
     }
   ]
 }

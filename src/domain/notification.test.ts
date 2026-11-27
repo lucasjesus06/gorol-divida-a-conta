@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { billPartTransferred, guestRequestedAccount, joinRequested, paymentDeclared } from "./notification";
+import { billPartTransferred, guestRequestedAccount, joinRequested, paymentDeclared, paymentReminder } from "./notification";
 
 const outingId = "11111111-1111-4111-8111-111111111111";
 
@@ -27,5 +27,11 @@ describe("avisos", () => {
     const notice = joinRequested({ personName: `${"A".repeat(300)}\nB`, outingId, outingName: "X" });
     expect(notice.body.length).toBeLessThanOrEqual(200);
     expect(notice.body).not.toContain("\n");
+  });
+
+  it("o lembrete leva o devedor ao resumo da relação com o credor", () => {
+    const notice = paymentReminder({ creditorId: "c1", creditorName: "Lucas", amountCents: 5000 });
+    expect(notice.url).toBe("/resumo/c1");
+    expect(notice.body).toContain("50,00");
   });
 });

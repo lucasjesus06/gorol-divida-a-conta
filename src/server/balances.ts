@@ -15,7 +15,7 @@ import {
 import { DomainError } from "@/domain/domain-error";
 import { outingContext } from "./expenses";
 
-type Ledger = {
+export type Ledger = {
   outingNames: Map<string, string>;
   personNames: Map<string, string>;
   expenses: Expense[];
@@ -27,7 +27,11 @@ async function loadLedger(personId: string, onlyOutingId?: string): Promise<Ledg
     .select({ outingId: outingParticipants.outingId })
     .from(outingParticipants)
     .where(and(eq(outingParticipants.personId, personId), isNotNull(outingParticipants.confirmedAt)));
-  const outingIds = mine.map((row) => row.outingId).filter((id) => !onlyOutingId || id === onlyOutingId);
+  return loadLedgerForOutings(mine.map((row) => row.outingId).filter((id) => !onlyOutingId || id === onlyOutingId));
+}
+
+/** Everything the balances need for these outings; the caller decides which ones the reader may see. */
+export async function loadLedgerForOutings(outingIds: string[]): Promise<Ledger> {
   if (outingIds.length === 0) {
     return { outingNames: new Map(), personNames: new Map(), expenses: [], payments: [] };
   }
@@ -156,7 +160,7 @@ export type RelationView = {
   byOuting: { outingId: string; outingName: string; netCents: number }[];
 };
 
-async function accountIds(ids: string[]): Promise<Set<string>> {
+export async function accountIds(ids: string[]): Promise<Set<string>> {
   if (ids.length === 0) {
     return new Set();
   }
