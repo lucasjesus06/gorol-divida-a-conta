@@ -148,6 +148,20 @@
       "when": 1795816202265,
       "tag": "0020_revogar_convite",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1795817312097,
+      "tag": "0021_avisos_e_push",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1795817436005,
+      "tag": "0022_politicas_avisos_e_push",
+      "breakpoints": true
     }
   ]
 }

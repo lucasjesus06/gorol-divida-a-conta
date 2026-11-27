@@ -1,6 +1,6 @@
 import { eq, sql } from "drizzle-orm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { accessInvites, accessRequests, outingParticipants, outings, people } from "@/db/schema";
+import { accessInvites, accessRequests, notifications, outingParticipants, outings, people } from "@/db/schema";
 import { approveAccount, createTestDatabase } from "@/test/database";
 
 const state = vi.hoisted(() => ({
@@ -264,6 +264,17 @@ describe("convidado que cria cadastro", () => {
     const [request] = await access.listAccessRequests();
     expect(request).toMatchObject({ name: "Bia", email: "bia@exemplo.com", phone: "+5511988880002", status: "pending", guestUserId: guestUser });
     expect(await access.getGuestAccessRequest(guestUser)).toEqual({ status: "pending" });
+  });
+
+  it("avisa o dono do rolê uma vez, mesmo se o pedido for repetido", async () => {
+    const { dono, outingId, guestUser } = await convidadoNoRole();
+    await access.submitGuestAccessRequest(guestUser, { email: "bia@exemplo.com" });
+    await access.submitGuestAccessRequest(guestUser, { email: "bia@exemplo.com" });
+
+    const notices = await db().select().from(notifications);
+    expect(notices).toHaveLength(1);
+    expect(notices[0]).toMatchObject({ personId: dono.id, kind: "guest_requested_account", url: `/roles/${outingId}?visao=participantes` });
+    expect(notices[0].body).toContain("Bia");
   });
 
   it("quem ainda não está em nenhum rolê não pede cadastro por aqui", async () => {

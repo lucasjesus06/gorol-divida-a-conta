@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { consumptionBills, people } from "@/db/schema";
+import { consumptionBills, notifications, people } from "@/db/schema";
 import { approveAccount, createTestDatabase } from "@/test/database";
 
 const state = vi.hoisted(() => ({ db: undefined as unknown }));
@@ -173,6 +173,14 @@ describe("fechar a conta", () => {
     await server.answerLeftover(caio, outingId, id, true);
     expect((await server.getBill(lucas, outingId, id)).status).toBe("closed");
     expect(await expensesServer.listExpenses(lucas, outingId)).toHaveLength(1);
+  });
+
+  it("avisa quem recebeu a parte transferida, com o caminho da conta", async () => {
+    const id = await marked();
+    await server.closeBill(lucas, outingId, id, { mode: "transfer", personId: caio });
+
+    const [notice] = await db().select().from(notifications);
+    expect(notice).toMatchObject({ personId: caio, kind: "bill_part_transferred", url: `/roles/${outingId}/contas/${id}` });
   });
 
   it("se quem recebe recusa, a conta volta a ficar aberta para escolher de novo", async () => {

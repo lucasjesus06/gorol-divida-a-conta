@@ -4,9 +4,11 @@ import { asService, getDb } from "@/db/client";
 import { outingJoinAttempts, outingJoinLinks, outingJoinRequests, outingParticipants, outings, people } from "@/db/schema";
 import { DomainError } from "@/domain/domain-error";
 import { JOIN_ATTEMPT_WINDOW_MINUTES, assertJoinAttemptsAllowed, joinLinkExpiry } from "@/domain/join";
+import { joinRequested } from "@/domain/notification";
 import { assertAdmin } from "@/domain/outing-access";
 import { normalizePhone } from "@/domain/phone";
 import { findOuting } from "./outings";
+import { notifyOutingOwners } from "./push";
 import { hashToken, newToken } from "./token";
 
 const LINK_UNAVAILABLE = () => new DomainError("link_unavailable", "Este link não vale mais. Peça outro a quem organiza o rolê.");
@@ -104,7 +106,7 @@ export async function requestJoin(token: string, guestUserId: string, input: { p
     }
 
     const [target] = await getDb()
-      .select({ id: outingParticipants.id, phone: people.phone })
+      .select({ id: outingParticipants.id, name: outingParticipants.displayName, phone: people.phone })
       .from(outingParticipants)
       .innerJoin(people, eq(people.id, outingParticipants.personId))
       .where(
@@ -152,6 +154,12 @@ export async function requestJoin(token: string, guestUserId: string, input: { p
     await getDb()
       .insert(outingJoinRequests)
       .values({ outingId: link.outingId, participantId: target.id, guestUserId });
+
+    const [outing] = await getDb().select({ name: outings.name }).from(outings).where(eq(outings.id, link.outingId));
+    await notifyOutingOwners(
+      link.outingId,
+      joinRequested({ personName: target.name, outingId: link.outingId, outingName: outing?.name ?? "o rolê" }),
+    );
   });
 }
 

@@ -11,7 +11,9 @@ import {
   type Payment,
   type PaymentStatus,
 } from "@/domain/payment";
+import { paymentDeclared } from "@/domain/notification";
 import { assertActiveOuting, outingContext } from "./expenses";
+import { notify } from "./push";
 
 export type PaymentView = {
   id: string;
@@ -81,6 +83,15 @@ export async function declarePayment(
     }
     throw error;
   }
+  await notify(
+    input.toId,
+    paymentDeclared({
+      fromName: context.names.get(personId) ?? "Alguém",
+      amountCents: payment.amountCents,
+      outingId,
+      outingName: context.outing.name,
+    }),
+  );
   return payment.id;
 }
 

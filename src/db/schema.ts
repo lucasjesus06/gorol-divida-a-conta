@@ -9,6 +9,7 @@ import { confirmationSources, paymentStatuses } from "../domain/payment-status";
 import { payerRequestStatuses } from "../domain/payer-request";
 import { joinRequestStatuses } from "../domain/join";
 import { outingKinds, outingRoles, outingStatuses } from "../domain/outing";
+import { notificationKinds } from "../domain/notification-kinds";
 import { pixKeyTypes } from "../domain/pix-key-types";
 
 const oneOf = (column: AnyPgColumn, values: readonly string[]) =>
@@ -554,4 +555,40 @@ export const payments = pgTable(
       .where(sql`${table.idempotencyKey} is not null`),
     index("payments_outing_idx").on(table.outingId, table.status),
   ],
+).enableRLS();
+
+export const notifications = pgTable(
+  "notifications",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    personId: uuid("person_id")
+      .notNull()
+      .references(() => people.id, { onDelete: "cascade" }),
+    kind: text("kind", { enum: notificationKinds }).notNull(),
+    title: text("title").notNull(),
+    body: text("body").notNull(),
+    url: text("url").notNull(),
+    readAt: timestamp("read_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    check("notifications_kind_valid", oneOf(table.kind, notificationKinds)),
+    check("notifications_url_internal", sql`${table.url} ~ '^/[^/]'  or ${table.url} = '/'`),
+    index("notifications_person_idx").on(table.personId, table.createdAt),
+  ],
+).enableRLS();
+
+export const pushSubscriptions = pgTable(
+  "push_subscriptions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    personId: uuid("person_id")
+      .notNull()
+      .references(() => people.id, { onDelete: "cascade" }),
+    endpoint: text("endpoint").notNull().unique(),
+    p256dh: text("p256dh").notNull(),
+    auth: text("auth").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index("push_subscriptions_person_idx").on(table.personId)],
 ).enableRLS();

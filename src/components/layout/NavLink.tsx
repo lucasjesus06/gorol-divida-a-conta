@@ -1,23 +1,25 @@
 "use client";
 
-import { History, Home, PartyPopper, Settings, Wallet } from "lucide-react";
+import { Bell, History, Home, PartyPopper, Settings, Wallet } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { isActivePath } from "./nav";
 
-const icons = { home: Home, outings: PartyPopper, history: History, summary: Wallet, settings: Settings } as const;
+const icons = { home: Home, outings: PartyPopper, history: History, summary: Wallet, settings: Settings, bell: Bell } as const;
 
 export function NavLink({
   href,
   label,
   icon,
   variant,
+  badge,
 }: {
   href: string;
   label: string;
   icon: keyof typeof icons;
   variant: "side" | "tab";
+  badge?: number;
 }) {
   const active = isActivePath(usePathname(), href);
   const Icon = icons[icon];
@@ -36,6 +38,11 @@ export function NavLink({
     >
       <Icon className={cn("size-5", active && "text-primary-glow")} />
       {label}
+      {badge ? (
+        <span className="ml-auto rounded-full bg-primary px-2 py-0.5 text-[11px] font-bold text-primary-foreground" aria-label={`${badge} não lidos`}>
+          {badge > 99 ? "99+" : badge}
+        </span>
+      ) : null}
     </Link>
   );
 }
