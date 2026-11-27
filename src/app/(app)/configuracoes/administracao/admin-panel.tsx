@@ -7,6 +7,7 @@ import {
   approveRequestAction,
   createInviteAction,
   rejectRequestAction,
+  revokeInviteAction,
   type AdminActionState,
 } from "./actions";
 
@@ -67,6 +68,24 @@ export function InviteCreator() {
           <p className="text-sm text-muted-foreground">Copie agora: o link não aparece de novo.</p>
           <input readOnly value={link} onFocus={(event) => event.currentTarget.select()} className={inputClass} />
         </div>
+      )}
+    </form>
+  );
+}
+
+export function RevokeInviteButton({ inviteId }: { inviteId: string }) {
+  const [state, action, pending] = useActionState<AdminActionState, FormData>(revokeInviteAction, {});
+
+  return (
+    <form action={action} className="flex flex-col items-end gap-1">
+      <input type="hidden" name="id" value={inviteId} />
+      <Button type="submit" variant="secondary" size="sm" disabled={pending}>
+        Revogar
+      </Button>
+      {state.error && (
+        <p role="alert" className="text-xs text-destructive">
+          {state.error}
+        </p>
       )}
     </form>
   );

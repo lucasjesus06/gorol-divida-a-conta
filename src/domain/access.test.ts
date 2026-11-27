@@ -35,5 +35,6 @@ describe("convites", () => {
 
   it("convite já usado não vale de novo, mesmo dentro do prazo", () => {
     expect(inviteState({ usedAt: createdAt, expiresAt: inviteExpiry(createdAt) }, createdAt)).toBe("used");
+    expect(inviteState({ usedAt: null, revokedAt: createdAt, expiresAt: inviteExpiry(createdAt) }, createdAt)).toBe("revoked");
   });
 });

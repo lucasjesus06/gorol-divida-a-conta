@@ -1,11 +1,13 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import QRCode from "qrcode";
 import { DomainError } from "@/domain/domain-error";
 import { parseMoneyToCents } from "@/domain/money";
 import { isUuid } from "@/lib/uuid";
 import { getRenderProfile } from "@/server/auth";
 import { confirmPayment, declarePayment, rejectPayment } from "@/server/payments";
+import { getPixPayment } from "@/server/pix";
 
 export type PaymentFormState = { error?: string; done?: boolean };
 
@@ -56,4 +58,24 @@ export async function resolvePaymentAction(_prevState: PaymentFormState, formDat
     }
     revalidatePath(`/roles/${outingId}`);
   });
+}
+
+export type PixRevealState = { error?: string; display?: string; payload?: string; qr?: string };
+
+export async function revealPixAction(_prevState: PixRevealState, formData: FormData): Promise<PixRevealState> {
+  const profile = await getRenderProfile();
+  try {
+    const pix = await getPixPayment(
+      profile.personId,
+      outingIdFrom(formData),
+      String(formData.get("toId") ?? ""),
+      Number(formData.get("amountCents")),
+    );
+    return { display: pix.display, payload: pix.payload, qr: await QRCode.toDataURL(pix.payload, { margin: 1, width: 240 }) };
+  } catch (error) {
+    if (error instanceof DomainError) {
+      return { error: error.message };
+    }
+    throw error;
+  }
 }
