@@ -13,6 +13,7 @@ export default function manifest(): MetadataRoute.Manifest {
     orientation: "portrait",
     background_color: "#0d0d12",
     theme_color: "#0d0d12",
+    shortcuts: [{ name: "Novo rolê", short_name: "Novo rolê", url: "/roles/novo" }],
     categories: ["finance", "social"],
     icons: [
       { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },

@@ -135,15 +135,14 @@ Há três níveis de configuração, todos em telas do aplicativo:
 
 ### Entrada no rolê
 
-- O dono do rolê cadastra cada participante com **nome e telefone**. No celular, pode escolher na agenda; na web, digita.
-- O **telefone identifica a pessoa**: o mesmo número é a mesma pessoa em todos os rolês. O telefone é a credencial de entrada, então **nenhum participante lê o telefone de outro** (nem o próprio, pela sessão): a leitura é só do servidor, com checagem explícita.
-- O dono distribui **um link único do rolê**, sem mensagem individual para cada participante, de uma destas formas:
-  - no grupo do WhatsApp do rolê;
-  - pelo "compartilhar" do celular, marcando vários contatos de uma vez;
-  - por **QR code** na tela, para quem está na mesa.
-- Quem abre o link **escolhe o próprio nome** na lista do rolê e **confirma digitando o próprio telefone**, que precisa conferir com o número cadastrado pelo dono.
-- Na v1 a conferência é só do número digitado: quem sabe o telefone de um amigo consegue entrar como ele. O risco é aceito entre amigos, e o que for registrado errado pode ser contestado. O código de confirmação pelo WhatsApp está em [`evolucoes.md`](evolucoes.md).
-- O WhatsApp pessoal do dono só é usado para compartilhar o link. Mensagens do app (lembretes e, depois, códigos) saem pela API oficial do WhatsApp.
+- O dono do rolê cadastra cada participante com **nome e telefone**. No celular (Android com Chrome), pode escolher na agenda; nos demais, digita.
+- O **nome é válido só dentro daquele rolê** e o dono é quem o digita. Se o telefone já pertence a alguém, o rolê mostra o nome digitado pelo dono, e **o app nunca revela o nome de cadastro dessa pessoa**. Os nomes não se repetem dentro de um rolê (sem diferenciar maiúsculas).
+- O **telefone identifica a pessoa**: o mesmo número é a mesma pessoa em todos os rolês. **Nenhum participante lê o telefone de outro.** Só o **dono** lê o telefone dos participantes do seu rolê, porque precisa dele para cobrar, e a leitura é feita pelo servidor, com a checagem de dono antes.
+- O dono distribui **um link do rolê** no grupo do WhatsApp, ou mostra o QR code. A tela de entrada é da GOR-07.
+- Quem abre o link **escolhe o próprio nome na lista** e **confirma digitando o próprio telefone**, que precisa conferir com o cadastrado pelo dono. Um nome já escolhido some da lista. Depois disso a pessoa fica **aguardando a aprovação do dono**, e só então entra no rolê. O dono pode remover quem entrou e revogar o link.
+- Na v1 a conferência é o telefone digitado mais a aprovação do dono. Quem sabe nome e telefone de um amigo e chega antes dele pode pedir para entrar como ele; o dono vê isso (o nome do amigo some da lista) e rejeita. O código de confirmação pelo WhatsApp está em [`evolucoes.md`](evolucoes.md).
+- Quem não está na lista do dono não entra: o dono precisa cadastrá-lo antes.
+- O WhatsApp pessoal do dono só é usado para compartilhar o link. O envio dos lembretes está em "Cobrança pelo WhatsApp".
 
 ### Cobrança pelo WhatsApp
 

@@ -77,6 +77,14 @@ async function isSuperAdminImpl(userId: string) {
   return row !== undefined;
 }
 
+async function isApprovedPersonImpl(personId: string) {
+  const [row] = await getDb()
+    .select({ approvedAt: people.accountApprovedAt, userId: people.userId })
+    .from(people)
+    .where(eq(people.id, personId));
+  return row !== undefined && row.userId !== null && row.approvedAt !== null;
+}
+
 async function submitAccessRequestImpl(input: { name: string; email: string; phone: string }) {
   const data = normalizeAccountData(input);
   await getDb()
@@ -202,6 +210,7 @@ async function listAccountsImpl() {
 }
 
 export const isSuperAdmin = (...args: Parameters<typeof isSuperAdminImpl>) => asService(() => isSuperAdminImpl(...args));
+export const isApprovedPerson = (...args: Parameters<typeof isApprovedPersonImpl>) => asService(() => isApprovedPersonImpl(...args));
 export const submitAccessRequest = (...args: Parameters<typeof submitAccessRequestImpl>) => asService(() => submitAccessRequestImpl(...args));
 export const listAccessRequests = () => asService(listAccessRequestsImpl);
 export const approveAccessRequest = (...args: Parameters<typeof approveAccessRequestImpl>) => asService(() => approveAccessRequestImpl(...args));

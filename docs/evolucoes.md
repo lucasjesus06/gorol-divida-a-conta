@@ -9,6 +9,12 @@ Ideias e capacidades combinadas para depois da primeira versão validada. Não f
   - Exige conta da empresa verificada na Meta e modelo de mensagem aprovado.
   - Custo por mensagem, só no primeiro acesso de cada aparelho.
 
+- **Link individual por contato:** o dono escolhe o contato e o app gera um link só daquela pessoa, já dentro de uma mensagem do WhatsApp. O código do link vale como credencial, então dispensa a confirmação do telefone e a aprovação.
+- **Sala com código e QR ao vivo:** código curto e QR na tela do dono, e quem chega aparece em tempo real para aprovar. Ajuda em rolê presencial, em que a presença física é a verificação.
+- **Foto na aprovação:** a pessoa tira uma selfie ao entrar e o dono a vê ao aprovar. Exige a base de armazenamento (GOR-15 e GOR-20). Visível só ao dono, apagada na recusa e, na aprovação, a não ser que a pessoa a escolha como foto de perfil.
+- **PIN ou passkey para o convidado voltar sozinho** em outro aparelho, sem pedir novo link ao dono, com limite de tentativas.
+- **Segundo fator (TOTP ou passkey) para o super administrador**, que é o acesso mais valioso do sistema.
+
 ## Pagamentos
 
 - **Comprovante, opção C completa:** além de verificar que é um comprovante de Pix e guardar o identificador único (já previstos na v1, ver `decisoes.md`), conferir de forma automática valor, recebedor e data contra o pagamento declarado e bloquear a confirmação quando não baterem.

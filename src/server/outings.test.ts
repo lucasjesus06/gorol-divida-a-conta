@@ -43,6 +43,13 @@ describe("criar rolê", () => {
     ]);
   });
 
+  it("convidado sem conta aprovada não cria rolê", async () => {
+    await expect(createOuting({ personId: maria, displayName: "Maria" }, { name: "Bar", kind: "event" })).rejects.toMatchObject({
+      code: "account_not_approved",
+    });
+    expect(await db().$count(outings)).toBe(0);
+  });
+
   it("recusa nome vazio e tipo inventado sem criar nada", async () => {
     await expect(createOuting(lucas, { name: " ", kind: "event" })).rejects.toMatchObject({ code: "outing_name_required" });
     await expect(createOuting(lucas, { name: "Bar", kind: "festa" })).rejects.toMatchObject({ code: "invalid_outing_kind" });
@@ -59,6 +66,7 @@ describe("listar e abrir", () => {
   it("lista só os rolês de que a pessoa participa, do mais novo ao mais antigo", async () => {
     const primeiro = await createOuting(lucas, { name: "Primeiro", kind: "event" });
     const segundo = await createOuting(lucas, { name: "Segundo", kind: "recurring" });
+    await approveAccount(db(), maria);
     await createOuting({ personId: maria, displayName: "Maria" }, { name: "Da Maria", kind: "event" });
 
     const lista = await listOutings(lucas.personId);
@@ -97,6 +105,7 @@ describe("cadastrar participante", () => {
 
   it("o mesmo telefone em dois rolês é a mesma pessoa, com o nome que cada dono digitou", async () => {
     const um = await createOuting(lucas, { name: "Um", kind: "event" });
+    await approveAccount(db(), maria);
     const dois = await createOuting({ personId: maria, displayName: "Maria" }, { name: "Dois", kind: "event" });
     await addParticipant(lucas.personId, um, { name: "Bia", phone: "11988880002" });
     await addParticipant(maria, dois, { name: "Bianca", phone: "11988880002" });

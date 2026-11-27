@@ -6,6 +6,7 @@ import { DomainError } from "@/domain/domain-error";
 import { normalizeOutingName, parseOutingKind, type OutingKind, type OutingRole, type OutingStatus } from "@/domain/outing";
 import { assertAdmin, assertParticipant, type Membership } from "@/domain/outing-access";
 import { normalizeParticipantInput } from "@/domain/participant";
+import { isApprovedPerson } from "./access";
 
 export type OutingSummary = { id: string; name: string; kind: OutingKind; status: OutingStatus; role: OutingRole };
 
@@ -21,6 +22,9 @@ export type OutingDetail = {
 export async function createOuting(owner: { personId: string; displayName: string }, input: { name: string; kind: string }) {
   const name = normalizeOutingName(input.name);
   const kind = parseOutingKind(input.kind);
+  if (!(await isApprovedPerson(owner.personId))) {
+    throw new DomainError("account_not_approved", "Só quem tem conta aprovada cria rolês.");
+  }
   return getDb().transaction(async (tx) => {
     const [outing] = await tx
       .insert(outings)
