@@ -40,7 +40,7 @@ descrição → classificação da tarefa → levantamento → mapeamento → hi
 
 - Divida em commits lógicos, cada um com uma responsabilidade clara, pequeno o bastante para revisão, deixando o projeto coerente e validável. Sem commits artificiais por arquivo.
 - Planeje cada commit com: objetivo, arquivos, alterações, não alterações, dependências, riscos, validação e estado esperado.
-- Implemente um commit por vez: verifique `git status`/`git diff` antes, valide (type-check, lint e **só os testes ligados à mudança**; a suíte inteira, o build e o e2e rodam **no fechamento da história**, em ciclos, e não a cada commit; validação funcional quando couber) e revise o diff antes de seguir.
+- Implemente um commit por vez: verifique `git status`/`git diff` antes, valide (type-check, lint e **só os testes ligados à mudança**; a suíte inteira, o build e o e2e rodam **só pontualmente** (quando o Lucas pedir, em marcos que ele definir ou quando a mudança mexe em base compartilhada), e não a cada commit nem a cada história; validação funcional quando couber) e revise o diff antes de seguir.
 - Registre o estado inicial (baseline) para separar erro preexistente de erro introduzido.
 
 ## Git
