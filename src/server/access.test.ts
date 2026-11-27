@@ -42,7 +42,7 @@ const access = await import("./access");
 type TestDb = Awaited<ReturnType<typeof createTestDatabase>>;
 const db = () => state.db as TestDb;
 
-const pedido = { name: "Maria  Souza", email: " Maria@Exemplo.com ", phone: "(11) 99999-0001", message: "Amiga do Lucas" };
+const pedido = { name: "Maria  Souza", email: " Maria@Exemplo.com ", phone: "(11) 99999-0001" };
 let admin: string;
 
 beforeEach(async () => {
@@ -61,7 +61,6 @@ describe("pedido de acesso", () => {
       name: "Maria Souza",
       email: "maria@exemplo.com",
       phone: "+5511999990001",
-      message: "Amiga do Lucas",
       status: "pending",
       source: "request",
     });

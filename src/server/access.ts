@@ -3,7 +3,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { and, desc, eq, gt, isNotNull, isNull, sql } from "drizzle-orm";
 import { asService, getDb } from "@/db/client";
 import { accessInvites, accessRequests, people, superAdmins } from "@/db/schema";
-import { inviteExpiry, normalizeAccessMessage, normalizeEmail } from "@/domain/access";
+import { inviteExpiry, normalizeEmail } from "@/domain/access";
 import { DomainError } from "@/domain/domain-error";
 import { normalizeDisplayName } from "@/domain/person";
 import { normalizePhone } from "@/domain/phone";
@@ -77,11 +77,11 @@ async function isSuperAdminImpl(userId: string) {
   return row !== undefined;
 }
 
-async function submitAccessRequestImpl(input: { name: string; email: string; phone: string; message: string }) {
+async function submitAccessRequestImpl(input: { name: string; email: string; phone: string }) {
   const data = normalizeAccountData(input);
   await getDb()
     .insert(accessRequests)
-    .values({ ...data, message: normalizeAccessMessage(input.message) })
+    .values(data)
     .onConflictDoNothing();
 }
 

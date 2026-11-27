@@ -38,7 +38,6 @@ async function AdminContent() {
                   name: request.name,
                   email: request.email,
                   phone: request.phone,
-                  message: request.message,
                 }}
               />
             ))}

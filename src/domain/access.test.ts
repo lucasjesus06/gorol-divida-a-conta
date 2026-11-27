@@ -1,10 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
-  ACCESS_MESSAGE_MAX_LENGTH,
   INVITE_VALIDITY_DAYS,
   inviteExpiry,
   inviteState,
-  normalizeAccessMessage,
   normalizeEmail,
 } from "./access";
 
@@ -19,20 +17,6 @@ describe("normalizeEmail", () => {
       expect(() => normalizeEmail(value)).toThrow("Informe um e-mail válido.");
     },
   );
-});
-
-describe("normalizeAccessMessage", () => {
-  it("vazio vira ausência de mensagem", () => {
-    expect(normalizeAccessMessage("   ")).toBeNull();
-  });
-
-  it("mantém o texto sem as pontas", () => {
-    expect(normalizeAccessMessage("  Sou amigo do Lucas ")).toBe("Sou amigo do Lucas");
-  });
-
-  it("recusa texto acima do limite", () => {
-    expect(() => normalizeAccessMessage("a".repeat(ACCESS_MESSAGE_MAX_LENGTH + 1))).toThrow();
-  });
 });
 
 describe("convites", () => {

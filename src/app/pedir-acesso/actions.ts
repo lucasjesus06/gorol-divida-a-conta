@@ -15,7 +15,6 @@ export async function requestAccess(_prevState: RequestAccessState, formData: Fo
       name: String(formData.get("name") ?? ""),
       email: String(formData.get("email") ?? ""),
       phone: String(formData.get("phone") ?? ""),
-      message: String(formData.get("message") ?? ""),
     });
   } catch (error) {
     if (error instanceof DomainError) {

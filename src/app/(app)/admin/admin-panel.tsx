@@ -15,7 +15,6 @@ export type PendingRequest = {
   name: string;
   email: string;
   phone: string;
-  message: string | null;
 };
 
 export function RequestCard({ request }: { request: PendingRequest }) {
@@ -29,7 +28,6 @@ export function RequestCard({ request }: { request: PendingRequest }) {
         <p className="font-semibold">{request.name}</p>
         <p className="text-sm text-muted-foreground">{request.email}</p>
         <p className="text-sm text-muted-foreground">{request.phone}</p>
-        {request.message && <p className="mt-2 text-sm">{request.message}</p>}
       </div>
       {error && (
         <p role="alert" className="text-sm text-destructive">
