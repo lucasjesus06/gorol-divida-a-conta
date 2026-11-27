@@ -162,6 +162,20 @@
       "when": 1795817436005,
       "tag": "0022_politicas_avisos_e_push",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1795818297400,
+      "tag": "0023_cobranca_manual",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1795818298384,
+      "tag": "0024_politicas_cobranca_manual",
+      "breakpoints": true
     }
   ]
 }
