@@ -34,6 +34,12 @@ export function OpenDisputeForm({ outingId, expenseId, canOptOut }: { outingId: 
           className="w-full rounded-2xl border border-input bg-background px-4 py-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
         />
       </label>
+      {state.needsConfirmation && (
+        <label className="flex items-start gap-2 text-sm">
+          <input type="checkbox" name="confirmLate" required className="mt-1" />
+          Entendi: contestar agora reabre o rolê e afeta o histórico das relações.
+        </label>
+      )}
       {state.error && (
         <p role="alert" className="text-sm text-destructive">
           {state.error}
