@@ -291,7 +291,7 @@ function PaymentsView({
                   revalidate={`/roles/${outing.id}`}
                   files={receipts
                     .filter((file) => file.subjectId === payment.id)
-                    .map((file) => ({ id: file.id, name: file.name, sizeLabel: formatFileSize(file.sizeBytes), canRemove: file.ownerId === me }))}
+                    .map((file) => ({ id: file.id, name: file.name, sizeLabel: formatFileSize(file.sizeBytes), canRemove: false }))}
                 />
                 {payment.from.id === me && payment.status === "declared" && (
                   <FileUploader kind="payment_receipt" outingId={outing.id} subjectId={payment.id} label="Anexar comprovante (opcional)" revalidate={`/roles/${outing.id}`} />

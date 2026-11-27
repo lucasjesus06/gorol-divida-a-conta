@@ -133,7 +133,7 @@ async function ExpenseContent({ params }: Pick<PageProps<"/roles/[id]/despesas/[
           {evidence.length === 0 && <p className="text-sm text-muted-foreground">Sem evidência anexada. É opcional: foto da nota ou print da conta ajudam todo mundo a conferir o valor.</p>}
           <FileList
             revalidate={path}
-            files={evidence.map((file) => ({ id: file.id, name: file.name, sizeLabel: formatFileSize(file.sizeBytes), canRemove: file.ownerId === profile.personId }))}
+            files={evidence.map((file) => ({ id: file.id, name: file.name, sizeLabel: formatFileSize(file.sizeBytes), canRemove: false }))}
           />
           {expense.canChange && <FileUploader kind="expense_evidence" outingId={id} subjectId={expense.id} label="Anexar evidência" revalidate={path} />}
         </section>

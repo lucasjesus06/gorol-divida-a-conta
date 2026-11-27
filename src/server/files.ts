@@ -178,10 +178,16 @@ export async function getFileUrl(personId: string, fileId: string): Promise<stri
   return createDownloadUrl(file.path, DOWNLOAD_SECONDS);
 }
 
+/** Only profile photos can be removed: evidence and receipts stay, as part of the history. */
 export async function removeFile(personId: string, fileId: string): Promise<void> {
-  const [file] = await asService(() => getDb().select({ path: files.path }).from(files).where(and(eq(files.id, fileId), eq(files.ownerId, personId))));
+  const [file] = await asService(() =>
+    getDb().select({ path: files.path, kind: files.kind }).from(files).where(and(eq(files.id, fileId), eq(files.ownerId, personId))),
+  );
   if (!file) {
     throw new DomainError("file_not_found", "Arquivo não encontrado.");
+  }
+  if (file.kind !== "profile_photo") {
+    throw new DomainError("file_not_removable", "Evidência e comprovante não podem ser removidos: fazem parte do histórico.");
   }
   await asService(() => getDb().delete(files).where(eq(files.id, fileId)));
   await removeStored([file.path]);

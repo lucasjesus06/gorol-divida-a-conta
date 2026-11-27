@@ -170,11 +170,17 @@ describe("foto de perfil e remoção", () => {
     await expect(server.requestUpload(lucas, { ...photo(), outingId })).rejects.toMatchObject({ code: "file_subject_invalid" });
   });
 
-  it("só o dono remove o arquivo, do banco e do armazenamento", async () => {
-    const fileId = await upload(lucas, evidence(), pdf);
+  it("só o dono remove a foto, do banco e do armazenamento", async () => {
+    const fileId = await upload(lucas, photo(), jpeg);
     await expect(server.removeFile(maria, fileId)).rejects.toMatchObject({ code: "file_not_found" });
     await server.removeFile(lucas, fileId);
     expect(await db().$count(files)).toBe(0);
-    expect(state.removed.some((path) => path.startsWith("expense_evidence/"))).toBe(true);
+    expect(state.removed.some((path) => path.startsWith("profile_photo/"))).toBe(true);
+  });
+
+  it("evidência e comprovante não se removem, nem por quem enviou", async () => {
+    const fileId = await upload(lucas, evidence(), pdf);
+    await expect(server.removeFile(lucas, fileId)).rejects.toMatchObject({ code: "file_not_removable" });
+    expect(await db().$count(files)).toBe(1);
   });
 });
