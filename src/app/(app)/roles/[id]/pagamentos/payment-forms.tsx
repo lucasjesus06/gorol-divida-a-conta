@@ -3,7 +3,7 @@
 import { useActionState, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { inputClass } from "@/components/ui/field-styles";
-import { declarePaymentAction, resolvePaymentAction, type PaymentFormState } from "./actions";
+import { declarePaymentAction, resolvePaymentAction, revealPixAction, type PaymentFormState, type PixRevealState } from "./actions";
 
 type Person = { personId: string; name: string };
 
@@ -102,5 +102,49 @@ export function ResolvePayment({ outingId, paymentId }: { outingId: string; paym
         </Button>
       </div>
     </form>
+  );
+}
+
+export function PixReveal({ outingId, toId, amountCents }: { outingId: string; toId: string; amountCents: number }) {
+  const [state, action, pending] = useActionState<PixRevealState, FormData>(revealPixAction, {});
+  const [copied, setCopied] = useState(false);
+
+  async function copy(text: string) {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+    } catch {
+      setCopied(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      <form action={action}>
+        <input type="hidden" name="outingId" value={outingId} />
+        <input type="hidden" name="toId" value={toId} />
+        <input type="hidden" name="amountCents" value={amountCents} />
+        <Button type="submit" size="sm" variant="secondary" disabled={pending}>
+          Ver chave Pix
+        </Button>
+      </form>
+      {state.error && (
+        <p role="alert" className="text-sm text-destructive">
+          {state.error}
+        </p>
+      )}
+      {state.payload && state.qr && (
+        <div className="flex flex-col items-start gap-3 text-sm">
+          <p>
+            Chave: <span className="font-semibold">{state.display}</span>
+          </p>
+          {/* eslint-disable-next-line @next/next/no-img-element -- QR em data URL, gerado no servidor */}
+          <img src={state.qr} alt="QR Code do Pix" width={240} height={240} className="rounded-2xl bg-white p-2" />
+          <Button type="button" size="sm" onClick={() => copy(state.payload as string)}>
+            {copied ? "Copiado!" : "Copiar Pix copia e cola"}
+          </Button>
+        </div>
+      )}
+    </div>
   );
 }

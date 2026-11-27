@@ -2,10 +2,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DomainError } from "@/domain/domain-error";
 
 const auth = vi.hoisted(() => ({ getRenderProfile: vi.fn() }));
+const pix = vi.hoisted(() => ({ getPixPayment: vi.fn() }));
 const payments = vi.hoisted(() => ({ declarePayment: vi.fn(), confirmPayment: vi.fn(), rejectPayment: vi.fn() }));
 
 vi.mock("@/server/auth", () => auth);
 vi.mock("@/server/payments", () => payments);
+vi.mock("@/server/pix", () => pix);
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 
 const actions = await import("./actions");
@@ -55,5 +57,20 @@ describe("resolvePaymentAction", () => {
   it("devolve o aviso quando não é o credor", async () => {
     payments.confirmPayment.mockRejectedValue(new DomainError("only_creditor_resolves", "Só quem recebeu o pagamento pode confirmar, recusar ou contestar."));
     expect((await actions.resolvePaymentAction({}, form({ outingId, paymentId: "pay1", decision: "confirm" }))).error).toContain("Só quem recebeu");
+  });
+});
+
+describe("revealPixAction", () => {
+  it("devolve a chave, o copia e cola e o QR para quem precisa pagar", async () => {
+    pix.getPixPayment.mockResolvedValue({ display: "lucas@exemplo.com", payload: "000201...", receiverName: "Lucas" });
+    const result = await actions.revealPixAction({}, form({ outingId, toId: "p2", amountCents: "3000" }));
+    expect(pix.getPixPayment).toHaveBeenCalledWith("p1", outingId, "p2", 3000);
+    expect(result).toMatchObject({ display: "lucas@exemplo.com", payload: "000201..." });
+    expect(result.qr).toMatch(/^data:image\/png;base64,/);
+  });
+
+  it("devolve a mensagem da regra quando não pode ver a chave", async () => {
+    pix.getPixPayment.mockRejectedValue(new DomainError("pix_not_allowed", "Sem permissão."));
+    expect(await actions.revealPixAction({}, form({ outingId, toId: "p2", amountCents: "3000" }))).toEqual({ error: "Sem permissão." });
   });
 });

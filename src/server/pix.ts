@@ -4,7 +4,7 @@ import { asService, getDb } from "@/db/client";
 import { people } from "@/db/schema";
 import { DomainError } from "@/domain/domain-error";
 import { buildPixPayload, formatPixKey, normalizePixKey, type PixKey, type PixKeyType } from "@/domain/pix";
-import { getRelationDetail, relationNet } from "./balances";
+import { getOutingBalances, getRelationDetail, relationNet } from "./balances";
 
 async function readKey(personId: string): Promise<PixKey | null> {
   const [row] = await getDb()
@@ -35,17 +35,24 @@ export type PixPayment = { display: string; payload: string; receiverName: strin
 
 /**
  * What the debtor needs to pay a creditor by Pix. The key is private: it is only
- * handed to someone who currently owes that person, and never above what is owed.
+ * handed to someone who has to pay that person, either because they owe them
+ * directly or because a route of this outing tells them to, and never above that amount.
  */
 export async function getPixPayment(
   requesterId: string,
+  outingId: string,
   creditorId: string,
   amountCents: number,
 ): Promise<PixPayment> {
   const relation = await getRelationDetail(requesterId, creditorId);
-  const owed = -relationNet(relation);
-  if (owed <= 0 || amountCents > owed) {
-    throw new DomainError("pix_not_allowed", "Você só vê a chave Pix de quem você deve, até o valor devido.");
+  const owedDirectly = Math.max(-relationNet(relation), 0);
+  const balances = await getOutingBalances(requesterId, outingId);
+  const routed = [...balances.smart, ...balances.manual]
+    .filter((transfer) => transfer.fromId === requesterId && transfer.toId === creditorId)
+    .reduce((max, transfer) => Math.max(max, transfer.amountCents), 0);
+
+  if (amountCents <= 0 || amountCents > Math.max(owedDirectly, routed)) {
+    throw new DomainError("pix_not_allowed", "Você só vê a chave Pix de quem você precisa pagar, até o valor devido.");
   }
   const key = await asService(() => readKey(creditorId));
   if (!key) {

@@ -21,7 +21,7 @@ import { listPayerRequests, type PayerRequestView } from "@/server/payer-request
 import { listPayments, type PaymentView } from "@/server/payments";
 import { getOuting, type OutingDetail } from "@/server/outings";
 import { JoinLinkPanel, JoinRequestItem, ReleaseButton } from "./join-panel";
-import { DeclarePaymentForm, ResolvePayment } from "./pagamentos/payment-forms";
+import { DeclarePaymentForm, PixReveal, ResolvePayment } from "./pagamentos/payment-forms";
 import { RequestDecision } from "./despesas/request-item";
 import { ParticipantForm } from "./participant-form";
 import { PayerButton } from "./payer-button";
@@ -347,7 +347,8 @@ function SettlementsView({ outing, balances, me, route }: { outing: OutingDetail
         ) : (
           <ul className="flex flex-col gap-2">
             {transfers.map((transfer) => (
-              <li key={`${transfer.fromId}-${transfer.toId}`} className="card-surface flex items-center justify-between gap-3 p-4">
+              <li key={`${transfer.fromId}-${transfer.toId}`} className="card-surface flex flex-col gap-3 p-4">
+                <div className="flex items-center justify-between gap-3">
                 <span className="text-sm">
                   <span className="font-semibold">{transfer.fromId === me ? "Você" : transfer.from}</span> paga{" "}
                   <span className="font-semibold">{transfer.toId === me ? "você" : transfer.to}</span>
@@ -360,6 +361,8 @@ function SettlementsView({ outing, balances, me, route }: { outing: OutingDetail
                     </Button>
                   )}
                 </span>
+                </div>
+                {transfer.fromId === me && <PixReveal outingId={outing.id} toId={transfer.toId} amountCents={transfer.amountCents} />}
               </li>
             ))}
           </ul>
