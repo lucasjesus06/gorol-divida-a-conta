@@ -1,7 +1,8 @@
 import { sql } from "drizzle-orm";
-import { boolean, check, index, pgTable, text, timestamp, uniqueIndex, uuid, type AnyPgColumn } from "drizzle-orm/pg-core";
+import { bigint, boolean, check, index, integer, pgTable, primaryKey, text, timestamp, uniqueIndex, uuid, type AnyPgColumn } from "drizzle-orm/pg-core";
 import { authUsers } from "drizzle-orm/supabase";
 import { accessRequestSources, accessRequestStatuses } from "../domain/access";
+import { expenseSplitMethods, expenseStatuses } from "../domain/expense-status";
 import { joinRequestStatuses } from "../domain/join";
 import { outingKinds, outingRoles, outingStatuses } from "../domain/outing";
 
@@ -197,4 +198,98 @@ export const outingJoinAttempts = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [index("outing_join_attempts_outing_idx").on(table.outingId, table.createdAt)],
+).enableRLS();
+
+export const outingPayers = pgTable(
+  "outing_payers",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    outingId: uuid("outing_id")
+      .notNull()
+      .references(() => outings.id, { onDelete: "cascade" }),
+    personId: uuid("person_id")
+      .notNull()
+      .references(() => people.id, { onDelete: "cascade" }),
+    declaredBy: uuid("declared_by")
+      .notNull()
+      .references(() => people.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [uniqueIndex("outing_payers_outing_person_idx").on(table.outingId, table.personId)],
+).enableRLS();
+
+export const expenses = pgTable(
+  "expenses",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    outingId: uuid("outing_id")
+      .notNull()
+      .references(() => outings.id, { onDelete: "restrict" }),
+    version: integer("version").notNull().default(1),
+    previousVersionId: uuid("previous_version_id").references((): AnyPgColumn => expenses.id, { onDelete: "restrict" }),
+    status: text("status", { enum: expenseStatuses }).notNull().default("active"),
+    description: text("description").notNull(),
+    totalCents: bigint("total_cents", { mode: "number" }).notNull(),
+    splitMethod: text("split_method", { enum: expenseSplitMethods }).notNull(),
+    occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull(),
+    registeredBy: uuid("registered_by")
+      .notNull()
+      .references(() => people.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    voidedBy: uuid("voided_by").references(() => people.id, { onDelete: "restrict" }),
+    voidReason: text("void_reason"),
+    idempotencyKey: text("idempotency_key"),
+  },
+  (table) => [
+    check("expenses_status_valid", oneOf(table.status, expenseStatuses)),
+    check("expenses_split_method_valid", oneOf(table.splitMethod, expenseSplitMethods)),
+    check("expenses_total_positive", sql`${table.totalCents} > 0`),
+    check("expenses_version_positive", sql`${table.version} >= 1`),
+    check("expenses_description_filled", sql`length(btrim(${table.description})) > 0`),
+    check(
+      "expenses_voided_matches_status",
+      sql`(${table.status} = 'voided') = (${table.voidedBy} is not null and ${table.voidReason} is not null)`,
+    ),
+    uniqueIndex("expenses_idempotency_idx")
+      .on(table.outingId, table.idempotencyKey)
+      .where(sql`${table.idempotencyKey} is not null`),
+    uniqueIndex("expenses_one_revision_per_version_idx")
+      .on(table.previousVersionId)
+      .where(sql`${table.previousVersionId} is not null`),
+    index("expenses_outing_idx").on(table.outingId, table.occurredAt),
+  ],
+).enableRLS();
+
+export const expensePayers = pgTable(
+  "expense_payers",
+  {
+    expenseId: uuid("expense_id")
+      .notNull()
+      .references(() => expenses.id, { onDelete: "restrict" }),
+    personId: uuid("person_id")
+      .notNull()
+      .references(() => people.id, { onDelete: "restrict" }),
+    amountCents: bigint("amount_cents", { mode: "number" }).notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.expenseId, table.personId] }),
+    check("expense_payers_amount_positive", sql`${table.amountCents} > 0`),
+  ],
+).enableRLS();
+
+export const expenseShares = pgTable(
+  "expense_shares",
+  {
+    expenseId: uuid("expense_id")
+      .notNull()
+      .references(() => expenses.id, { onDelete: "restrict" }),
+    personId: uuid("person_id")
+      .notNull()
+      .references(() => people.id, { onDelete: "restrict" }),
+    amountCents: bigint("amount_cents", { mode: "number" }).notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.expenseId, table.personId] }),
+    check("expense_shares_amount_non_negative", sql`${table.amountCents} >= 0`),
+  ],
 ).enableRLS();

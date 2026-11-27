@@ -33,7 +33,29 @@ export function assertPeopleInOuting(people: Set<string>, participants: Set<stri
   }
 }
 
-/** Any participant registers expenses; correcting or voiding is for whoever registered it or the admin. */
+/** Only the outing admin and the payers the admin declared register expenses. */
+export function assertCanRegisterExpense(callerRole: OutingRole, isDeclaredPayer: boolean): void {
+  if (callerRole !== "admin" && !isDeclaredPayer) {
+    throw new DomainError(
+      "only_payers_register_expense",
+      "Só o dono do rolê e os pagantes declarados registram despesas.",
+    );
+  }
+}
+
+/** Everyone who paid an expense is the admin or a declared payer; anyone else asks to become one. */
+export function assertPayersAllowed(payers: Payer[], allowedPayerIds: Set<string>): void {
+  for (const payer of payers) {
+    if (!allowedPayerIds.has(payer.participantId)) {
+      throw new DomainError(
+        "payer_not_declared",
+        "Quem pagou precisa ser o dono do rolê ou um pagante declarado.",
+      );
+    }
+  }
+}
+
+/** Correcting or voiding is for whoever registered the expense or the admin. */
 export function assertCanChangeExpense(
   registeredBy: string,
   callerId: string,

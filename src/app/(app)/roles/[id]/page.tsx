@@ -7,14 +7,18 @@ import { ListSkeleton } from "@/components/common/ListSkeleton";
 import { Pill } from "@/components/common/Pill";
 import { StatCard } from "@/components/common/StatCard";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { Button } from "@/components/ui/button";
+import { formatCents } from "@/domain/money";
 import { DomainError } from "@/domain/domain-error";
 import { cn } from "@/lib/utils";
 import { isUuid } from "@/lib/uuid";
 import { getRenderProfile } from "@/server/auth";
 import { getActiveJoinLink, listJoinRequests } from "@/server/join";
+import { listExpenses, listPayers, type ExpenseView } from "@/server/expenses";
 import { getOuting, type OutingDetail } from "@/server/outings";
 import { JoinLinkPanel, JoinRequestItem, ReleaseButton } from "./join-panel";
 import { ParticipantForm } from "./participant-form";
+import { PayerButton } from "./payer-button";
 
 export const metadata: Metadata = {
   title: "Rolê · GoRolê",
@@ -23,10 +27,11 @@ export const metadata: Metadata = {
 const kindLabels = { event: "Pontual", recurring: "Recorrente" } as const;
 const dateFormat = new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short", timeZone: "America/Sao_Paulo" });
 
-type View = "resumo" | "participantes" | "convite";
+type View = "resumo" | "despesas" | "participantes" | "convite";
 
 function parseView(value: string | string[] | undefined, isAdmin: boolean): View {
   if (value === "participantes") return "participantes";
+  if (value === "despesas") return "despesas";
   if (value === "convite" && isAdmin) return "convite";
   return "resumo";
 }
@@ -34,6 +39,7 @@ function parseView(value: string | string[] | undefined, isAdmin: boolean): View
 function Tabs({ outingId, view, isAdmin }: { outingId: string; view: View; isAdmin: boolean }) {
   const tabs: { view: View; label: string }[] = [
     { view: "resumo", label: "Resumo" },
+    { view: "despesas", label: "Despesas" },
     { view: "participantes", label: "Participantes" },
     ...(isAdmin ? [{ view: "convite" as const, label: "Convite" }] : []),
   ];
@@ -57,15 +63,23 @@ function Tabs({ outingId, view, isAdmin }: { outingId: string; view: View; isAdm
   );
 }
 
-function Summary({ outing, pendingRequests }: { outing: OutingDetail; pendingRequests: number }) {
+function Summary({ outing, pendingRequests, expenses }: { outing: OutingDetail; pendingRequests: number; expenses: ExpenseView[] }) {
+  const active = expenses.filter((expense) => expense.status === "active");
+  const total = active.reduce((sum, expense) => sum + expense.totalCents, 0);
   const joined = outing.participants.filter((participant) => participant.joined).length;
   const waiting = outing.participants.length - joined;
   const isAdmin = outing.role === "admin";
 
   return (
     <div className="flex flex-col gap-6">
+      {active.length > 0 && (
+        <p className="text-sm text-muted-foreground">
+          Total gasto no rolê: <span className="font-semibold text-foreground">{formatCents(total)}</span>
+        </p>
+      )}
       <section className="grid grid-cols-2 gap-3">
         <StatCard label="Participantes" value={joined} href={`/roles/${outing.id}?visao=participantes`} />
+        <StatCard label="Despesas" value={active.length} href={`/roles/${outing.id}?visao=despesas`} />
         {isAdmin && (
           <StatCard
             label="Pedidos para aprovar"
@@ -76,15 +90,45 @@ function Summary({ outing, pendingRequests }: { outing: OutingDetail; pendingReq
         )}
         {isAdmin && waiting > 0 && <StatCard label="Ainda não entraram" value={waiting} href={`/roles/${outing.id}?visao=participantes`} />}
       </section>
-      <section className="card-surface flex flex-col gap-2 p-5">
-        <h2 className="text-lg font-bold">Despesas</h2>
-        <p className="text-sm text-muted-foreground">As despesas e os acertos deste rolê vão aparecer aqui.</p>
-      </section>
     </div>
   );
 }
 
-function Participants({ outing }: { outing: OutingDetail }) {
+function ExpensesView({ outing, expenses, canRegister }: { outing: OutingDetail; expenses: ExpenseView[]; canRegister: boolean }) {
+  return (
+    <div className="flex flex-col gap-4">
+      {canRegister && outing.status === "active" && (
+        <Button asChild className="self-start">
+          <Link href={`/roles/${outing.id}/despesas/nova`}>Nova despesa</Link>
+        </Button>
+      )}
+      {expenses.length === 0 ? (
+        <p className="card-surface p-5 text-sm text-muted-foreground">
+          {canRegister ? "Nenhuma despesa ainda. Registre a primeira." : "Nenhuma despesa registrada ainda."}
+        </p>
+      ) : (
+        <ul className="flex flex-col gap-2">
+          {expenses.map((expense) => (
+            <li key={expense.id}>
+              <Link href={`/roles/${outing.id}/despesas/${expense.id}`} className="card-surface flex items-center justify-between gap-3 p-4">
+                <span className="flex min-w-0 flex-col">
+                  <span className={cn("truncate font-semibold", expense.status === "voided" && "line-through")}>{expense.description}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {expense.payers.map((payer) => payer.name).join(", ")} pagou{expense.payers.length > 1 ? "ram" : ""}
+                    {expense.status === "voided" ? " · anulada" : ""}
+                  </span>
+                </span>
+                <span className="font-bold">{formatCents(expense.totalCents)}</span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function Participants({ outing, payerIds }: { outing: OutingDetail; payerIds: Set<string> }) {
   const isAdmin = outing.role === "admin";
 
   return (
@@ -98,12 +142,18 @@ function Participants({ outing }: { outing: OutingDetail }) {
                 <span className="truncate text-sm font-semibold">
                   {participant.displayName}
                   {participant.role === "admin" && <span className="ml-2 text-xs font-normal text-muted-foreground">dono</span>}
+                  {participant.role !== "admin" && payerIds.has(participant.personId) && (
+                    <span className="ml-2 text-xs font-normal text-muted-foreground">pagante</span>
+                  )}
                   {!participant.joined && <span className="ml-2 text-xs font-normal text-muted-foreground">ainda não entrou</span>}
                   {participant.accountRequested && <span className="ml-2 text-xs font-normal text-primary-glow">pediu cadastro</span>}
                 </span>
                 {participant.phone && <span className="text-xs text-muted-foreground">{participant.phone}</span>}
               </div>
               {participant.releasable && <ReleaseButton outingId={outing.id} participantId={participant.id} />}
+              {outing.role === "admin" && participant.joined && participant.role !== "admin" && !payerIds.has(participant.personId) && (
+                <PayerButton outingId={outing.id} personId={participant.personId} />
+              )}
             </li>
           ))}
         </ul>
@@ -168,7 +218,12 @@ async function OutingContent({ params, searchParams }: Pick<PageProps<"/roles/[i
 
   const isAdmin = outing.role === "admin";
   const view = parseView((await searchParams).visao, isAdmin);
-  const pendingRequests = isAdmin && view === "resumo" ? (await listJoinRequests(profile.personId, id)).length : 0;
+  const [pendingRequests, expenses, people] = await Promise.all([
+    isAdmin && view === "resumo" ? listJoinRequests(profile.personId, id).then((requests) => requests.length) : 0,
+    view === "resumo" || view === "despesas" ? listExpenses(profile.personId, id) : [],
+    listPayers(profile.personId, id),
+  ]);
+  const payerIds = new Set(people.filter((person) => person.isPayer).map((person) => person.personId));
 
   return (
     <>
@@ -178,8 +233,9 @@ async function OutingContent({ params, searchParams }: Pick<PageProps<"/roles/[i
         actions={<Pill>{outing.status === "closed" ? "Encerrado" : kindLabels[outing.kind]}</Pill>}
       />
       <Tabs outingId={outing.id} view={view} isAdmin={isAdmin} />
-      {view === "resumo" && <Summary outing={outing} pendingRequests={pendingRequests} />}
-      {view === "participantes" && <Participants outing={outing} />}
+      {view === "resumo" && <Summary outing={outing} pendingRequests={pendingRequests} expenses={expenses} />}
+      {view === "despesas" && <ExpensesView outing={outing} expenses={expenses} canRegister={payerIds.has(profile.personId)} />}
+      {view === "participantes" && <Participants outing={outing} payerIds={payerIds} />}
       {view === "convite" && <Invite outing={outing} personId={profile.personId} />}
     </>
   );

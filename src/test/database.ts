@@ -39,3 +39,37 @@ export async function approveAccount(db: TestDatabase, personId: string) {
   await db.update(schema.people).set({ userId, accountApprovedAt: new Date() }).where(eq(schema.people.id, personId));
   return userId;
 }
+
+export async function insertExpense(
+  db: TestDatabase,
+  input: {
+    outingId: string;
+    registeredBy: string;
+    totalCents: number;
+    payers: Record<string, number>;
+    shares: Record<string, number>;
+    description?: string;
+    splitMethod?: "equal" | "exact";
+    version?: number;
+    previousVersionId?: string;
+  },
+) {
+  return db.transaction(async (tx) => {
+    const [expense] = await tx
+      .insert(schema.expenses)
+      .values({
+        outingId: input.outingId,
+        registeredBy: input.registeredBy,
+        totalCents: input.totalCents,
+        description: input.description ?? "Despesa",
+        splitMethod: input.splitMethod ?? "exact",
+        occurredAt: new Date(),
+        version: input.version ?? 1,
+        previousVersionId: input.previousVersionId,
+      })
+      .returning();
+    await tx.insert(schema.expensePayers).values(Object.entries(input.payers).map(([personId, amountCents]) => ({ expenseId: expense.id, personId, amountCents })));
+    await tx.insert(schema.expenseShares).values(Object.entries(input.shares).map(([personId, amountCents]) => ({ expenseId: expense.id, personId, amountCents })));
+    return expense;
+  });
+}

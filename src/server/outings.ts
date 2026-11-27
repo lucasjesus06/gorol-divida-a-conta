@@ -16,7 +16,7 @@ export type OutingDetail = {
   kind: OutingKind;
   status: OutingStatus;
   role: OutingRole;
-  participants: { id: string; displayName: string; role: OutingRole; phone: string | null; joined: boolean; releasable: boolean; accountRequested: boolean }[];
+  participants: { id: string; personId: string; displayName: string; role: OutingRole; phone: string | null; joined: boolean; releasable: boolean; accountRequested: boolean }[];
 };
 
 export async function createOuting(owner: { personId: string; displayName: string }, input: { name: string; kind: string }) {
@@ -64,6 +64,7 @@ export async function getOuting(personId: string, outingId: string): Promise<Out
   const participants = await getDb()
     .select({
       id: outingParticipants.id,
+      personId: outingParticipants.personId,
       displayName: outingParticipants.displayName,
       role: outingParticipants.role,
       confirmedAt: outingParticipants.confirmedAt,
