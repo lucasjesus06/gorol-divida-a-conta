@@ -1,4 +1,4 @@
-import { ChevronRight, ShieldCheck } from "lucide-react";
+import { ChevronRight, KeyRound, ShieldCheck } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { ReactNode } from "react";
@@ -44,6 +44,12 @@ export default function SettingsPage() {
     <>
       <PageHeader title="Configurações" description="Seus dados e o funcionamento da sua conta." />
       <div className="flex flex-col gap-3">
+        <SettingsLink
+          href="/configuracoes/pix"
+          icon={<KeyRound className="size-5" />}
+          title="Chave Pix"
+          description="É a chave que seus amigos usam para te pagar."
+        />
         <Suspense fallback={null}>
           <AdminLink />
         </Suspense>

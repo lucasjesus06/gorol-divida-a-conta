@@ -6,6 +6,7 @@ import { bindRequestPerson } from "@/db/client";
 import { identityFromClaims, type Identity } from "@/domain/identity";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { isSuperAdmin } from "./access";
+import { hasPixKey } from "./pix";
 import { loadProfile, type Profile } from "./profiles";
 
 export async function getIdentity(): Promise<Identity | null> {
@@ -45,6 +46,9 @@ async function currentProfile(): Promise<Profile> {
   const profile = await loadProfile(identity.userId);
   if (!profile) {
     redirect(identity.kind === "account" ? "/perfil" : "/aguardando");
+  }
+  if (identity.kind === "account" && !(await hasPixKey(profile.personId))) {
+    redirect("/configuracoes/pix");
   }
   await bindRequestPerson(profile.personId);
   return profile;
