@@ -5,6 +5,7 @@ import { accessRequestSources, accessRequestStatuses } from "../domain/access";
 import { billStatuses, leftoverModes } from "../domain/bill-status";
 import { approvalDecisions, disputeStatuses, disputeSubjects } from "../domain/dispute-status";
 import { expenseSplitMethods, expenseStatuses } from "../domain/expense-status";
+import { confirmationSources, paymentStatuses } from "../domain/payment-status";
 import { payerRequestStatuses } from "../domain/payer-request";
 import { joinRequestStatuses } from "../domain/join";
 import { outingKinds, outingRoles, outingStatuses } from "../domain/outing";
@@ -507,5 +508,40 @@ export const billClaims = pgTable(
   (table) => [
     primaryKey({ columns: [table.itemId, table.personId] }),
     check("bill_claims_quantity_positive", sql`${table.quantityNum} > 0 and ${table.quantityDen} > 0`),
+  ],
+).enableRLS();
+
+export const payments = pgTable(
+  "payments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    outingId: uuid("outing_id")
+      .notNull()
+      .references(() => outings.id, { onDelete: "restrict" }),
+    fromId: uuid("from_id")
+      .notNull()
+      .references(() => people.id, { onDelete: "restrict" }),
+    toId: uuid("to_id")
+      .notNull()
+      .references(() => people.id, { onDelete: "restrict" }),
+    onBehalfOfId: uuid("on_behalf_of_id").references(() => people.id, { onDelete: "restrict" }),
+    amountCents: bigint("amount_cents", { mode: "number" }).notNull(),
+    status: text("status", { enum: paymentStatuses }).notNull().default("declared"),
+    confirmedBy: text("confirmed_by", { enum: confirmationSources }),
+    declaredAt: timestamp("declared_at", { withTimezone: true }).notNull().defaultNow(),
+    resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+    idempotencyKey: text("idempotency_key"),
+  },
+  (table) => [
+    check("payments_status_valid", oneOf(table.status, paymentStatuses)),
+    check("payments_confirmed_by_valid", sql`${table.confirmedBy} is null or ${table.confirmedBy} in ('creditor', 'receipt')`),
+    check("payments_amount_positive", sql`${table.amountCents} > 0`),
+    check("payments_different_people", sql`${table.fromId} <> ${table.toId} and (${table.onBehalfOfId} is null or (${table.onBehalfOfId} <> ${table.fromId} and ${table.onBehalfOfId} <> ${table.toId}))`),
+    check("payments_resolved_matches_status", sql`(${table.status} = 'declared') = (${table.resolvedAt} is null)`),
+    check("payments_confirmed_has_source", sql`(${table.status} = 'confirmed') = (${table.confirmedBy} is not null)`),
+    uniqueIndex("payments_idempotency_idx")
+      .on(table.outingId, table.idempotencyKey)
+      .where(sql`${table.idempotencyKey} is not null`),
+    index("payments_outing_idx").on(table.outingId, table.status),
   ],
 ).enableRLS();
