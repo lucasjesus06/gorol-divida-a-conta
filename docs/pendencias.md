@@ -15,13 +15,10 @@ Tudo o que ainda precisa ser feito ou decidido. O que fica para versões futuras
   - consentimento registrado no aceite dos termos, inclusive para convidados sem conta;
   - não usar automação não oficial do WhatsApp Web: viola os termos e arrisca o banimento do número.
 - **Conta por consumo (GOR-10):** o alcance de "fechou, acabou a responsa": vale para a conta ou para o rolê?
-- **Contas temporárias, cadastro e comprovante (GOR-07, GOR-11, GOR-16 e GOR-20), a confirmar:**
-  - **cadastro depende da aprovação do super admin:** o convidado que pede cadastro pode ficar aguardando. Proposta: o rolê **não encerra** enquanto o pedido estiver pendente; se for recusado, o convidado precisa pagar;
-  - **vínculo do histórico:** o convidado que cria cadastro leva o histórico pela **própria sessão**, e não pelo telefone (telefone é pouco para identidade), o que muda como a aprovação de conta liga a pessoa;
-  - **convidado que tem a receber:** proposta: mesma regra, ou acerta no rolê ou cria conta, e a chave Pix é pedida só nesse momento;
-  - **chave Pix:** proposta: pedida na **primeira entrada** da conta (tela de conclusão do cadastro) e não no formulário público de pedido de acesso; criptografar no banco, além da política de acesso (pode ser o CPF);
-  - **pagamento sem comprovante:** o credor pode dar a baixa **manualmente** (por exemplo, dinheiro em mãos)? Proposta: sim, marcada como "confirmado pelo credor, sem comprovante", já que a dívida é dele; o comprovante é a prova de quem paga;
-  - **valor ou destinatário diferentes do declarado** no comprovante lido: o que fazer (proposta: recusar a baixa automática e pedir confirmação do credor).
+- **Contas temporárias, cadastro e comprovante (GOR-07, GOR-11, GOR-16 e GOR-20):**
+  - **vínculo do histórico:** o convidado que cria cadastro leva o histórico pela **própria sessão**, e não pelo telefone (telefone é pouco para identidade). Isso muda como a aprovação de conta liga a pessoa, e o ajuste na GOR-07 está anotado no card;
+  - **criptografar a chave Pix no banco**, além da política de acesso (ela pode ser o CPF): ainda sem decisão;
+  - **Pix informado manualmente** por quem recusa a conta e tem a receber: definir como fica guardado e por quanto tempo (proposta: só até o acerto do rolê).
 - **Participante que saiu do rolê:** hoje perderia o acesso. Decidir se continua vendo e pagando o que deve.
 - **Remetente de e-mail (GOR-04):** o remetente padrão do Supabase tem limite baixo de envios e só entrega a membros da equipe do projeto, então os testadores exigem um remetente próprio (SMTP de um provedor com plano gratuito). Escolher o provedor.
 - **Acesso por aprovação (GOR-19), o que ficou de fora:**
