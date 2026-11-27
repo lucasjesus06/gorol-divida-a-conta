@@ -1,4 +1,4 @@
-import { Bell, ChevronRight, KeyRound, ShieldCheck } from "lucide-react";
+import { Bell, ChevronRight, HandCoins, KeyRound, ShieldCheck } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { ReactNode } from "react";
@@ -30,12 +30,20 @@ async function AdminLink() {
     return null;
   }
   return (
-    <SettingsLink
-      href="/configuracoes/administracao"
-      icon={<ShieldCheck className="size-5" />}
-      title="Administração"
-      description="Pedidos de acesso, convites e contas."
-    />
+    <>
+      <SettingsLink
+        href="/configuracoes/administracao"
+        icon={<ShieldCheck className="size-5" />}
+        title="Administração"
+        description="Pedidos de acesso, convites e contas."
+      />
+      <SettingsLink
+        href="/configuracoes/cobrancas"
+        icon={<HandCoins className="size-5" />}
+        title="Cobranças"
+        description="Quem deve, mensagens prontas e textos."
+      />
+    </>
   );
 }
 
