@@ -10,7 +10,9 @@ import { DomainError } from "@/domain/domain-error";
 import { formatCents } from "@/domain/money";
 import { isUuid } from "@/lib/uuid";
 import { getRenderProfile } from "@/server/auth";
+import { listDisputes, type DisputeView } from "@/server/disputes";
 import { getExpense, type ExpenseView } from "@/server/expenses";
+import { DisputeDecision, OpenDisputeForm } from "./dispute-forms";
 import { VoidForm } from "./void-form";
 
 export const metadata: Metadata = {
@@ -19,6 +21,47 @@ export const metadata: Metadata = {
 
 const dateFormat = new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeZone: "America/Sao_Paulo" });
 const statusLabels = { active: "Ativa", superseded: "Substituída", voided: "Anulada" } as const;
+const subjectLabels = { amount: "o valor", split: "a divisão", not_participated: "\"não participei\"", other: "outro motivo" } as const;
+const disputeStatusLabels = { open: "Em análise", approved: "Aceita", rejected: "Recusada" } as const;
+
+function Disputes({ outingId, expenseId, disputes, canChange }: { outingId: string; expenseId: string; disputes: DisputeView[]; canChange: boolean }) {
+  if (disputes.length === 0) {
+    return null;
+  }
+
+  return (
+    <section className="flex flex-col gap-3">
+      <h2 className="text-xl font-bold">Contestações</h2>
+      <ul className="flex flex-col gap-3">
+        {disputes.map((dispute) => (
+          <li key={dispute.id} className="card-surface flex flex-col gap-3 p-4">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-sm font-semibold">
+                {dispute.openedBy.name} contesta {subjectLabels[dispute.subject]}
+              </span>
+              <Pill>{disputeStatusLabels[dispute.status]}</Pill>
+            </div>
+            <p className="text-sm">{dispute.message}</p>
+            <ul className="flex flex-col gap-1 text-xs text-muted-foreground">
+              {dispute.approvals.map((approval) => (
+                <li key={approval.personId}>
+                  {approval.name}: {approval.decision === "pending" ? "aguardando" : approval.decision === "approved" ? "aceitou" : "recusou"}
+                  {approval.note ? ` (${approval.note})` : ""}
+                </li>
+              ))}
+            </ul>
+            {dispute.status === "approved" && dispute.subject !== "not_participated" && canChange && (
+              <Button asChild variant="secondary">
+                <Link href={`/roles/${outingId}/despesas/${expenseId}/editar`}>Corrigir despesa</Link>
+              </Button>
+            )}
+            {dispute.canDecide && <DisputeDecision outingId={outingId} disputeId={dispute.id} />}
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
 
 function Breakdown({ title, rows }: { title: string; rows: { personId: string; name: string; amountCents: number }[] }) {
   return (
@@ -61,14 +104,18 @@ async function ExpenseContent({ params }: Pick<PageProps<"/roles/[id]/despesas/[
   const profile = await getRenderProfile();
 
   let expense;
+  let disputes: DisputeView[];
   try {
-    expense = await getExpense(profile.personId, id, expenseId);
+    [expense, disputes] = await Promise.all([getExpense(profile.personId, id, expenseId), listDisputes(profile.personId, id, expenseId)]);
   } catch (error) {
     if (error instanceof DomainError && (error.code === "outing_not_found" || error.code === "expense_not_found")) {
       notFound();
     }
     throw error;
   }
+
+  const paidIt = expense.payers.some((payer) => payer.personId === profile.personId);
+  const involved = paidIt || expense.shares.some((share) => share.personId === profile.personId);
 
   return (
     <>
@@ -82,6 +129,15 @@ async function ExpenseContent({ params }: Pick<PageProps<"/roles/[id]/despesas/[
             </Button>
             <div className="card-surface p-5">
               <VoidForm outingId={id} expenseId={expenseId} />
+            </div>
+          </section>
+        )}
+        <Disputes outingId={id} expenseId={expenseId} disputes={disputes} canChange={expense.canChange} />
+        {involved && expense.status === "active" && !disputes.some((dispute) => dispute.status === "open" && dispute.openedBy.id === profile.personId) && (
+          <section className="flex flex-col gap-3">
+            <h2 className="text-xl font-bold">Contestar</h2>
+            <div className="card-surface p-5">
+              <OpenDisputeForm outingId={id} expenseId={expenseId} canOptOut={expense.splitMethod === "equal" && !paidIt} />
             </div>
           </section>
         )}

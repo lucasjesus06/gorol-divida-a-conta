@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { anExpense } from "@/test/expense-fixtures";
-import { hasOpenDispute, openDispute, resolveDispute } from "./dispute";
+import { disputeOutcome, equalSplitWithout, hasOpenDispute, openDispute, requiredApprovers } from "./dispute";
 import { reviseExpense } from "./expense";
 
 const AT = new Date("2026-11-10T12:00:00Z");
@@ -47,27 +47,9 @@ describe("expense disputes", () => {
     ).toThrow("já tem uma contestação");
   });
 
-  it("is decided only by the outing admin, and approval leads to a new version", () => {
-    const dispute = disputeBy("maria");
-    expect(() =>
-      resolveDispute(dispute, {
-        by: "pedro",
-        outingAdminId: "lucas",
-        approved: true,
-        note: "",
-        at: AT,
-      }),
-    ).toThrow("Só o dono");
-
-    const approved = resolveDispute(dispute, {
-      by: "lucas",
-      outingAdminId: "lucas",
-      approved: true,
-      note: "Maria fica só com a salada",
-      at: AT,
-    });
-    expect(approved.status).toBe("approved");
-    expect(hasOpenDispute("maria", "churrasco", [approved])).toBe(false);
+  it("accepting leads to a new version, and the open flag goes away", () => {
+    const dispute = { ...disputeBy("maria"), status: "approved" as const };
+    expect(hasOpenDispute("maria", "churrasco", [dispute])).toBe(false);
 
     const { revision } = reviseExpense(bbq(), {
       id: "expense-2",
@@ -89,17 +71,41 @@ describe("expense disputes", () => {
     expect(revision.shares.get("maria")).toBe(4000);
   });
 
-  it("keeps the rejection with the admin's note", () => {
-    const rejected = resolveDispute(disputeBy("maria"), {
-      by: "lucas",
-      outingAdminId: "lucas",
-      approved: false,
-      note: "Combinamos dividir igual",
-      at: AT,
+  it("\"I did not take part\" is only for equal splits and for people who did not pay", () => {
+    const open = (openedBy: string, expense = bbq()) =>
+      openDispute(expense, [], { id: "d", openedBy, subject: "not_participated", message: "Não fui", openedAt: AT });
+    expect(open("maria").subject).toBe("not_participated");
+    expect(() => open("lucas")).toThrowError(expect.objectContaining({ code: "payer_cannot_opt_out" }));
+    const exact = anExpense({
+      outingId: "churrasco",
+      payers: [{ participantId: "lucas", amountCents: 30000 }],
+      split: { method: "exact", shares: [{ participantId: "lucas", amountCents: 15000 }, { participantId: "maria", amountCents: 15000 }] },
     });
-    expect(rejected).toMatchObject({
-      status: "rejected",
-      resolutionNote: "Combinamos dividir igual",
-    });
+    expect(() => open("maria", exact)).toThrowError(expect.objectContaining({ code: "not_participated_needs_equal_split" }));
+  });
+});
+
+describe("who approves", () => {
+  it("amount and split disputes are decided by the admin alone", () => {
+    expect(requiredApprovers("amount", ["lucas"], ["lucas", "ana"])).toEqual(["lucas"]);
+    expect(requiredApprovers("split", ["lucas"], ["ana"])).toEqual(["lucas"]);
+  });
+
+  it("\"I did not take part\" needs the admin and every payer, without repeating anyone", () => {
+    expect(requiredApprovers("not_participated", ["lucas"], ["lucas", "ana"]).sort()).toEqual(["ana", "lucas"]);
+  });
+
+  it("is accepted only when everyone agrees, and one refusal rejects it", () => {
+    expect(disputeOutcome(["approved", "approved"])).toBe("approved");
+    expect(disputeOutcome(["approved", "pending"])).toBe("open");
+    expect(disputeOutcome(["approved", "rejected"])).toBe("rejected");
+    expect(disputeOutcome(["pending", "rejected"])).toBe("rejected");
+    expect(disputeOutcome([])).toBe("open");
+  });
+});
+
+describe("equalSplitWithout", () => {
+  it("takes the person out of the equal split", () => {
+    expect(equalSplitWithout(bbq(), "maria")).toEqual({ method: "equal", participantIds: ["lucas", "pedro"] });
   });
 });
