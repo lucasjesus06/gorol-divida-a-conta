@@ -51,6 +51,7 @@ Tudo o que ainda precisa ser feito ou decidido. O que fica para versões futuras
 - **GOR-13:** o `sw.js` já trata `push` e clique, mas o registro do service worker e a inscrição de push entram nessa história (alertas internos do app, não a cobrança).
 - **GOR-19 (resolvido):** a criação de rolê exige conta aprovada (`app.is_account()`), porque o convidado também tem uma pessoa vinculada a uma sessão. As contas que já existiam foram marcadas como aprovadas na migração.
 
+- **Histórico (GOR-26):** hoje lista só os **rolês encerrados**. Confirmar se ele também deve reunir o **histórico financeiro** (dívidas por pessoa, pagamentos e anistias, com a origem de cada valor); se sim, isso entra com a GOR-12.
 - **Estrutura de navegação (GOR-26), o que ficou de fora:** a navegação tem só as áreas que já existem (Início, Rolês e, para o super admin, Administração). **Resumo financeiro** entra com a GOR-12 e **Configurações** com a GOR-20. A visão "Despesas" do rolê ainda é um espaço vazio com aviso e entra na GOR-08; remover participante continua na GOR-16.
 - **Rolês (GOR-06), o que ficou de fora:**
   - **remover participante** e **encerrar rolê** ficam para a GOR-16 (remover com histórico de despesas quebraria os saldos);
