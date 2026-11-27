@@ -7,7 +7,19 @@ import { declarePaymentAction, resolvePaymentAction, type PaymentFormState } fro
 
 type Person = { personId: string; name: string };
 
-export function DeclarePaymentForm({ outingId, people, me, idempotencyKey }: { outingId: string; people: Person[]; me: string; idempotencyKey: string }) {
+export function DeclarePaymentForm({
+  outingId,
+  people,
+  me,
+  idempotencyKey,
+  defaults,
+}: {
+  outingId: string;
+  people: Person[];
+  me: string;
+  idempotencyKey: string;
+  defaults?: { toId?: string; amount?: string };
+}) {
   const [state, action, pending] = useActionState<PaymentFormState, FormData>(declarePaymentAction, {});
   const [onBehalf, setOnBehalf] = useState(false);
   const others = people.filter((person) => person.personId !== me);
@@ -18,7 +30,7 @@ export function DeclarePaymentForm({ outingId, people, me, idempotencyKey }: { o
       <input type="hidden" name="idempotencyKey" value={idempotencyKey} />
       <label className="flex flex-col gap-2 text-sm font-medium">
         Para quem você pagou
-        <select name="toId" required defaultValue="" className={inputClass}>
+        <select name="toId" required defaultValue={defaults?.toId ?? ""} className={inputClass}>
           <option value="" disabled>
             Escolha
           </option>
@@ -31,7 +43,7 @@ export function DeclarePaymentForm({ outingId, people, me, idempotencyKey }: { o
       </label>
       <label className="flex flex-col gap-2 text-sm font-medium">
         Valor (R$)
-        <input name="amount" inputMode="decimal" required className={inputClass} />
+        <input name="amount" inputMode="decimal" required defaultValue={defaults?.amount ?? ""} className={inputClass} />
       </label>
       <label className="flex items-center gap-2 text-sm text-muted-foreground">
         <input type="checkbox" checked={onBehalf} onChange={(event) => setOnBehalf(event.target.checked)} />

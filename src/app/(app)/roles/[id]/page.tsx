@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
 import { isUuid } from "@/lib/uuid";
 import { getRenderProfile } from "@/server/auth";
 import { getActiveJoinLink, listJoinRequests } from "@/server/join";
+import { getOutingBalances, type OutingBalancesView } from "@/server/balances";
 import { listBills, type BillView } from "@/server/bills";
 import { listExpenses, listPayers, type ExpenseView } from "@/server/expenses";
 import { listPayerRequests, type PayerRequestView } from "@/server/payer-requests";
@@ -32,12 +33,13 @@ export const metadata: Metadata = {
 const kindLabels = { event: "Pontual", recurring: "Recorrente" } as const;
 const dateFormat = new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short", timeZone: "America/Sao_Paulo" });
 
-type View = "resumo" | "despesas" | "pagamentos" | "participantes" | "convite";
+type View = "resumo" | "despesas" | "acertos" | "pagamentos" | "participantes" | "convite";
 
 function parseView(value: string | string[] | undefined, isAdmin: boolean): View {
   if (value === "participantes") return "participantes";
   if (value === "despesas") return "despesas";
   if (value === "pagamentos") return "pagamentos";
+  if (value === "acertos") return "acertos";
   if (value === "convite" && isAdmin) return "convite";
   return "resumo";
 }
@@ -46,6 +48,7 @@ function Tabs({ outingId, view, isAdmin }: { outingId: string; view: View; isAdm
   const tabs: { view: View; label: string }[] = [
     { view: "resumo", label: "Resumo" },
     { view: "despesas", label: "Despesas" },
+    { view: "acertos", label: "Acertos" },
     { view: "pagamentos", label: "Pagamentos" },
     { view: "participantes", label: "Participantes" },
     ...(isAdmin ? [{ view: "convite" as const, label: "Convite" }] : []),
@@ -242,11 +245,13 @@ function PaymentsView({
   payments,
   people,
   me,
+  defaults,
 }: {
   outing: OutingDetail;
   payments: PaymentView[];
   people: { personId: string; name: string }[];
   me: string;
+  defaults: { toId?: string; amount?: string };
 }) {
   return (
     <div className="flex flex-col gap-8">
@@ -254,7 +259,7 @@ function PaymentsView({
         <section className="flex flex-col gap-3">
           <h2 className="text-xl font-bold">Declarar um pagamento</h2>
           <div className="card-surface p-6">
-            <DeclarePaymentForm outingId={outing.id} people={people} me={me} idempotencyKey={crypto.randomUUID()} />
+            <DeclarePaymentForm outingId={outing.id} people={people} me={me} idempotencyKey={crypto.randomUUID()} defaults={defaults} />
           </div>
         </section>
       )}
@@ -281,6 +286,99 @@ function PaymentsView({
             ))}
           </ul>
         )}
+      </section>
+    </div>
+  );
+}
+
+function SettlementsView({ outing, balances, me, route }: { outing: OutingDetail; balances: OutingBalancesView; me: string; route: "inteligente" | "manual" }) {
+  const transfers = route === "manual" ? balances.manual : balances.smart;
+  const net = balances.mine.netCents;
+
+  return (
+    <div className="flex flex-col gap-8">
+      <section className="card-surface flex flex-col gap-2 p-5">
+        <h2 className="text-lg font-bold">{net < 0 ? "Você deve" : net > 0 ? "Você tem a receber" : "Você está em dia"}</h2>
+        {net !== 0 && <p className="text-3xl font-extrabold">{formatCents(Math.abs(net))}</p>}
+        {balances.mine.originalDebtCents > 0 && (
+          <p className="text-sm text-muted-foreground">
+            Devido {formatCents(balances.mine.originalDebtCents)} · pago {formatCents(balances.mine.paidCents)} · pendente {formatCents(balances.mine.pendingCents)}
+          </p>
+        )}
+        {balances.otherOutingsWithDebt.length > 0 && (
+          <p className="text-sm">
+            Você também deve em outros rolês:{" "}
+            {balances.otherOutingsWithDebt.map((other, index) => (
+              <span key={other.outingId}>
+                {index > 0 && ", "}
+                <Link href={`/roles/${other.outingId}?visao=acertos`} className="font-semibold text-primary-glow hover:underline">
+                  {other.name} ({formatCents(other.owedCents)})
+                </Link>
+              </span>
+            ))}
+            . Dá para quitar também.
+          </p>
+        )}
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-xl font-bold">Como acertar</h2>
+          <div className="flex gap-2 text-sm">
+            {(["inteligente", "manual"] as const).map((option) => (
+              <Link
+                key={option}
+                href={`/roles/${outing.id}?visao=acertos&rota=${option}`}
+                aria-current={route === option ? "page" : undefined}
+                className={cn("rounded-full border px-3 py-1 font-semibold", route === option ? "border-primary-glow bg-primary/15" : "border-border text-muted-foreground")}
+              >
+                {option === "inteligente" ? "Rota inteligente" : "Rota manual"}
+              </Link>
+            ))}
+          </div>
+        </div>
+        <p className="text-sm text-muted-foreground">
+          {route === "inteligente"
+            ? `Menos Pix possível: ${balances.smart.length} no total${balances.transfersSaved > 0 ? `, ${balances.transfersSaved} a menos que na rota manual` : ""}. Ninguém precisa pagar quem pagou a despesa original; só os saldos finais importam.`
+            : "Cada um paga direto a quem deve, só descontando o que duas pessoas devem uma à outra neste rolê."}
+        </p>
+        {transfers.length === 0 ? (
+          <p className="card-surface p-5 text-sm text-muted-foreground">Nada a acertar neste rolê.</p>
+        ) : (
+          <ul className="flex flex-col gap-2">
+            {transfers.map((transfer) => (
+              <li key={`${transfer.fromId}-${transfer.toId}`} className="card-surface flex items-center justify-between gap-3 p-4">
+                <span className="text-sm">
+                  <span className="font-semibold">{transfer.fromId === me ? "Você" : transfer.from}</span> paga{" "}
+                  <span className="font-semibold">{transfer.toId === me ? "você" : transfer.to}</span>
+                </span>
+                <span className="flex items-center gap-3">
+                  <span className="font-bold">{formatCents(transfer.amountCents)}</span>
+                  {transfer.fromId === me && (
+                    <Button asChild size="sm">
+                      <Link href={`/roles/${outing.id}?visao=pagamentos&para=${transfer.toId}&valor=${(transfer.amountCents / 100).toFixed(2).replace(".", ",")}`}>Pagar</Link>
+                    </Button>
+                  )}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <h2 className="text-xl font-bold">Saldo de cada um</h2>
+        <ul className="flex flex-col gap-2">
+          {balances.balances.map((balance) => (
+            <li key={balance.personId} className="card-surface flex items-center justify-between gap-3 p-3 text-sm">
+              <span className="font-semibold">{balance.personId === me ? "Você" : balance.name}</span>
+              <span className={cn("font-bold", balance.netCents < 0 ? "text-destructive" : balance.netCents > 0 ? "text-primary-glow" : "text-muted-foreground")}>
+                {balance.netCents < 0 ? "deve " : balance.netCents > 0 ? "recebe " : "em dia "}
+                {balance.netCents !== 0 && formatCents(Math.abs(balance.netCents))}
+              </span>
+            </li>
+          ))}
+        </ul>
       </section>
     </div>
   );
@@ -375,14 +473,16 @@ async function OutingContent({ params, searchParams }: Pick<PageProps<"/roles/[i
   }
 
   const isAdmin = outing.role === "admin";
-  const view = parseView((await searchParams).visao, isAdmin);
-  const [pendingRequests, expenses, people, payerRequests, bills, payments] = await Promise.all([
+  const query = await searchParams;
+  const view = parseView(query.visao, isAdmin);
+  const [pendingRequests, expenses, people, payerRequests, bills, payments, balances] = await Promise.all([
     isAdmin && view === "resumo" ? listJoinRequests(profile.personId, id).then((requests) => requests.length) : 0,
     view === "resumo" || view === "despesas" ? listExpenses(profile.personId, id) : [],
     listPayers(profile.personId, id),
     view === "despesas" || view === "resumo" ? listPayerRequests(profile.personId, id) : [],
     view === "despesas" ? listBills(profile.personId, id) : [],
     view === "pagamentos" || view === "resumo" ? listPayments(profile.personId, id) : [],
+    view === "acertos" ? getOutingBalances(profile.personId, id) : null,
   ]);
   const payerIds = new Set(people.filter((person) => person.isPayer).map((person) => person.personId));
 
@@ -396,7 +496,16 @@ async function OutingContent({ params, searchParams }: Pick<PageProps<"/roles/[i
       <Tabs outingId={outing.id} view={view} isAdmin={isAdmin} />
       {view === "resumo" && <Summary outing={outing} pendingRequests={pendingRequests} expenses={expenses} pendingPayerRequests={payerRequests.filter((request) => request.status === "pending").length} paymentsToConfirm={payments.filter((payment) => payment.canResolve).length} />}
       {view === "despesas" && <ExpensesView outing={outing} expenses={expenses} canRegister={payerIds.has(profile.personId)} requests={payerRequests} bills={bills} />}
-      {view === "pagamentos" && <PaymentsView outing={outing} payments={payments} people={people} me={profile.personId} />}
+      {view === "acertos" && balances && <SettlementsView outing={outing} balances={balances} me={profile.personId} route={query.rota === "manual" ? "manual" : "inteligente"} />}
+      {view === "pagamentos" && (
+        <PaymentsView
+          outing={outing}
+          payments={payments}
+          people={people}
+          me={profile.personId}
+          defaults={{ toId: typeof query.para === "string" ? query.para : undefined, amount: typeof query.valor === "string" ? query.valor : undefined }}
+        />
+      )}
       {view === "participantes" && <Participants outing={outing} payerIds={payerIds} />}
       {view === "convite" && <Invite outing={outing} personId={profile.personId} />}
     </>

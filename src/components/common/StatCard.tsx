@@ -1,11 +1,12 @@
 import Link from "next/link";
+import { formatCents } from "@/domain/money";
 import { cn } from "@/lib/utils";
 
-export function StatCard({ label, value, href, highlight }: { label: string; value: number; href?: string; highlight?: boolean }) {
+export function StatCard({ label, value, href, highlight, money }: { label: string; value: number; href?: string; highlight?: boolean; money?: boolean }) {
   const content = (
     <>
       <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{label}</span>
-      <span className={cn("text-3xl font-extrabold tracking-tight", highlight && "text-primary-glow")}>{value}</span>
+      <span className={cn("text-3xl font-extrabold tracking-tight", highlight && "text-primary-glow")}>{money ? formatCents(value) : value}</span>
     </>
   );
   const className = "card-surface flex flex-col gap-1 p-4";

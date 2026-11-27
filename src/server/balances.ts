@@ -211,3 +211,18 @@ export async function getRelationDetail(personId: string, otherId: string): Prom
     })),
   };
 }
+
+/** The net of one relation: across outings for accounts, the sum inside the outings for guests. */
+export function relationNet(relation: RelationView): number {
+  return relation.netCents ?? relation.byOuting.reduce((sum, item) => sum + item.netCents, 0);
+}
+
+export function relationTotals(relations: RelationView[]): { owe: number; receive: number } {
+  return relations.reduce(
+    (totals, relation) => {
+      const net = relationNet(relation);
+      return net < 0 ? { ...totals, owe: totals.owe - net } : { ...totals, receive: totals.receive + net };
+    },
+    { owe: 0, receive: 0 },
+  );
+}

@@ -153,3 +153,19 @@ describe("relação entre pessoas, em todos os rolês", () => {
     await expect(server.getRelationDetail(lucas, fora.id)).rejects.toMatchObject({ code: "person_not_found" });
   });
 });
+
+describe("totais da relação", () => {
+  it("soma o que se deve e o que se tem a receber, e convidado conta pelo rolê", async () => {
+    const guest = await person("Convidado", "11999990077", outingId, false);
+    await expensesServer.registerExpense(lucas, outingId, {
+      description: "Bebida",
+      totalCents: 2000,
+      payers: [{ personId: lucas, amountCents: 2000 }],
+      split: split([lucas, guest]),
+      occurredAt: day,
+    });
+    const relations = await server.getRelations(lucas);
+    expect(server.relationTotals(relations)).toEqual({ owe: 0, receive: 3333 + 3333 + 1000 });
+    expect(server.relationTotals(await server.getRelations(maria))).toEqual({ owe: 3333, receive: 0 });
+  });
+});
