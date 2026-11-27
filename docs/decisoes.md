@@ -49,15 +49,16 @@ Identificadores do código em inglês; textos para o usuário em português.
 
 - Toda despesa envolve **pelo menos duas pessoas** e pode ter **um ou mais pagadores**; a soma do que foi pago é o total.
 - **Dinheiro sempre em centavos inteiros.** Frações de item (1/3 de uma porção) são exatas.
-- **Formas de divisão**, escolhidas pelo dono do rolê:
-  - **igual** entre os participantes escolhidos;
+- **Formas de divisão**, escolhidas pelo dono do rolê **a cada despesa**, de acordo com a situação (não há forma de divisão padrão do rolê):
+  - **igual** entre todos os participantes do rolê, que já vêm marcados, porque o rolê contém todas e somente as pessoas que participaram dele;
   - **valores informados** por participante (a soma tem que fechar com o total);
   - **cada um paga o que consumiu**: só disponível quando a conta tem itens, vindos da leitura da notinha ou digitados. Regras em "Conta por consumo".
 - A despesa pode ter **só o valor total**, sem itens nem foto.
+- **Taxa de serviço**, quando houver, entra no total e é rateada junto com o resto (na conta por consumo, proporcional ao consumo de cada um).
 - **Divisão exata:** a soma das partes é sempre o total. O **centavo indivisível fica com quem pagou**, começando por quem pagou mais.
 - **Histórico imutável:** corrigir cria uma nova versão e marca a anterior como substituída; anular guarda quem anulou e o motivo.
 - **Evidência opcional** (foto da notinha, print de fatura, outro): todos veem se a despesa é **com** ou **sem evidência**, e se o valor do documento confere com o total. Evidência nunca é removida e acompanha as versões.
-- **Contestação:** quem participa pode pedir revisão do valor ou da divisão. Só o dono do rolê decide; aprovar leva a uma nova versão. Enquanto a contestação está aberta, as cobranças de quem contestou ficam suspensas naquele rolê.
+- **Contestação:** quem participa pode pedir revisão do valor ou da divisão. Só o dono do rolê decide; aprovar leva a uma nova versão. Quem diz **"não participei"** pede para sair da divisão, e a aprovação é do dono do rolê **e de quem pagou a despesa**, se forem pessoas diferentes. Enquanto a contestação está aberta, as cobranças de quem contestou ficam suspensas naquele rolê.
 - **Registrada por / paga por** e datas fazem parte de toda despesa (auditoria).
 
 ### Pagantes do rolê
@@ -67,17 +68,17 @@ Identificadores do código em inglês; textos para o usuário em português.
 - Quem não é pagante e quer mudar algo tem dois caminhos:
   - **pedir para virar pagante**, informando o que pagou. O pedido já traz a divisão entre os pagantes: se a pessoa pagou parte de uma despesa que já existe, o total não muda e o pedido diz quanto sai de cada pagante. A aprovação do dono gera uma nova versão da despesa (ou uma despesa nova), e a pessoa passa a ser pagante no rolê de forma permanente;
   - **contestar** o valor ou a divisão (ver "Contestação" em "Despesas").
-- Ao longo de vários rolês, quem pagou em um pode dever em outro; cada rolê é acertado separadamente (ver "Pagamentos e acertos").
+- Ao longo de vários rolês, quem pagou em um pode dever em outro. O que vale é a relação entre as pessoas (ver "Relação entre pessoas").
 
 ### Conta por consumo ("cada um paga o que consumiu")
 
 - Quem registra a conta publica a lista de itens; **cada um marca o que consumiu**, sem depender do dono. Ninguém marca mais do que sobrou na nota.
 - **Quem marca primeiro** um item escolhe se ele é só seu, **dividido por todos da conta** ou **dividido com algumas pessoas**, que escolhe. Essas pessoas ficam vinculadas ao item automaticamente.
-- Quem foi vinculado pode **sair** ("não consumi") ou **contestar** ("consumi menos", informando a quantidade). A parte liberada fica **pendente com o dono do rolê**, que recebe um alerta e pode **alertar os demais da conta** para alguém assumir.
+- **Todos os participantes entram na conta, sem exceção**, inclusive quem a pagou: ele também assume a sua parte. Quem foi vinculado a um item pode **sair do item** ("não consumi") ou **contestar** ("consumi menos", informando a quantidade). A parte liberada fica **sem dono**, e quem registrou a conta recebe um alerta e pode **alertar os demais** para alguém assumir.
 - **Fechamento da conta:**
   - com todos os itens marcados, a conta fecha e vira despesa por itens; taxa de serviço e desconto ficam proporcionais ao consumo;
-  - se o dono fechar antes, ele **quita sozinho** o que ficou pendente ou **desonera os demais** dessa parte;
-  - sem isso, a conta aguarda alguém assumir a pendência ou todos marcarem a sua parte.
+  - antes de fechar, o app **avisa que os itens não atribuídos serão divididos entre todos os participantes**, e quem fecha escolhe: **ratear** entre todos ou **transferir** a parte sem dono a alguém que se manifestou. Quem pagou o cartão e não quer deixar a conta no prejuízo pode **transferir para si mesmo**;
+  - não existe "desonerar": a parte sem dono sempre fica com alguém.
 - **Fechou, acabou a responsa:** depois do fechamento, ninguém responde mais por mudanças na marcação.
 
 ### Quem deve a quem
@@ -99,11 +100,19 @@ Identificadores do código em inglês; textos para o usuário em português.
 - **Comprovante (opção B):** pagamento com comprovante, compartilhado direto do app do banco ou enviado, é **confirmado automaticamente**. O credor pode **contestar em até 3 dias**; contestado sai do saldo até ser confirmado ou recusado pelo credor. Sem comprovante, o credor confirma.
 - **Leitura do comprovante:** antes de aceitar, o app lê o documento e **só aceita se for um comprovante de Pix**; qualquer outro documento é rejeitado. Da leitura saem valor, data, destinatário e o código único do Pix, que não pode ser usado em dois pagamentos.
 - **Pagar também por outras pessoas:** quem paga em nome de alguém passa a ser credor dessa pessoa.
-- **Acerto por rolê**, separado dos outros rolês. Ao acertar um, o app avisa que há contas em aberto em outros rolês e pergunta se a pessoa quer quitar também.
-- **Na v1 não há compensação de saldos entre rolês diferentes** (confirmado; a compensação fica para os grupos ou a v2). A visão pessoa × pessoa mostra o total entre duas pessoas em todos os rolês.
+- **Acerto:** a pessoa escolhe entre um **acerto individual** (de um rolê) ou **pagar tudo de uma vez** (o saldo total com aquela pessoa).
 - **Rota inteligente:** menor número de Pix dentro do rolê; ninguém precisa pagar quem pagou a despesa original. Mínimo exato até 16 pessoas com saldo em aberto; acima disso, maior devedor paga maior credor. A pessoa vê um **resumo** que explica a rota e quantos Pix ela economiza.
 - **Rota manual:** cada um paga diretamente a quem deve, para quem não se sente seguro com a rota inteligente.
 - Pagamentos declarados contam como feitos no planejamento da rota, para ninguém pagar duas vezes enquanto aguarda confirmação.
+
+### Relação entre pessoas (longo prazo)
+
+- A relação financeira é **entre pessoas**, e o rolê é só o contexto em que cada valor nasceu. O saldo entre duas pessoas soma despesas, pagamentos confirmados e anistias de **todos os rolês** e tem sinal: quem deve e quem recebe é **consequência da soma**, nunca um dado gravado.
+- Por isso **a direção pode inverter**: quem devia pode virar credor se, num rolê seguinte, pagar mais do que assumiu. A compensação (netting) entre rolês vale **por par de pessoas**; a compensação entre várias pessoas e vários rolês ao mesmo tempo fica para depois ([`evolucoes.md`](evolucoes.md)).
+- **Encerrar um rolê não apaga dívida.** Ele só deixa de aceitar lançamentos novos; o que ficou em aberto continua na relação entre as pessoas e se soma ao próximo rolê. Quando a dívida inverte, a **cobrança segue a direção atual** e o contador de lembretes e de pausas do par recomeça.
+- **Encerrar com saldo aberto:** o dono encerra sozinho se ele for o único com valor a receber no rolê. Se houver outras pessoas a receber, **todos votam**, cientes de que a dívida entre as pessoas continua e só o rolê se encerra.
+- **Anistia:** só o **credor** perdoa, e só até o que tem a receber naquele momento. É um **lançamento imutável** no histórico (quem, quando e quanto), que reduz o saldo sem apagar nada.
+- Ao declarar um pagamento no sentido contrário ao do saldo atual, o app avisa que a outra pessoa é quem deve.
 
 ### Acesso e cadastro
 
@@ -120,7 +129,7 @@ Identificadores do código em inglês; textos para o usuário em português.
 
 Há três níveis de configuração, todos em telas do aplicativo:
 - **Pessoa:** dados do cadastro (nome, telefone e e-mail), **chave Pix**, preferências de notificação e de exibição. A chave Pix é usada para gerar o Pix copia e cola e **só aparece para quem deve a essa pessoa**.
-- **Rolê (dono do rolê):** forma de divisão padrão, rota de acerto sugerida e taxa de serviço padrão, entre outros ajustes do rolê.
+- **Rolê (dono do rolê):** rota de acerto sugerida e taxa de serviço padrão, entre outros ajustes do rolê. A forma de divisão não é ajuste do rolê: é escolhida em cada despesa.
 - **Sistema (super administrador):** os parâmetros dos **motores de regras**, como os da cobrança (intervalo, janela de horário, quando oferecer pausa, duração e número de pausas) e o prazo para contestar um comprovante.
 - Cada parâmetro tem **valor padrão e limites mínimo e máximo**, e toda mudança é registrada. Mudar um parâmetro vale daí em diante e **não reescreve o histórico**.
 
