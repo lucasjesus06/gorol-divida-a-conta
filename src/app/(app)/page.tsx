@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/button";
 import { getGuestAccessRequest, isApprovedPerson, isSuperAdmin, listAccessRequests } from "@/server/access";
 import { getIdentity, getRenderProfile } from "@/server/auth";
+import { getRelations, relationTotals } from "@/server/balances";
 import { countPendingJoinRequests } from "@/server/join";
 import { listOutings } from "@/server/outings";
 import { InstallApp } from "./install-app";
@@ -17,12 +18,14 @@ const RECENT_OUTINGS = 5;
 async function Dashboard() {
   const profile = await getRenderProfile();
   const identity = await getIdentity();
-  const [outings, canCreate, pendingJoins, admin] = await Promise.all([
+  const [outings, canCreate, pendingJoins, admin, relations] = await Promise.all([
     listOutings(profile.personId),
     isApprovedPerson(profile.personId),
     countPendingJoinRequests(profile.personId),
     identity ? isSuperAdmin(identity.userId) : false,
+    getRelations(profile.personId),
   ]);
+  const totals = relationTotals(relations);
   const guestRequest = identity?.kind === "guest" ? await getGuestAccessRequest(identity.userId) : null;
   const pendingAccess = admin ? (await listAccessRequests()).filter((request) => request.status === "pending").length : 0;
   const active = outings.filter((outing) => outing.status === "active");
@@ -60,6 +63,8 @@ async function Dashboard() {
       )}
 
       <section className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <StatCard label="Você deve" value={totals.owe} money href="/resumo" highlight={totals.owe > 0} />
+        <StatCard label="A receber" value={totals.receive} money href="/resumo" />
         <StatCard label="Rolês ativos" value={active.length} href="/roles" />
         <StatCard label="Pedidos para aprovar" value={pendingJoins} href="/roles" highlight={pendingJoins > 0} />
         {admin && <StatCard label="Pedidos de acesso" value={pendingAccess} href="/admin" highlight={pendingAccess > 0} />}

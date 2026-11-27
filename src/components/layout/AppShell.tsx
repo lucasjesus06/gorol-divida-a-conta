@@ -53,6 +53,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <Suspense fallback={null}>
             <NavLink href="/" label="Início" icon="home" variant="side" />
             <NavLink href="/roles" label="Rolês" icon="outings" variant="side" />
+            <NavLink href="/resumo" label="Resumo" icon="summary" variant="side" />
             <NavLink href="/historico" label="Histórico" icon="history" variant="side" />
             <AdminNav variant="side" />
           </Suspense>
@@ -78,6 +79,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <Suspense fallback={null}>
           <NavLink href="/" label="Início" icon="home" variant="tab" />
           <NavLink href="/roles" label="Rolês" icon="outings" variant="tab" />
+          <NavLink href="/resumo" label="Resumo" icon="summary" variant="tab" />
           <NavLink href="/historico" label="Histórico" icon="history" variant="tab" />
           <AdminNav variant="tab" />
         </Suspense>
