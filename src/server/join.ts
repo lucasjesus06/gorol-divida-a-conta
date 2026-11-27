@@ -1,5 +1,5 @@
 import "server-only";
-import { and, count, desc, eq, gt, isNull, sql } from "drizzle-orm";
+import { and, count, desc, eq, gt, isNotNull, isNull, sql } from "drizzle-orm";
 import { asService, getDb } from "@/db/client";
 import { outingJoinAttempts, outingJoinLinks, outingJoinRequests, outingParticipants, outings, people } from "@/db/schema";
 import { DomainError } from "@/domain/domain-error";
@@ -256,5 +256,24 @@ export async function getGuestJoinStatus(guestUserId: string) {
       .orderBy(desc(outingJoinRequests.createdAt))
       .limit(1);
     return latest ?? null;
+  });
+}
+
+export async function countPendingJoinRequests(personId: string) {
+  return asService(async () => {
+    const [row] = await getDb()
+      .select({ total: count() })
+      .from(outingJoinRequests)
+      .innerJoin(
+        outingParticipants,
+        and(
+          eq(outingParticipants.outingId, outingJoinRequests.outingId),
+          eq(outingParticipants.personId, personId),
+          eq(outingParticipants.role, "admin"),
+          isNotNull(outingParticipants.confirmedAt),
+        ),
+      )
+      .where(eq(outingJoinRequests.status, "pending"));
+    return row.total;
   });
 }
