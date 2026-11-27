@@ -78,6 +78,20 @@
       "when": 1795811545754,
       "tag": "0010_politicas_despesas",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1795813615415,
+      "tag": "0011_pedido_de_pagante",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1795813616325,
+      "tag": "0012_politicas_pedido_de_pagante",
+      "breakpoints": true
     }
   ]
 }
