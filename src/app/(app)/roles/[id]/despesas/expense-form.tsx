@@ -3,7 +3,7 @@
 import { useActionState, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { inputClass } from "@/components/ui/field-styles";
-import { saveExpenseAction, type ExpenseFormState } from "./actions";
+import { requestPayerAction, saveExpenseAction, type ExpenseFormState } from "./actions";
 
 export type FormPerson = { personId: string; name: string; isPayer: boolean };
 
@@ -23,14 +23,18 @@ export function ExpenseForm({
   people,
   defaults,
   idempotencyKey,
+  intent = "register",
+  targetExpenses = [],
 }: {
   outingId: string;
   me: string;
   idempotencyKey: string;
+  intent?: "register" | "request";
+  targetExpenses?: { id: string; label: string }[];
   people: FormPerson[];
   defaults: ExpenseFormDefaults;
 }) {
-  const [state, action, pending] = useActionState<ExpenseFormState, FormData>(saveExpenseAction, {});
+  const [state, action, pending] = useActionState<ExpenseFormState, FormData>(intent === "request" ? requestPayerAction : saveExpenseAction, {});
   const payers = people.filter((person) => person.isPayer);
   const initialPayers = Object.keys(defaults.payers);
   const [multi, setMulti] = useState(initialPayers.length > 1);
@@ -42,6 +46,19 @@ export function ExpenseForm({
       <input type="hidden" name="idempotencyKey" value={idempotencyKey} />
       {defaults.expenseId && <input type="hidden" name="expenseId" value={defaults.expenseId} />}
 
+      {intent === "request" && targetExpenses.length > 0 && (
+        <label className="flex flex-col gap-2 text-sm font-medium">
+          Esta despesa já foi registrada?
+          <select name="targetExpenseId" defaultValue="" className={inputClass}>
+            <option value="">Não, é uma despesa nova</option>
+            {targetExpenses.map((expense) => (
+              <option key={expense.id} value={expense.id}>
+                Sim: {expense.label}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
       <label className="flex flex-col gap-2 text-sm font-medium">
         Descrição
         <input name="description" required maxLength={120} defaultValue={defaults.description} className={inputClass} />
@@ -139,7 +156,7 @@ export function ExpenseForm({
         </p>
       )}
       <Button type="submit" disabled={pending}>
-        {defaults.expenseId ? "Salvar correção" : "Registrar despesa"}
+        {intent === "request" ? "Enviar pedido ao dono" : defaults.expenseId ? "Salvar correção" : "Registrar despesa"}
       </Button>
     </form>
   );

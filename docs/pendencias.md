@@ -53,7 +53,8 @@ Tudo o que ainda precisa ser feito ou decidido. O que fica para versões futuras
 
 - **Histórico (GOR-26):** hoje lista só os **rolês encerrados**. Confirmar se ele também deve reunir o **histórico financeiro** (dívidas por pessoa, pagamentos e anistias, com a origem de cada valor); se sim, isso entra com a GOR-12.
 - **Estrutura de navegação (GOR-26), o que ficou de fora:** a navegação tem só as áreas que já existem (Início, Rolês e, para o super admin, Administração). **Resumo financeiro** entra com a GOR-12 e **Configurações** com a GOR-20. A visão "Despesas" do rolê ainda é um espaço vazio com aviso e entra na GOR-08; remover participante continua na GOR-16.
-- **Despesas (GOR-08), o que ficou de fora:** pedido para virar pagante e contestação (GOR-09), divisão por itens (GOR-10), evidência da despesa (GOR-15), **remover um pagante declarado** e a **página do rolê não mostra ainda saldos** (GOR-12). O ajuste do prazo do rolê encerrado vale a partir da GOR-16.
+- **Pedido de pagante (GOR-09), o que ficou de fora:** o aviso ao dono de que há pedido esperando é só o contador no resumo do rolê (a notificação vem com a GOR-13), e o contador da tela inicial ainda não soma os pedidos de pagante.
+- **Despesas (GOR-08), o que ficou de fora:** contestação (GOR-09, segunda parte), divisão por itens (GOR-10), evidência da despesa (GOR-15), **remover um pagante declarado** e a **página do rolê não mostra ainda saldos** (GOR-12). O ajuste do prazo do rolê encerrado vale a partir da GOR-16.
 - **Rolês (GOR-06), o que ficou de fora:**
   - **remover participante** e **encerrar rolê** ficam para a GOR-16 (remover com histórico de despesas quebraria os saldos);
   - editar o nome ou o tipo do rolê;

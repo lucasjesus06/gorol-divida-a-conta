@@ -3,6 +3,7 @@ import { bigint, boolean, check, index, integer, pgTable, primaryKey, text, time
 import { authUsers } from "drizzle-orm/supabase";
 import { accessRequestSources, accessRequestStatuses } from "../domain/access";
 import { expenseSplitMethods, expenseStatuses } from "../domain/expense-status";
+import { payerRequestStatuses } from "../domain/payer-request";
 import { joinRequestStatuses } from "../domain/join";
 import { outingKinds, outingRoles, outingStatuses } from "../domain/outing";
 
@@ -292,4 +293,72 @@ export const expenseShares = pgTable(
     primaryKey({ columns: [table.expenseId, table.personId] }),
     check("expense_shares_amount_non_negative", sql`${table.amountCents} >= 0`),
   ],
+).enableRLS();
+
+export const payerRequests = pgTable(
+  "payer_requests",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    outingId: uuid("outing_id")
+      .notNull()
+      .references(() => outings.id, { onDelete: "restrict" }),
+    targetExpenseId: uuid("target_expense_id").references(() => expenses.id, { onDelete: "restrict" }),
+    requestedBy: uuid("requested_by")
+      .notNull()
+      .references(() => people.id, { onDelete: "restrict" }),
+    description: text("description").notNull(),
+    totalCents: bigint("total_cents", { mode: "number" }).notNull(),
+    splitMethod: text("split_method", { enum: expenseSplitMethods }).notNull(),
+    occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull(),
+    status: text("status", { enum: payerRequestStatuses }).notNull().default("pending"),
+    decidedBy: uuid("decided_by").references(() => people.id, { onDelete: "restrict" }),
+    decidedAt: timestamp("decided_at", { withTimezone: true }),
+    decisionNote: text("decision_note"),
+    resultExpenseId: uuid("result_expense_id").references(() => expenses.id, { onDelete: "restrict" }),
+    idempotencyKey: text("idempotency_key"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    check("payer_requests_status_valid", oneOf(table.status, payerRequestStatuses)),
+    check("payer_requests_split_method_valid", oneOf(table.splitMethod, expenseSplitMethods)),
+    check("payer_requests_total_positive", sql`${table.totalCents} > 0`),
+    check("payer_requests_description_filled", sql`length(btrim(${table.description})) > 0`),
+    check("payer_requests_decided_matches_status", sql`(${table.status} = 'pending') = (${table.decidedAt} is null)`),
+    check("payer_requests_result_only_when_approved", sql`${table.resultExpenseId} is null or ${table.status} = 'approved'`),
+    uniqueIndex("payer_requests_idempotency_idx")
+      .on(table.outingId, table.idempotencyKey)
+      .where(sql`${table.idempotencyKey} is not null`),
+    uniqueIndex("payer_requests_one_pending_per_target_idx")
+      .on(table.requestedBy, table.targetExpenseId)
+      .where(sql`${table.status} = 'pending' and ${table.targetExpenseId} is not null`),
+    index("payer_requests_outing_idx").on(table.outingId, table.status),
+  ],
+).enableRLS();
+
+export const payerRequestPayers = pgTable(
+  "payer_request_payers",
+  {
+    requestId: uuid("request_id")
+      .notNull()
+      .references(() => payerRequests.id, { onDelete: "restrict" }),
+    personId: uuid("person_id")
+      .notNull()
+      .references(() => people.id, { onDelete: "restrict" }),
+    amountCents: bigint("amount_cents", { mode: "number" }).notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.requestId, table.personId] }), check("payer_request_payers_amount_positive", sql`${table.amountCents} > 0`)],
+).enableRLS();
+
+export const payerRequestShares = pgTable(
+  "payer_request_shares",
+  {
+    requestId: uuid("request_id")
+      .notNull()
+      .references(() => payerRequests.id, { onDelete: "restrict" }),
+    personId: uuid("person_id")
+      .notNull()
+      .references(() => people.id, { onDelete: "restrict" }),
+    amountCents: bigint("amount_cents", { mode: "number" }).notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.requestId, table.personId] }), check("payer_request_shares_amount_non_negative", sql`${table.amountCents} >= 0`)],
 ).enableRLS();
