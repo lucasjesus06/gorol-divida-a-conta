@@ -1,7 +1,7 @@
 import { eq, sql } from "drizzle-orm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { accessInvites, accessRequests, outingParticipants, outings, people } from "@/db/schema";
-import { createTestDatabase } from "@/test/database";
+import { approveAccount, createTestDatabase } from "@/test/database";
 
 const state = vi.hoisted(() => ({
   db: undefined as unknown,
@@ -38,6 +38,7 @@ vi.mock("@/lib/supabase/admin", () => ({
 }));
 
 const access = await import("./access");
+const outingsServer = await import("./outings");
 
 type TestDb = Awaited<ReturnType<typeof createTestDatabase>>;
 const db = () => state.db as TestDb;
@@ -215,5 +216,75 @@ describe("conta aprovada", () => {
     await access.redeemInvite(token, { name: "Bruno", email: "bruno@exemplo.com", phone: "11999990002" });
     const [account] = await access.listAccounts();
     expect(await access.isApprovedPerson(account.id)).toBe(true);
+  });
+});
+
+describe("convidado que cria cadastro", () => {
+  async function convidadoNoRole() {
+    const [dono] = await db().insert(people).values({ displayName: "Dono", phone: "+5511999990100" }).returning();
+    await approveAccount(db(), dono.id);
+    const outingId = await outingsServer.createOuting({ personId: dono.id, displayName: "Dono" }, { name: "Churrasco", kind: "event" });
+    await outingsServer.addParticipant(dono.id, outingId, { name: "Bia", phone: "11988880002" });
+    const guestUser = crypto.randomUUID();
+    await db().execute(sql`insert into auth.users (id, email) values (${guestUser}, ${`${guestUser}@convidado.local`})`);
+    const [bia] = await db().select().from(people).where(eq(people.phone, "+5511988880002"));
+    await db().update(people).set({ userId: guestUser }).where(eq(people.id, bia.id));
+    await db().update(outingParticipants).set({ confirmedAt: new Date() }).where(eq(outingParticipants.personId, bia.id));
+    return { dono, outingId, guestUser, biaId: bia.id };
+  }
+
+  it("o pedido usa o nome e o telefone que a pessoa já tem, e só o e-mail é novo", async () => {
+    const { guestUser } = await convidadoNoRole();
+    await access.submitGuestAccessRequest(guestUser, { email: " Bia@Exemplo.com " });
+
+    const [request] = await access.listAccessRequests();
+    expect(request).toMatchObject({ name: "Bia", email: "bia@exemplo.com", phone: "+5511988880002", status: "pending", guestUserId: guestUser });
+    expect(await access.getGuestAccessRequest(guestUser)).toEqual({ status: "pending" });
+  });
+
+  it("quem ainda não está em nenhum rolê não pede cadastro por aqui", async () => {
+    const semPessoa = crypto.randomUUID();
+    await db().execute(sql`insert into auth.users (id, email) values (${semPessoa}, 'x@convidado.local')`);
+    await expect(access.submitGuestAccessRequest(semPessoa, { email: "x@exemplo.com" })).rejects.toMatchObject({
+      code: "guest_without_person",
+    });
+  });
+
+  it("o dono do rolê vê quem pediu cadastro", async () => {
+    const { dono, outingId, guestUser } = await convidadoNoRole();
+    await access.submitGuestAccessRequest(guestUser, { email: "bia@exemplo.com" });
+
+    const detail = await outingsServer.getOuting(dono.id, outingId);
+    expect(detail.participants.map((participant) => [participant.displayName, participant.accountRequested])).toEqual([
+      ["Dono", false],
+      ["Bia", true],
+    ]);
+  });
+
+  it("aprovar liga a conta à mesma pessoa pela sessão, mantendo o histórico, mesmo com o telefone já ocupado pelo convidado", async () => {
+    const { outingId, guestUser, biaId } = await convidadoNoRole();
+    await access.submitGuestAccessRequest(guestUser, { email: "bia@exemplo.com" });
+    const [request] = await access.listAccessRequests();
+
+    await access.approveAccessRequest(request.id, admin);
+
+    const [bia] = await db().select().from(people).where(eq(people.id, biaId));
+    expect(bia.userId).not.toBe(guestUser);
+    expect(bia.userId).not.toBeNull();
+    expect(bia.accountApprovedAt).not.toBeNull();
+    expect(await access.isApprovedPerson(biaId)).toBe(true);
+    expect((await outingsServer.getOuting(biaId, outingId)).name).toBe("Churrasco");
+    expect(await db().$count(people, eq(people.phone, "+5511988880002"))).toBe(1);
+  });
+
+  it("recusado, continua convidado", async () => {
+    const { guestUser, biaId } = await convidadoNoRole();
+    await access.submitGuestAccessRequest(guestUser, { email: "bia@exemplo.com" });
+    const [request] = await access.listAccessRequests();
+    await access.rejectAccessRequest(request.id, admin, "");
+
+    const [bia] = await db().select().from(people).where(eq(people.id, biaId));
+    expect(bia.userId).toBe(guestUser);
+    expect(await access.getGuestAccessRequest(guestUser)).toEqual({ status: "rejected" });
   });
 });
