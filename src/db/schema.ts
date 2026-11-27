@@ -137,6 +137,8 @@ export const accessInvites = pgTable(
       .references(() => people.id, { onDelete: "restrict" }),
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
     usedAt: timestamp("used_at", { withTimezone: true }),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    revokedBy: uuid("revoked_by").references(() => people.id, { onDelete: "set null" }),
     requestId: uuid("request_id").references(() => accessRequests.id, { onDelete: "set null" }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },

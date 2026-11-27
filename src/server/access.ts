@@ -210,11 +210,23 @@ async function listInvitesImpl() {
       createdAt: accessInvites.createdAt,
       expiresAt: accessInvites.expiresAt,
       usedAt: accessInvites.usedAt,
+      revokedAt: accessInvites.revokedAt,
       createdByName: people.displayName,
     })
     .from(accessInvites)
     .innerJoin(people, eq(people.id, accessInvites.createdBy))
     .orderBy(desc(accessInvites.createdAt));
+}
+
+async function revokeInviteImpl(adminId: string, inviteId: string) {
+  const revoked = await getDb()
+    .update(accessInvites)
+    .set({ revokedAt: sql`now()`, revokedBy: adminId })
+    .where(and(eq(accessInvites.id, inviteId), isNull(accessInvites.usedAt), isNull(accessInvites.revokedAt)))
+    .returning({ id: accessInvites.id });
+  if (revoked.length === 0) {
+    throw new DomainError("invite_not_revocable", "Este convite já foi usado ou revogado.");
+  }
 }
 
 async function findUsableInvite(token: string) {
@@ -225,6 +237,7 @@ async function findUsableInvite(token: string) {
       and(
         eq(accessInvites.tokenHash, hashToken(token)),
         isNull(accessInvites.usedAt),
+        isNull(accessInvites.revokedAt),
         gt(accessInvites.expiresAt, sql`now()`),
       ),
     );
@@ -245,7 +258,7 @@ async function redeemInviteImpl(token: string, input: { name: string; email: str
     const used = await tx
       .update(accessInvites)
       .set({ usedAt: sql`now()` })
-      .where(and(eq(accessInvites.id, invite.id), isNull(accessInvites.usedAt), gt(accessInvites.expiresAt, sql`now()`)))
+      .where(and(eq(accessInvites.id, invite.id), isNull(accessInvites.usedAt), isNull(accessInvites.revokedAt), gt(accessInvites.expiresAt, sql`now()`)))
       .returning({ id: accessInvites.id });
     if (used.length === 0) {
       throw new DomainError("invite_unavailable", "Este convite não vale mais. Peça outro a quem te convidou.");
@@ -283,6 +296,7 @@ export const listAccessRequests = () => asService(listAccessRequestsImpl);
 export const approveAccessRequest = (...args: Parameters<typeof approveAccessRequestImpl>) => asService(() => approveAccessRequestImpl(...args));
 export const rejectAccessRequest = (...args: Parameters<typeof rejectAccessRequestImpl>) => asService(() => rejectAccessRequestImpl(...args));
 export const createInvite = (...args: Parameters<typeof createInviteImpl>) => asService(() => createInviteImpl(...args));
+export const revokeInvite = (...args: Parameters<typeof revokeInviteImpl>) => asService(() => revokeInviteImpl(...args));
 export const listInvites = () => asService(listInvitesImpl);
 export const inviteIsUsable = (...args: Parameters<typeof inviteIsUsableImpl>) => asService(() => inviteIsUsableImpl(...args));
 export const redeemInvite = (...args: Parameters<typeof redeemInviteImpl>) => asService(() => redeemInviteImpl(...args));

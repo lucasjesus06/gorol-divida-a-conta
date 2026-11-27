@@ -171,6 +171,30 @@ describe("convites", () => {
     ).rejects.toMatchObject({ code: "invite_unavailable" });
   });
 
+  it("convite revogado deixa de valer e registra quem revogou", async () => {
+    const token = await access.createInvite(admin);
+    const [{ id }] = await access.listInvites();
+    await access.revokeInvite(admin, id);
+
+    expect(await access.inviteIsUsable(token)).toBe(false);
+    await expect(access.redeemInvite(token, dados)).rejects.toMatchObject({ code: "invite_unavailable" });
+    const [row] = await db().select().from(accessInvites);
+    expect(row.revokedBy).toBe(admin);
+    expect((await access.listInvites())[0].revokedAt).not.toBeNull();
+  });
+
+  it("não revoga convite já usado nem já revogado", async () => {
+    const used = await access.createInvite(admin);
+    await access.redeemInvite(used, dados);
+    const [usedRow] = await access.listInvites();
+    await expect(access.revokeInvite(admin, usedRow.id)).rejects.toMatchObject({ code: "invite_not_revocable" });
+
+    await access.createInvite(admin);
+    const fresh = (await access.listInvites()).find((invite) => !invite.usedAt);
+    await access.revokeInvite(admin, fresh!.id);
+    await expect(access.revokeInvite(admin, fresh!.id)).rejects.toMatchObject({ code: "invite_not_revocable" });
+  });
+
   it("convite vencido não vale", async () => {
     const token = await access.createInvite(admin);
     await db().update(accessInvites).set({ expiresAt: new Date(Date.now() - 1000) });
