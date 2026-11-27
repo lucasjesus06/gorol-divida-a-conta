@@ -81,7 +81,8 @@ Identificadores do código em inglês; textos para o usuário em português.
   - antes de fechar, o app **avisa que os itens não atribuídos serão divididos entre todos os participantes**, e quem fecha escolhe: **ratear** entre todos ou **transferir** a parte sem dono a alguém que se manifestou. Quem pagou o cartão e não quer deixar a conta no prejuízo pode **transferir para si mesmo**;
   - quem recebe a parte transferida **precisa aceitar** (quando quem fecha transfere para si mesmo, não há o que aceitar);
   - não existe "desonerar": a parte sem dono sempre fica com alguém.
-- **Fechou, acabou a responsa:** depois do fechamento, ninguém responde mais por mudanças na marcação.
+- **Fechou, acabou a responsa:** vale **só para aquela conta**: depois do fechamento, ninguém responde mais por mudanças na marcação dela. **Um rolê pode ter várias contas** (um bar, depois uma pizzaria, depois uma tabacaria), e o resto do rolê continua aberto.
+- **Ao fechar uma conta**, se ela for a única do rolê, o app pergunta se a pessoa quer **encerrar a conta e também o rolê**, ou **só a conta**, porque ainda vai abrir outras. Encerrar o rolê segue as regras de "Relação entre pessoas" (não encerra enquanto houver convidado sem conta devendo).
 
 ### Quem deve a quem
 
@@ -115,6 +116,7 @@ Identificadores do código em inglês; textos para o usuário em português.
 - **Encerrar um rolê não apaga dívida.** Ele só deixa de aceitar lançamentos novos; o que ficou em aberto continua na relação entre as pessoas e se soma ao próximo rolê. Quando a dívida inverte, a **cobrança segue a direção atual** e o contador de lembretes e de pausas do par recomeça.
 - **Só quem tem conta tem relação de longo prazo.** Convidados (acesso temporário, identificados apenas por telefone) **não devem a longo prazo**: precisam encerrar as dívidas **dentro do rolê**. Só o telefone é pouco para identificar alguém, e por isso não existe histórico de quem não tem conta; a conta é o que traz a relação de longo prazo e o histórico.
   - Ao entrar, o convidado é convidado a **criar cadastro**, que depende da **aprovação do super administrador**. Enquanto o pedido estiver pendente, **o rolê não encerra**; se for recusado, o convidado precisa **pagar**.
+  - **O convidado com dívida não pode deixar o rolê** nem o rolê pode ser encerrado enquanto houver devedor sem cadastro. O cadastro é o que cria o histórico dele.
   - **Convidado que tem a receber** segue a mesma regra: ou o rolê é acertado, ou ele cria conta (e informa a chave Pix no cadastro). Ele também pode **recusar a conta e informar a chave Pix manualmente** para receber, uma opção que o devedor não tem.
   - Ao encerrar o rolê com dívida de convidado, ele escolhe: **criar cadastro** ou **pagar agora**. Quando pede o cadastro, o **dono do rolê fica ciente**.
   - O dono, ao tentar encerrar o rolê, é **informado de quais pessoas sem conta ainda devem**. Enquanto não pagarem nem tiverem conta, o rolê não se encerra.
@@ -143,7 +145,7 @@ Identificadores do código em inglês; textos para o usuário em português.
   - **convite:** o Lucas gera o convite e a pessoa se cadastra por ele. O convite é de **uso único**, vale por **7 dias** e só o resumo (hash) dele fica guardado; o link aparece uma única vez, na hora de gerar.
   - a aprovação cria o acesso no Supabase e a pessoa pelo telefone (assumindo a que um dono de rolê já tivesse cadastrado), tudo ou nada: se o banco falhar, o acesso é desfeito.
 - Só quem tem conta aprovada **cria rolê**. Depois de aprovada, a pessoa faz o cadastro e o login pela própria aplicação, **sem senha: por código de 6 dígitos enviado por e-mail** (sem custo). Um link mágico não serve bem a quem usa o app instalado, porque no iPhone o link abre no navegador e não no app. **Senha comum** só entra se o envio de e-mail se mostrar inviável.
-- **Sem cotas nem limites de uso no MVP:** serão poucos testadores. A leitura de documentos tem custo, então o controle de gasto fica no próprio provedor, e não no app.
+- **Sem cotas nem limites de uso no MVP:** serão poucos testadores.
 - **Super administrador:** papel de sistema, só o Lucas no MVP, marcado direto no banco (tabela `super_admins`), sem tela. Vê pedidos, convites e contas, e **toda aprovação ou recusa fica registrada** (quem, quando).
 
 ### Configurações
@@ -158,6 +160,7 @@ Há três níveis de configuração, todos em telas do aplicativo:
 
 - O app lê **foto da notinha, print de tela e PDF** que tenham descrições e valores (fatura, nota, pedido de delivery) e monta um **rascunho** de despesa: descrição, data, total e, quando houver, itens e taxa de serviço. Word, Excel e outros formatos ficam fora do MVP.
 - **A leitura nunca vira despesa sozinha:** a pessoa revisa e confirma. Se o documento traz itens, o rascunho pode virar conta por consumo; se não, uma despesa só com o total.
+- **O leitor é open source e faz parte do MVP**, sem custo por leitura. A escolha da ferramenta (por exemplo, um OCR como o Tesseract, com regras próprias para montar os campos) é feita na GOR-17, com um teste de viabilidade antes, por causa do tamanho e do tempo de execução no servidor.
 - O leitor **só extrai campos fixos e não executa nada** do que está no documento. O conteúdo do arquivo é tratado como dado não confiável.
 - Extrai só o que a despesa precisa (descrição, valor, data). **O arquivo não é guardado por padrão**; a pessoa escolhe se quer guardá-lo como evidência da despesa.
 - **Tamanho limitado:** imagens são reduzidas no celular e há limite de tamanho e de páginas por arquivo.

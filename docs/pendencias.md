@@ -35,11 +35,10 @@ Tudo o que ainda precisa ser feito ou decidido. O que fica para versões futuras
 - **Textos dos lembretes** (tom de meme; frases de efeito de divulgação não entram na interface) e modelos de mensagem do WhatsApp, que precisam de aprovação da Meta.
 - **Termos e condições** do primeiro acesso, incluindo o consentimento para os lembretes: texto a escrever, de preferência com orientação jurídica (LGPD).
 - **Leitura de documentos (GOR-17, GOR-18):**
-  - provedor do modelo de visão, chave de API e **quem paga** (sem limite por rolê no MVP; o teto de gasto fica no provedor);
-  - texto dos termos de uso sobre o envio do documento a um terceiro (LGPD);
+  - **ferramenta de leitura open source** (decidido que é open source): escolher na GOR-17 depois de um teste de viabilidade (tamanho e tempo de execução no servidor da Vercel, qualidade em notinhas reais, regras para montar os campos);
+  - texto dos termos de uso sobre o tratamento do documento (LGPD), que deixa de ser envio a um terceiro se a leitura rodar no nosso servidor;
   - piloto com 15 a 20 documentos reais antes de prometer a função aos usuários;
   - valores dos limites de tamanho e de páginas;
-  - se o comprovante de Pix com valor ou destinatário diferentes do pagamento declarado é rejeitado ou segue para o credor confirmar.
 - **Armazenamento de arquivos:** limites de tamanho e por quanto tempo guardar.
 - **Login de conta por código:** canal do código (WhatsApp ou e-mail) e quando a pessoa passa de participante de rolê a conta.
 - **Grupos:** fluxo de vincular uma relação a um grupo, quem autoriza e como fica a visão consolidada.
