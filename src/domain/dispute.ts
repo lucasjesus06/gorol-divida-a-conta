@@ -102,7 +102,7 @@ export function disputeOutcome(decisions: ApprovalDecision[]): DisputeStatus {
 }
 
 /** The equal split of an expense once someone who did not take part is taken out. */
-export function equalSplitWithout(expense: Expense, personId: string): SplitRule {
+export function equalSplitWithout(expense: Expense, personId: string): Extract<SplitRule, { method: "equal" }> {
   if (expense.split.method !== "equal") {
     throw new DomainError("not_participated_needs_equal_split", "Esta opção vale para despesas divididas por igual.");
   }

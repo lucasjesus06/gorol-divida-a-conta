@@ -84,8 +84,10 @@ export function toDomainInput(input: ExpenseInput): { payers: Payer[]; split: Sp
   };
 }
 
-async function loadViews(outingId: string, names: Map<string, string>, only?: string[]) {
-  const rows = await getDb()
+type Reader = Pick<ReturnType<typeof getDb>, "select">;
+
+async function loadViews(outingId: string, names: Map<string, string>, only?: string[], reader: Reader = getDb()) {
+  const rows = await reader
     .select()
     .from(expenses)
     .where(only ? and(eq(expenses.outingId, outingId), inArray(expenses.id, only)) : eq(expenses.outingId, outingId))
@@ -95,8 +97,8 @@ async function loadViews(outingId: string, names: Map<string, string>, only?: st
   }
   const ids = rows.map((row) => row.id);
   const [payers, shares] = await Promise.all([
-    getDb().select().from(expensePayers).where(inArray(expensePayers.expenseId, ids)),
-    getDb().select().from(expenseShares).where(inArray(expenseShares.expenseId, ids)),
+    reader.select().from(expensePayers).where(inArray(expensePayers.expenseId, ids)),
+    reader.select().from(expenseShares).where(inArray(expenseShares.expenseId, ids)),
   ]);
   const nameOf = (personId: string) => names.get(personId) ?? "Pessoa";
   return rows.map<ExpenseView>((row) => ({
@@ -209,8 +211,8 @@ export async function registerExpense(personId: string, outingId: string, input:
   return expense.id;
 }
 
-export async function loadCurrent(outingId: string, expenseId: string, names: Map<string, string>) {
-  const [view] = await loadViews(outingId, names, [expenseId]);
+export async function loadCurrent(outingId: string, expenseId: string, names: Map<string, string>, reader: Reader = getDb()) {
+  const [view] = await loadViews(outingId, names, [expenseId], reader);
   if (!view) {
     throw new DomainError("expense_not_found", "Despesa não encontrada.");
   }
