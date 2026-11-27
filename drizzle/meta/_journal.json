@@ -218,6 +218,20 @@
       "when": 1795821209065,
       "tag": "0030_avisos_de_encerramento_e_saida",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1795822210732,
+      "tag": "0031_votacao_de_encerramento",
+      "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1795822211615,
+      "tag": "0032_politicas_votacao_de_encerramento",
+      "breakpoints": true
     }
   ]
 }
