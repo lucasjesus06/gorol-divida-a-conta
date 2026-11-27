@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { billPartTransferred, closingVoteRequested, closingVoteResolved, guestRequestedAccount, joinRequested, outingClosed, participantLeft, participantRemoved, paymentDeclared, paymentReminder } from "./notification";
+import { billPartTransferred, closingVoteRequested, outingReopened, closingVoteResolved, guestRequestedAccount, joinRequested, outingClosed, participantLeft, participantRemoved, paymentDeclared, paymentReminder } from "./notification";
 
 const outingId = "11111111-1111-4111-8111-111111111111";
 
@@ -46,5 +46,12 @@ describe("avisos", () => {
     expect(closingVoteResolved({ outingId, outingName: "Churrasco", result: "approved" }).title).toBe("Rolê encerrado");
     expect(closingVoteResolved({ outingId, outingName: "Churrasco", result: "rejected" }).body).toContain("continua aberto");
     expect(closingVoteResolved({ outingId, outingName: "Churrasco", result: "cancelled" }).body).toContain("mudaram");
+  });
+
+  it("o aviso de reabertura nomeia quem contestou e leva ao rolê", () => {
+    const notice = outingReopened({ outingId, outingName: "Churrasco", personName: "Maria" });
+    expect(notice.url).toBe(`/roles/${outingId}`);
+    expect(notice.body).toContain("Maria");
+    expect(notice.body).toContain("reaberto");
   });
 });

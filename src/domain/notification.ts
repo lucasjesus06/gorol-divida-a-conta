@@ -107,3 +107,13 @@ export function closingVoteResolved(input: { outingId: string; outingName: strin
   } as const;
   return draft("closing_vote_resolved", input.result === "approved" ? "Rolê encerrado" : "Encerramento não aconteceu", texts[input.result], `/roles/${input.outingId}`);
 }
+
+/** To everyone in the outing: a late dispute opened it again. */
+export function outingReopened(input: { outingId: string; outingName: string; personName: string }) {
+  return draft(
+    "outing_reopened",
+    "Rolê reaberto",
+    `${input.personName} contestou uma despesa de ${input.outingName} depois do prazo, e o rolê foi reaberto para o dono avaliar.`,
+    `/roles/${input.outingId}`,
+  );
+}
