@@ -740,3 +740,24 @@ export const closingVoteChoices = pgTable(
     check("closing_vote_choices_decided_matches", sql`(${table.decision} = 'pending') = (${table.decidedAt} is null)`),
   ],
 ).enableRLS();
+
+export const outingReopenings = pgTable(
+  "outing_reopenings",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    outingId: uuid("outing_id")
+      .notNull()
+      .references(() => outings.id, { onDelete: "restrict" }),
+    /** The late dispute that made the outing open again. */
+    disputeId: uuid("dispute_id")
+      .notNull()
+      .references(() => expenseDisputes.id, { onDelete: "restrict" }),
+    reopenedBy: uuid("reopened_by")
+      .notNull()
+      .references(() => people.id, { onDelete: "restrict" }),
+    reopenedAt: timestamp("reopened_at", { withTimezone: true }).notNull().defaultNow(),
+    previousClosedAt: timestamp("previous_closed_at", { withTimezone: true }).notNull(),
+    previousClosedBy: uuid("previous_closed_by").references(() => people.id, { onDelete: "restrict" }),
+  },
+  (table) => [index("outing_reopenings_outing_idx").on(table.outingId, table.reopenedAt)],
+).enableRLS();

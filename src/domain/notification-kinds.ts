@@ -9,6 +9,7 @@ export const notificationKinds = [
   "participant_left",
   "closing_vote_requested",
   "closing_vote_resolved",
+  "outing_reopened",
 ] as const;
 
 export type NotificationKind = (typeof notificationKinds)[number];

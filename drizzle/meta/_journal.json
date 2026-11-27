@@ -232,6 +232,20 @@
       "when": 1795822211615,
       "tag": "0032_politicas_votacao_de_encerramento",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1795823216880,
+      "tag": "0033_reabertura_do_role",
+      "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1795823217863,
+      "tag": "0034_politicas_reabertura_do_role",
+      "breakpoints": true
     }
   ]
 }
