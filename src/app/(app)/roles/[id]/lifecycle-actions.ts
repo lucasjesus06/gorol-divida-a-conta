@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { DomainError } from "@/domain/domain-error";
 import { isUuid } from "@/lib/uuid";
 import { getRenderProfile } from "@/server/auth";
+import { answerClosing, requestClosing } from "@/server/closing-votes";
 import { closeOuting, leaveOuting, removeParticipant } from "@/server/outing-lifecycle";
 
 export type LifecycleState = { error?: string };
@@ -46,4 +47,14 @@ export async function leaveOutingAction(outingId: string): Promise<LifecycleStat
     redirect("/roles");
   }
   return result;
+}
+
+export async function requestClosingAction(outingId: string): Promise<LifecycleState> {
+  return guarded(outingId, async (personId) => {
+    await requestClosing(personId, outingId);
+  });
+}
+
+export async function answerClosingAction(outingId: string, accept: boolean): Promise<LifecycleState> {
+  return guarded(outingId, (personId) => answerClosing(personId, outingId, accept));
 }

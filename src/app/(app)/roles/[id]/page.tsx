@@ -21,7 +21,8 @@ import { listPayerRequests, type PayerRequestView } from "@/server/payer-request
 import { listPayments, type PaymentView } from "@/server/payments";
 import { getCloseBlockers } from "@/server/outing-lifecycle";
 import type { Blocker } from "@/domain/outing-closing";
-import { CloseOutingButton, LeaveOutingButton, RemoveParticipantButton } from "./lifecycle-controls";
+import { getClosingVote, type ClosingVoteView } from "@/server/closing-votes";
+import { ClosingVoteAnswer, CloseOutingButton, LeaveOutingButton, RemoveParticipantButton, RequestClosingButton } from "./lifecycle-controls";
 import { listFiles, type FileView } from "@/server/files";
 import { FileList } from "@/components/files/FileList";
 import { FileUploader } from "@/components/files/FileUploader";
@@ -87,6 +88,7 @@ function Summary({
   paymentsToConfirm,
   expenses,
   closeBlockers,
+  closingVote,
 }: {
   outing: OutingDetail;
   pendingRequests: number;
@@ -94,6 +96,7 @@ function Summary({
   paymentsToConfirm: number;
   expenses: ExpenseView[];
   closeBlockers: Blocker[] | null;
+  closingVote: ClosingVoteView | null;
 }) {
   const active = expenses.filter((expense) => expense.status === "active");
   const total = active.reduce((sum, expense) => sum + expense.totalCents, 0);
@@ -130,6 +133,7 @@ function Summary({
         )}
         {isAdmin && waiting > 0 && <StatCard label="Ainda não entraram" value={waiting} href={`/roles/${outing.id}?visao=participantes`} />}
       </section>
+      {closingVote && <ClosingVotePanel outingId={outing.id} vote={closingVote} />}
       {closeBlockers && (
         <section className="flex flex-col gap-3">
           <h2 className="text-xl font-bold">Encerrar o rolê</h2>
@@ -146,11 +150,53 @@ function Summary({
             ) : (
               <p className="text-sm text-muted-foreground">Tudo acertado. Ao encerrar, ninguém lança mais nada aqui; o histórico continua disponível.</p>
             )}
-            <CloseOutingButton outingId={outing.id} blocked={closeBlockers.length > 0} />
+            {closeBlockers.length === 0 ? (
+              <CloseOutingButton outingId={outing.id} blocked={false} />
+            ) : closingVote?.status === "open" ? (
+              <p className="text-sm text-muted-foreground">Há um pedido de encerramento em andamento, acima.</p>
+            ) : closeBlockers.every((blocker) => blocker.code === "open_balance") ? (
+              <RequestClosingButton outingId={outing.id} />
+            ) : (
+              <CloseOutingButton outingId={outing.id} blocked />
+            )}
           </div>
         </section>
       )}
     </div>
+  );
+}
+
+const decisionLabels = { pending: "aguardando", accepted: "aceitou", rejected: "não aceitou" } as const;
+const voteDateFormat = new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short", timeZone: "America/Sao_Paulo" });
+
+function ClosingVotePanel({ outingId, vote }: { outingId: string; vote: ClosingVoteView }) {
+  if (vote.status === "open") {
+    return (
+      <section className="flex flex-col gap-3">
+        <h2 className="text-xl font-bold">Pedido de encerramento</h2>
+        <div className="card-surface flex flex-col gap-3 p-5">
+          <p className="text-sm text-muted-foreground">
+            {vote.requestedBy.name} quer encerrar o rolê. A dívida entre as pessoas continua. Quem não responder até {voteDateFormat.format(vote.deadline)} aceita.
+          </p>
+          <ul className="flex flex-col gap-1 text-sm">
+            {vote.choices.map((choice) => (
+              <li key={choice.personId}>
+                {choice.name}: {decisionLabels[choice.decision]}
+              </li>
+            ))}
+          </ul>
+          {vote.canAnswer && <ClosingVoteAnswer outingId={outingId} />}
+        </div>
+      </section>
+    );
+  }
+  if (vote.status === "approved" || !vote.recentlyEnded) {
+    return null;
+  }
+  return (
+    <p className="card-surface p-4 text-sm text-muted-foreground">
+      {vote.status === "rejected" ? "Alguém não aceitou encerrar o rolê, então ele continua aberto." : "Os saldos mudaram, então o pedido de encerramento foi cancelado."}
+    </p>
   );
 }
 
@@ -538,6 +584,7 @@ async function OutingContent({ params, searchParams }: Pick<PageProps<"/roles/[i
     view === "pagamentos" || view === "resumo" ? listPayments(profile.personId, id) : [],
     view === "acertos" ? getOutingBalances(profile.personId, id) : null,
   ]);
+  const closingVote = view === "resumo" ? await getClosingVote(profile.personId, id) : null;
   const closeBlockers = isAdmin && view === "resumo" && outing.status === "active" ? await getCloseBlockers(profile.personId, id) : null;
   const receipts = view === "pagamentos" ? await listFiles(profile.personId, "payment_receipt", id, payments.map((payment) => payment.id)) : [];
   const payerIds = new Set(people.filter((person) => person.isPayer).map((person) => person.personId));
@@ -550,7 +597,7 @@ async function OutingContent({ params, searchParams }: Pick<PageProps<"/roles/[i
         actions={<Pill>{outing.status === "closed" ? "Encerrado" : kindLabels[outing.kind]}</Pill>}
       />
       <Tabs outingId={outing.id} view={view} isAdmin={isAdmin} />
-      {view === "resumo" && <Summary outing={outing} pendingRequests={pendingRequests} expenses={expenses} pendingPayerRequests={payerRequests.filter((request) => request.status === "pending").length} paymentsToConfirm={payments.filter((payment) => payment.canResolve).length} closeBlockers={closeBlockers} />}
+      {view === "resumo" && <Summary outing={outing} pendingRequests={pendingRequests} expenses={expenses} pendingPayerRequests={payerRequests.filter((request) => request.status === "pending").length} paymentsToConfirm={payments.filter((payment) => payment.canResolve).length} closeBlockers={closeBlockers} closingVote={closingVote} />}
       {view === "despesas" && <ExpensesView outing={outing} expenses={expenses} canRegister={payerIds.has(profile.personId)} requests={payerRequests} bills={bills} />}
       {view === "acertos" && balances && <SettlementsView outing={outing} balances={balances} me={profile.personId} route={query.rota === "manual" ? "manual" : "inteligente"} />}
       {view === "pagamentos" && (

@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
-import { closeOutingAction, leaveOutingAction, removeParticipantAction, type LifecycleState } from "./lifecycle-actions";
+import { answerClosingAction, closeOutingAction, leaveOutingAction, removeParticipantAction, requestClosingAction, type LifecycleState } from "./lifecycle-actions";
 
 /** A button that asks "are you sure?" before running the action, and shows the rule's message when it refuses. */
 function ConfirmAction({
@@ -98,5 +98,47 @@ export function LeaveOutingButton({ outingId }: { outingId: string }) {
       question="Você deixa de ver este rolê. Só dá para sair quando não há nada em aberto com ninguém. Confirma?"
       run={() => leaveOutingAction(outingId)}
     />
+  );
+}
+
+export function RequestClosingButton({ outingId }: { outingId: string }) {
+  return (
+    <ConfirmAction
+      label="Pedir encerramento"
+      confirmLabel="Sim, pedir"
+      question="Quem tem a receber será avisado e decide em até 3 dias; quem não responder aceita. A dívida entre as pessoas continua. Confirma?"
+      run={() => requestClosingAction(outingId)}
+    />
+  );
+}
+
+export function ClosingVoteAnswer({ outingId }: { outingId: string }) {
+  const [error, setError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+
+  function answer(accept: boolean) {
+    setError(null);
+    startTransition(async () => {
+      const result = await answerClosingAction(outingId, accept);
+      if (result.error) setError(result.error);
+    });
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex gap-2">
+        <Button type="button" disabled={pending} onClick={() => answer(true)}>
+          Aceito encerrar
+        </Button>
+        <Button type="button" variant="secondary" disabled={pending} onClick={() => answer(false)}>
+          Não aceito
+        </Button>
+      </div>
+      {error && (
+        <p role="alert" className="text-sm text-destructive">
+          {error}
+        </p>
+      )}
+    </div>
   );
 }

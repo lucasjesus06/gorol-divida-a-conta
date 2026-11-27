@@ -5,6 +5,7 @@ import { closingVoteChoices, closingVotes, people } from "@/db/schema";
 import {
   assertCanAskForVote,
   balanceSnapshot,
+  CLOSING_VOTE_DAYS,
   closingVoteDeadline,
   closingVoteOutcome,
   closingVoters,
@@ -165,6 +166,8 @@ export type ClosingVoteView = {
   choices: { personId: string; name: string; decision: ClosingVoteDecision }[];
   /** The person's own pending answer, when they are one of the voters. */
   canAnswer: boolean;
+  /** Ended in the last 3 days, so the screen still explains what happened. */
+  recentlyEnded: boolean;
 };
 
 /** The latest vote of the outing, after settling it if it is due. */
@@ -186,5 +189,6 @@ export async function getClosingVote(personId: string, outingId: string, now: Da
     requestedBy: { id: vote.requestedBy, name: nameOf(vote.requestedBy) },
     choices: choices.map((choice) => ({ personId: choice.personId, name: nameOf(choice.personId), decision: choice.decision })),
     canAnswer: vote.status === "open" && choices.some((choice) => choice.personId === personId && choice.decision === "pending"),
+    recentlyEnded: vote.resolvedAt !== null && now.getTime() - vote.resolvedAt.getTime() < CLOSING_VOTE_DAYS * 86_400_000,
   };
 }
