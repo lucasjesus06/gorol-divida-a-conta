@@ -183,6 +183,20 @@
       "when": 1795818375214,
       "tag": "0025_aviso_lembrete_de_pagamento",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1795819596681,
+      "tag": "0026_arquivos",
+      "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1795819597533,
+      "tag": "0027_politicas_arquivos",
+      "breakpoints": true
     }
   ]
 }
