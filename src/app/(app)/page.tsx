@@ -68,23 +68,23 @@ async function Dashboard() {
       <section className="flex flex-col gap-3">
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-bold">Seus rolês</h2>
-          {outings.length > RECENT_OUTINGS && (
+          {active.length > RECENT_OUTINGS && (
             <Link href="/roles" className="text-sm font-semibold text-primary-glow hover:underline">
               Ver todos
             </Link>
           )}
         </div>
-        {outings.length === 0 ? (
+        {active.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            {canCreate ? "Você ainda não tem rolês. Crie o primeiro." : "Você ainda não participa de nenhum rolê."}
+            {canCreate ? "Você não tem rolês em andamento. Crie um." : "Você não participa de nenhum rolê em andamento."}
           </p>
         ) : (
           <ul className="flex flex-col gap-2">
-            {outings.slice(0, RECENT_OUTINGS).map((outing) => (
+            {active.slice(0, RECENT_OUTINGS).map((outing) => (
               <li key={outing.id}>
                 <Link href={`/roles/${outing.id}`} className="card-surface flex items-center justify-between gap-3 p-4">
                   <span className="truncate font-semibold">{outing.name}</span>
-                  <Pill>{outing.status === "closed" ? "Encerrado" : kindLabels[outing.kind]}</Pill>
+                  <Pill>{kindLabels[outing.kind]}</Pill>
                 </Link>
               </li>
             ))}

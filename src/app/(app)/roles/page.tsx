@@ -17,13 +17,14 @@ const kindLabels = { event: "Pontual", recurring: "Recorrente" } as const;
 
 async function Outings() {
   const profile = await getRenderProfile();
-  const [outings, canCreate] = await Promise.all([listOutings(profile.personId), isApprovedPerson(profile.personId)]);
+  const [all, canCreate] = await Promise.all([listOutings(profile.personId), isApprovedPerson(profile.personId)]);
+  const outings = all.filter((outing) => outing.status === "active");
 
   return (
     <>
       <PageHeader
         title="Rolês"
-        description="Todos os rolês de que você participa."
+        description="Os rolês em andamento de que você participa."
         actions={
           canCreate ? (
             <Button asChild size="sm">
@@ -52,7 +53,7 @@ async function Outings() {
                   <span className="truncate font-semibold">{outing.name}</span>
                   {outing.role === "admin" && <span className="text-xs text-muted-foreground">Você organiza</span>}
                 </span>
-                <Pill>{outing.status === "closed" ? "Encerrado" : kindLabels[outing.kind]}</Pill>
+                <Pill>{kindLabels[outing.kind]}</Pill>
               </Link>
             </li>
           ))}

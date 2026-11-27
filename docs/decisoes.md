@@ -202,7 +202,7 @@ Há três níveis de configuração, todos em telas do aplicativo:
 - O produto deve **parecer uma plataforma sólida, e não uma página de apresentação**: menus de navegação, **telas de resumo e painéis**, painéis de configuração e **opções claras para criar e gerenciar** coisas. A pessoa deve poder **explorar**.
 - A estrutura nasce com essa característica e vai sendo modelada aos poucos: não é preciso ter tudo pronto, mas a tela inicial deixa de ser uma apresentação (título grande, frase de efeito) e passa a ser **um painel**, com o resumo do que importa e os atalhos.
 - Exemplos do que isso significa:
-  - **navegação fixa** entre as áreas (rolês, resumo do que se deve e se tem a receber, configurações), com menu lateral em tela larga e barra inferior no celular;
+  - **navegação fixa** entre as áreas (início, **rolês** em andamento, **histórico**, resumo do que se deve e se tem a receber, configurações), com **Rolês e Histórico em menus separados**: os rolês encerrados saem de "Rolês" e ficam em "Histórico"; com menu lateral em tela larga e barra inferior no celular;
   - **painel do rolê** com visões separadas (resumo, participantes, despesas, acertos, ajustes), em vez de uma página só;
   - **gestão de participantes dentro do rolê:** ver, adicionar e remover pessoas depois de criado. A remoção respeita o histórico: quem já tem lançamentos não some do histórico (ver GOR-16);
   - **painel de administração e de configurações** como seções do menu.
