@@ -190,3 +190,15 @@ describe("convites", () => {
     expect(invite.usedAt).toBeNull();
   });
 });
+
+describe("conta aprovada", () => {
+  it("só é aprovada a pessoa com conta e aprovação", async () => {
+    const [semConta] = await db().insert(people).values({ displayName: "Sem conta", phone: "+5511999990005" }).returning();
+    expect(await access.isApprovedPerson(semConta.id)).toBe(false);
+
+    const token = await access.createInvite(admin);
+    await access.redeemInvite(token, { name: "Bruno", email: "bruno@exemplo.com", phone: "11999990002" });
+    const [account] = await access.listAccounts();
+    expect(await access.isApprovedPerson(account.id)).toBe(true);
+  });
+});

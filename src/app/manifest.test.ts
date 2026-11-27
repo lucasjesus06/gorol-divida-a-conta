@@ -13,6 +13,10 @@ describe("manifesto do aplicativo", () => {
     expect(result.icons?.some((icon) => icon.purpose === "maskable")).toBe(true);
   });
 
+  it("oferece o atalho para criar um rolê", () => {
+    expect(result.shortcuts).toEqual([expect.objectContaining({ url: "/roles/novo" })]);
+  });
+
   it("aponta para ícones que existem na pasta pública", () => {
     for (const icon of result.icons ?? []) {
       expect(existsSync(path.join(process.cwd(), "public", icon.src)), icon.src).toBe(true);

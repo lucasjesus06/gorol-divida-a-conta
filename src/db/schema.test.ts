@@ -31,11 +31,35 @@ describe("rolês", () => {
   it("cada rolê tem um único dono, e cada pessoa entra uma vez", async () => {
     const { outing, lucas, maria } = await seedOuting(db, ["+5511977770001", "+5511977770002"]);
     await expect(
-      db.insert(outingParticipants).values({ outingId: outing.id, personId: maria.id, role: "admin" }),
+      db.insert(outingParticipants).values({ outingId: outing.id, personId: maria.id, displayName: "Maria de novo", role: "admin" }),
     ).rejects.toThrow();
     await expect(
-      db.insert(outingParticipants).values({ outingId: outing.id, personId: lucas.id, role: "member" }),
+      db.insert(outingParticipants).values({ outingId: outing.id, personId: lucas.id, displayName: "Lucas de novo", role: "member" }),
     ).rejects.toThrow();
+  });
+
+  it("o nome do participante vale só dentro do rolê: não pode faltar nem repetir ali", async () => {
+    const { outing, lucas } = await seedOuting(db, ["+5511944440001", "+5511944440002"]);
+    const [ana, bia] = await db
+      .insert(people)
+      .values([
+        { displayName: "Ana", phone: "+5511944440003" },
+        { displayName: "Bia", phone: "+5511944440004" },
+      ])
+      .returning();
+    await expect(
+      db.insert(outingParticipants).values({ outingId: outing.id, personId: ana.id, displayName: "   " }),
+    ).rejects.toThrow();
+    await expect(
+      db.insert(outingParticipants).values({ outingId: outing.id, personId: ana.id, displayName: "MARIA" }),
+    ).rejects.toThrow();
+    await db.insert(outingParticipants).values({ outingId: outing.id, personId: ana.id, displayName: "Aninha" });
+
+    const outro = await db
+      .insert(outings)
+      .values({ name: "Pizza", kind: "event", createdBy: lucas.id })
+      .returning({ id: outings.id });
+    await db.insert(outingParticipants).values({ outingId: outro[0].id, personId: bia.id, displayName: "Maria" });
   });
 
   it("rolê encerrado precisa da data de encerramento, e o ativo não pode ter", async () => {
@@ -59,7 +83,7 @@ describe("rolês", () => {
     ).rejects.toThrow();
     const [ana] = await db.insert(people).values({ displayName: "Ana", phone: "+5511955550003" }).returning();
     await expect(
-      db.insert(outingParticipants).values({ outingId: outing.id, personId: ana.id, role: "boss" as "member" }),
+      db.insert(outingParticipants).values({ outingId: outing.id, personId: ana.id, displayName: "Ana", role: "boss" as "member" }),
     ).rejects.toThrow();
   });
 });

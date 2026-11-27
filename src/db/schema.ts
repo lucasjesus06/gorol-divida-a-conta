@@ -56,11 +56,14 @@ export const outingParticipants = pgTable(
     personId: uuid("person_id")
       .notNull()
       .references(() => people.id, { onDelete: "cascade" }),
+    displayName: text("display_name").notNull(),
     role: text("role", { enum: outingRoles }).notNull().default("member"),
     joinedAt: timestamp("joined_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
     check("outing_participants_role_valid", oneOf(table.role, outingRoles)),
+    check("outing_participants_display_name_filled", sql`length(btrim(${table.displayName})) > 0`),
+    uniqueIndex("outing_participants_outing_name_idx").on(table.outingId, sql`lower(${table.displayName})`),
     uniqueIndex("outing_participants_outing_person_idx").on(table.outingId, table.personId),
     uniqueIndex("outing_participants_one_admin_idx")
       .on(table.outingId)

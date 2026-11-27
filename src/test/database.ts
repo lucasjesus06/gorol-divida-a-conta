@@ -27,8 +27,8 @@ export async function seedOuting(db: TestDatabase, phones: [string, string] = ["
     .values({ name: "Churrasco de sábado", kind: "event", createdBy: lucas.id })
     .returning();
   await db.insert(schema.outingParticipants).values([
-    { outingId: outing.id, personId: lucas.id, role: "admin" },
-    { outingId: outing.id, personId: maria.id, role: "member" },
+    { outingId: outing.id, personId: lucas.id, displayName: "Lucas", role: "admin" },
+    { outingId: outing.id, personId: maria.id, displayName: "Maria", role: "member" },
   ]);
   return { outing, lucas, maria };
 }
