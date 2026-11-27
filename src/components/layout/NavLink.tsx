@@ -1,12 +1,12 @@
 "use client";
 
-import { History, Home, PartyPopper, ShieldCheck, Wallet } from "lucide-react";
+import { History, Home, PartyPopper, Settings, Wallet } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { isActivePath } from "./nav";
 
-const icons = { home: Home, outings: PartyPopper, history: History, summary: Wallet, admin: ShieldCheck } as const;
+const icons = { home: Home, outings: PartyPopper, history: History, summary: Wallet, settings: Settings } as const;
 
 export function NavLink({
   href,

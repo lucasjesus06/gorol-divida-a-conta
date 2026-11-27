@@ -2,8 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 import { DomainError } from "@/domain/domain-error";
-import { approveAccessRequest, createInvite, rejectAccessRequest } from "@/server/access";
+import { approveAccessRequest, createInvite, rejectAccessRequest, revokeInvite } from "@/server/access";
 import { requireSuperAdmin } from "@/server/auth";
+
+const ADMIN_PATH = "/configuracoes/administracao";
 
 export type AdminActionState = { error?: string; invitePath?: string };
 
@@ -17,7 +19,7 @@ async function decide(work: (personId: string) => Promise<void>): Promise<AdminA
     }
     throw error;
   }
-  revalidatePath("/admin");
+  revalidatePath(ADMIN_PATH);
   return {};
 }
 
@@ -34,6 +36,10 @@ export async function rejectRequestAction(_prevState: AdminActionState, formData
 export async function createInviteAction(): Promise<AdminActionState> {
   const { personId } = await requireSuperAdmin();
   const token = await createInvite(personId);
-  revalidatePath("/admin");
+  revalidatePath(ADMIN_PATH);
   return { invitePath: `/convite/${token}` };
+}
+
+export async function revokeInviteAction(_prevState: AdminActionState, formData: FormData) {
+  return decide((personId) => revokeInvite(personId, String(formData.get("id") ?? "")));
 }

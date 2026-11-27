@@ -7,17 +7,8 @@ import { Logo } from "@/components/layout/Logo";
 import { NavLink } from "@/components/layout/NavLink";
 import { Button } from "@/components/ui/button";
 import { signOut } from "@/app/login/actions";
-import { isSuperAdmin } from "@/server/access";
 import { getIdentity } from "@/server/auth";
 import { loadProfile } from "@/server/profiles";
-
-async function AdminNav({ variant }: { variant: "side" | "tab" }) {
-  const identity = await getIdentity();
-  if (!identity || !(await isSuperAdmin(identity.userId))) {
-    return null;
-  }
-  return <NavLink href="/admin" label="Administração" icon="admin" variant={variant} />;
-}
 
 function SignOutButton() {
   return (
@@ -55,7 +46,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <NavLink href="/roles" label="Rolês" icon="outings" variant="side" />
             <NavLink href="/resumo" label="Resumo" icon="summary" variant="side" />
             <NavLink href="/historico" label="Histórico" icon="history" variant="side" />
-            <AdminNav variant="side" />
+            <NavLink href="/configuracoes" label="Configurações" icon="settings" variant="side" />
           </Suspense>
         </nav>
         <Suspense fallback={null}>
@@ -81,7 +72,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <NavLink href="/roles" label="Rolês" icon="outings" variant="tab" />
           <NavLink href="/resumo" label="Resumo" icon="summary" variant="tab" />
           <NavLink href="/historico" label="Histórico" icon="history" variant="tab" />
-          <AdminNav variant="tab" />
+          <NavLink href="/configuracoes" label="Configurações" icon="settings" variant="tab" />
         </Suspense>
       </nav>
     </div>

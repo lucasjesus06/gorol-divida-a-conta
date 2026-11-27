@@ -23,10 +23,14 @@ export function inviteExpiry(createdAt: Date): Date {
   return new Date(createdAt.getTime() + INVITE_VALIDITY_DAYS * 24 * 60 * 60 * 1000);
 }
 
-export type InviteState = "usable" | "used" | "expired";
+export type InviteState = "usable" | "used" | "revoked" | "expired";
 
-export function inviteState(invite: { usedAt: Date | null; expiresAt: Date }, now: Date): InviteState {
+export function inviteState(
+  invite: { usedAt: Date | null; revokedAt?: Date | null; expiresAt: Date },
+  now: Date,
+): InviteState {
   if (invite.usedAt !== null) return "used";
+  if (invite.revokedAt) return "revoked";
   if (invite.expiresAt.getTime() <= now.getTime()) return "expired";
   return "usable";
 }

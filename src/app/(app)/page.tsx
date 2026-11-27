@@ -67,7 +67,7 @@ async function Dashboard() {
         <StatCard label="A receber" value={totals.receive} money href="/resumo" />
         <StatCard label="Rolês ativos" value={active.length} href="/roles" />
         <StatCard label="Pedidos para aprovar" value={pendingJoins} href="/roles" highlight={pendingJoins > 0} />
-        {admin && <StatCard label="Pedidos de acesso" value={pendingAccess} href="/admin" highlight={pendingAccess > 0} />}
+        {admin && <StatCard label="Pedidos de acesso" value={pendingAccess} href="/configuracoes/administracao" highlight={pendingAccess > 0} />}
       </section>
 
       <section className="flex flex-col gap-3">

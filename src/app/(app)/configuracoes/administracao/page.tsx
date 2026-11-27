@@ -4,13 +4,13 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { inviteState } from "@/domain/access";
 import { listAccessRequests, listAccounts, listInvites } from "@/server/access";
 import { requireSuperAdmin } from "@/server/auth";
-import { InviteCreator, RequestCard } from "./admin-panel";
+import { InviteCreator, RequestCard, RevokeInviteButton } from "./admin-panel";
 
 export const metadata: Metadata = {
   title: "Administração · GoRolê",
 };
 
-const inviteLabels = { usable: "Aguardando uso", used: "Usado", expired: "Vencido" } as const;
+const inviteLabels = { usable: "Aguardando uso", used: "Usado", revoked: "Revogado", expired: "Vencido" } as const;
 const dateFormat = new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short", timeZone: "America/Sao_Paulo" });
 
 async function AdminContent() {
@@ -49,7 +49,10 @@ async function AdminContent() {
           {invites.map((invite) => (
             <li key={invite.id} className="card-surface flex items-center justify-between p-3 text-sm">
               <span>{dateFormat.format(invite.createdAt)}</span>
-              <span className="text-muted-foreground">{inviteLabels[inviteState(invite, now)]}</span>
+              <span className="flex items-center gap-3">
+                <span className="text-muted-foreground">{inviteLabels[inviteState(invite, now)]}</span>
+                {inviteState(invite, now) === "usable" && <RevokeInviteButton inviteId={invite.id} />}
+              </span>
             </li>
           ))}
         </ul>
@@ -73,7 +76,11 @@ async function AdminContent() {
 export default function AdminPage() {
   return (
     <>
-      <PageHeader title="Administração" description="Pedidos de acesso, convites e contas." />
+      <PageHeader
+        title="Administração"
+        description="Pedidos de acesso, convites e contas."
+        backHref="/configuracoes"
+      />
       <Suspense fallback={null}>
         <AdminContent />
       </Suspense>
