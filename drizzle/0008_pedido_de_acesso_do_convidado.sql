@@ -1,0 +1,3 @@
+ALTER TABLE "access_requests" ADD COLUMN "guest_user_id" uuid;--> statement-breakpoint
+ALTER TABLE "access_requests" ADD CONSTRAINT "access_requests_guest_user_id_users_id_fk" FOREIGN KEY ("guest_user_id") REFERENCES "auth"."users"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
+CREATE UNIQUE INDEX "access_requests_one_pending_per_guest_idx" ON "access_requests" USING btree ("guest_user_id") WHERE "access_requests"."status" = 'pending' and "access_requests"."guest_user_id" is not null;
