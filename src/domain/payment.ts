@@ -95,7 +95,7 @@ export function declarePayment(input: PaymentInput): Payment {
  * The payer sends the bank receipt: the payment is confirmed right away, so
  * nobody needs to mark it as received, and the creditor can still contest it.
  */
-export function attachProof(payment: Payment, by: string, proof: PaymentProof): Payment {
+export function attachProof(payment: Payment, by: string, proof: PaymentProof, contestDays: number = RECEIPT_CONTEST_DAYS): Payment {
   if (payment.status !== "declared") {
     throw new DomainError(
       "payment_not_awaiting_proof",
@@ -113,7 +113,7 @@ export function attachProof(payment: Payment, by: string, proof: PaymentProof): 
     status: "confirmed",
     proof,
     confirmedBy: "receipt",
-    contestableUntil: new Date(proof.uploadedAt.getTime() + RECEIPT_CONTEST_DAYS * DAY_MS),
+    contestableUntil: new Date(proof.uploadedAt.getTime() + contestDays * DAY_MS),
     resolvedAt: proof.uploadedAt,
   };
 }

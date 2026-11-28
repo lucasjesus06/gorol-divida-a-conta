@@ -351,6 +351,20 @@
       "when": 1795837444989,
       "tag": "0049_politicas_despesas_compartilhadas",
       "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1795841262525,
+      "tag": "0050_leitura_de_comprovante",
+      "breakpoints": true
+    },
+    {
+      "idx": 51,
+      "version": "7",
+      "when": 1795841263525,
+      "tag": "0051_politicas_leitura_de_comprovante",
+      "breakpoints": true
     }
   ]
 }

@@ -2,8 +2,9 @@ import { DomainError } from "./domain-error";
 import { DEFAULT_REMINDER_POLICY, type ReminderPolicy } from "./charge-reminder";
 import { CLOSING_VOTE_DAYS } from "./closing-vote";
 import { DISPUTE_WINDOW_DAYS } from "./dispute-window";
+import { RECEIPT_CONTEST_DAYS } from "./payment";
 
-export type ParameterGroup = "cobranca" | "encerramento";
+export type ParameterGroup = "cobranca" | "encerramento" | "pagamentos";
 export type ParameterUnit = "horas" | "dias" | "hora do dia" | "vezes";
 
 export type ParameterDefinition = {
@@ -21,6 +22,7 @@ export type ParameterDefinition = {
 export const parameterGroups: Record<ParameterGroup, string> = {
   cobranca: "Cobrança",
   encerramento: "Encerramento e contestação",
+  pagamentos: "Pagamentos",
 };
 
 /**
@@ -107,6 +109,16 @@ export const parameterCatalog: readonly ParameterDefinition[] = [
     default: DISPUTE_WINDOW_DAYS,
     min: 1,
     max: 60,
+  },
+  {
+    key: "receipt.contest_days",
+    group: "pagamentos",
+    label: "Prazo para contestar um comprovante",
+    description: "Dias que quem recebeu tem para dizer que o dinheiro não chegou, depois de um pagamento ser confirmado por comprovante.",
+    unit: "dias",
+    default: RECEIPT_CONTEST_DAYS,
+    min: 1,
+    max: 14,
   },
 ];
 

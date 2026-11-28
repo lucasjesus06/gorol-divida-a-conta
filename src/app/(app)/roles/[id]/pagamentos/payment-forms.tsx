@@ -3,7 +3,7 @@
 import { useActionState, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { inputClass } from "@/components/ui/field-styles";
-import { declarePaymentAction, resolvePaymentAction, revealPixAction, type PaymentFormState, type PixRevealState } from "./actions";
+import { contestPaymentAction, declarePaymentAction, resolvePaymentAction, revealPixAction, type PaymentFormState, type PixRevealState } from "./actions";
 
 type Person = { personId: string; name: string };
 
@@ -162,5 +162,31 @@ export function PixReveal({ outingId, toId, amountCents }: { outingId: string; t
         </div>
       )}
     </div>
+  );
+}
+
+export function ContestPayment({ outingId, paymentId, until }: { outingId: string; paymentId: string; until: string }) {
+  const [state, action, pending] = useActionState<PaymentFormState, FormData>(contestPaymentAction, {});
+
+  return (
+    <details className="text-sm">
+      <summary className="cursor-pointer text-muted-foreground">O dinheiro não chegou? Você pode contestar até {until}</summary>
+      <form action={action} className="mt-2 flex flex-col gap-2">
+        <input type="hidden" name="outingId" value={outingId} />
+        <input type="hidden" name="paymentId" value={paymentId} />
+        <label className="flex flex-col gap-2 font-medium">
+          O que aconteceu
+          <input name="reason" required maxLength={300} placeholder="O dinheiro não caiu na minha conta" className={inputClass} />
+        </label>
+        {state.error && (
+          <p role="alert" className="text-destructive">
+            {state.error}
+          </p>
+        )}
+        <Button type="submit" variant="secondary" size="sm" className="self-start" disabled={pending}>
+          Contestar o pagamento
+        </Button>
+      </form>
+    </details>
   );
 }

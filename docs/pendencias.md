@@ -58,11 +58,12 @@ Tudo o que ainda precisa ser feito ou decidido. O que fica para versões futuras
 - **Textos dos lembretes** (tom de meme; frases de efeito de divulgação não entram na interface) e modelos de mensagem do WhatsApp, que precisam de aprovação da Meta.
 - **Termos e condições** do primeiro acesso, incluindo o consentimento para os lembretes: texto a escrever, de preferência com orientação jurídica (LGPD).
 - **Leitura de documentos (GOR-17, GOR-18):**
-  - provedor do modelo de visão, chave de API e **quem paga** (sem limite por rolê no MVP; o teto de gasto fica no provedor);
-  - texto dos termos de uso sobre o envio do documento a um terceiro (LGPD);
-  - piloto com 15 a 20 documentos reais antes de prometer a função aos usuários;
-  - valores dos limites de tamanho e de páginas;
-  - se o comprovante de Pix com valor ou destinatário diferentes do pagamento declarado é rejeitado ou segue para o credor confirmar.
+  - **decidido:** leitor Tesseract no aparelho (sem custo, sem terceiro), comprovante com valor ou destinatário diferente vai para o credor avaliar com as inconsistências à vista, limites de 10 MB e 5 páginas, 3 dias para contestar, nota da maquininha com a diferença absorvida; **a troca por um leitor pago fica para quando for preciso**;
+  - **piloto com 15 a 20 documentos reais** antes de prometer a função aos usuários: os testes usam textos de exemplo escritos à mão e uma imagem limpa; **a precisão em foto de comprovante e de nota reais não foi medida**. Numa imagem ruim de teste (girada, borrada, comprimida) o leitor errou "Pix" e vários caracteres do código, e o comprovante foi para avaliação, como previsto;
+  - **o código do Pix lido com erro** passa a ser outro texto, e então **não é reconhecido como repetido**: a checagem de código repetido só é confiável em comprovante lido sem erro (PDF ou imagem limpa); a contestação em 3 dias cobre o resto;
+  - **PDF escaneado** não é lido; **nota, cupom e maquininha** (GOR-17b) e o **Web Share Target** (GOR-18) ainda não foram feitos;
+  - o servidor **não relê o arquivo**: ele confia no texto que o aparelho manda (como a leitura nunca prova autenticidade, isso não muda a segurança, mas quem altera o texto no navegador pode fazer o comprovante parecer coerente);
+  - texto dos termos: o documento **não vai a terceiros** para ser lido, mas continua guardado no armazenamento do app; revisar o texto com o jurídico.
 - **Armazenamento de arquivos:** limites de tamanho e por quanto tempo guardar.
 - **Login de conta por código:** canal do código (WhatsApp ou e-mail) e quando a pessoa passa de participante de rolê a conta.
 - **Grupos:** fluxo de vincular uma relação a um grupo, quem autoriza e como fica a visão consolidada.

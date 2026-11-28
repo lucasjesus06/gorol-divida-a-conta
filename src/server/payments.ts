@@ -1,7 +1,7 @@
 import "server-only";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import { getDb } from "@/db/client";
-import { payments } from "@/db/schema";
+import { paymentReceiptReadings, payments } from "@/db/schema";
 import { DomainError } from "@/domain/domain-error";
 import {
   confirmPayment as confirmPaymentDomain,
@@ -12,6 +12,7 @@ import {
   type PaymentStatus,
 } from "@/domain/payment";
 import { paymentDeclared } from "@/domain/notification";
+import type { ReceiptIssue } from "@/domain/pix-receipt";
 import { assertActiveOuting, outingContext, readOutingContext } from "./expenses";
 import { notify } from "./push";
 import { areSharingNow } from "./shared-funds";
@@ -27,6 +28,14 @@ export type PaymentView = {
   declaredAt: Date;
   resolvedAt: Date | null;
   canResolve: boolean;
+  /** What was read from the receipt, with every difference from the declared payment. */
+  receipt: { amountCents: number | null; date: string | null; recipientName: string | null; issues: ReceiptIssue[] } | null;
+  /** The payer can still send the receipt. */
+  canSendReceipt: boolean;
+  contestableUntil: Date | null;
+  contestReason: string | null;
+  /** The creditor can still say the money did not arrive. */
+  canContest: boolean;
 };
 
 async function findByKey(outingId: string, key: string) {
@@ -101,20 +110,33 @@ export async function declarePayment(
 
 export async function listPayments(personId: string, outingId: string): Promise<PaymentView[]> {
   const context = await readOutingContext(personId, outingId);
-  const rows = await getDb().select().from(payments).where(eq(payments.outingId, outingId)).orderBy(desc(payments.declaredAt));
+  const [rows, readings] = await Promise.all([
+    getDb().select().from(payments).where(eq(payments.outingId, outingId)).orderBy(desc(payments.declaredAt)),
+    getDb().select().from(paymentReceiptReadings).where(eq(paymentReceiptReadings.outingId, outingId)),
+  ]);
+  const readingOf = new Map(readings.map((reading) => [reading.paymentId, reading]));
   const nameOf = (id: string) => context.names.get(id) ?? "Pessoa";
-  return rows.map((row) => ({
-    id: row.id,
-    from: { id: row.fromId, name: nameOf(row.fromId) },
-    to: { id: row.toId, name: nameOf(row.toId) },
-    onBehalfOf: row.onBehalfOfId ? { id: row.onBehalfOfId, name: nameOf(row.onBehalfOfId) } : null,
-    amountCents: row.amountCents,
-    status: row.status,
-    confirmedBy: row.confirmedBy,
-    declaredAt: row.declaredAt,
-    resolvedAt: row.resolvedAt,
-    canResolve: row.status === "declared" && row.toId === personId,
-  }));
+  const now = new Date();
+  return rows.map((row) => {
+    const reading = readingOf.get(row.id);
+    return {
+      id: row.id,
+      from: { id: row.fromId, name: nameOf(row.fromId) },
+      to: { id: row.toId, name: nameOf(row.toId) },
+      onBehalfOf: row.onBehalfOfId ? { id: row.onBehalfOfId, name: nameOf(row.onBehalfOfId) } : null,
+      amountCents: row.amountCents,
+      status: row.status,
+      confirmedBy: row.confirmedBy,
+      declaredAt: row.declaredAt,
+      resolvedAt: row.resolvedAt,
+      canResolve: (row.status === "declared" || row.status === "contested") && row.toId === personId,
+      receipt: reading ? { amountCents: reading.amountCents, date: reading.readDate, recipientName: reading.recipientName, issues: reading.issues as ReceiptIssue[] } : null,
+      canSendReceipt: row.status === "declared" && row.fromId === personId && !reading,
+      contestableUntil: row.contestableUntil,
+      contestReason: row.contestReason,
+      canContest: row.status === "confirmed" && row.confirmedBy === "receipt" && row.toId === personId && row.contestableUntil !== null && row.contestableUntil > now,
+    };
+  });
 }
 
 async function loadPayment(outingId: string, paymentId: string): Promise<Payment> {
@@ -132,8 +154,8 @@ async function loadPayment(outingId: string, paymentId: string): Promise<Payment
     status: row.status,
     proof: null,
     confirmedBy: row.confirmedBy,
-    contestableUntil: null,
-    contestReason: null,
+    contestableUntil: row.contestableUntil,
+    contestReason: row.contestReason,
     declaredAt: row.declaredAt,
     resolvedAt: row.resolvedAt,
   };
@@ -145,8 +167,8 @@ export async function confirmPayment(personId: string, outingId: string, payment
   const confirmed = confirmPaymentDomain(await loadPayment(outingId, paymentId), personId, new Date());
   const changed = await getDb()
     .update(payments)
-    .set({ status: "confirmed", confirmedBy: "creditor", resolvedAt: confirmed.resolvedAt })
-    .where(and(eq(payments.id, paymentId), eq(payments.status, "declared")))
+    .set({ status: "confirmed", confirmedBy: "creditor", resolvedAt: confirmed.resolvedAt, contestableUntil: null, contestReason: null })
+    .where(and(eq(payments.id, paymentId), inArray(payments.status, ["declared", "contested"])))
     .returning({ id: payments.id });
   if (changed.length === 0) {
     throw new DomainError("payment_already_resolved", "Este pagamento já foi confirmado ou recusado.");
@@ -159,8 +181,8 @@ export async function rejectPayment(personId: string, outingId: string, paymentI
   const rejected = rejectPaymentDomain(await loadPayment(outingId, paymentId), personId, new Date());
   const changed = await getDb()
     .update(payments)
-    .set({ status: "rejected", resolvedAt: rejected.resolvedAt })
-    .where(and(eq(payments.id, paymentId), eq(payments.status, "declared")))
+    .set({ status: "rejected", resolvedAt: rejected.resolvedAt, contestableUntil: null, contestReason: null })
+    .where(and(eq(payments.id, paymentId), inArray(payments.status, ["declared", "contested"])))
     .returning({ id: payments.id });
   if (changed.length === 0) {
     throw new DomainError("payment_already_resolved", "Este pagamento já foi confirmado ou recusado.");

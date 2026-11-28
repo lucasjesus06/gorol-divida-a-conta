@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { bigint, boolean, check, index, integer, pgTable, primaryKey, text, timestamp, uniqueIndex, uuid, type AnyPgColumn } from "drizzle-orm/pg-core";
+import { bigint, boolean, check, index, integer, jsonb, pgTable, primaryKey, text, timestamp, uniqueIndex, uuid, type AnyPgColumn } from "drizzle-orm/pg-core";
 import { authUsers } from "drizzle-orm/supabase";
 import { accessRequestSources, accessRequestStatuses } from "../domain/access";
 import { billModes, billStatuses, leftoverModes } from "../domain/bill-status";
@@ -572,6 +572,9 @@ export const payments = pgTable(
     declaredAt: timestamp("declared_at", { withTimezone: true }).notNull().defaultNow(),
     resolvedAt: timestamp("resolved_at", { withTimezone: true }),
     idempotencyKey: text("idempotency_key"),
+    /** For a payment confirmed by a receipt: until when the creditor can say the money did not arrive. */
+    contestableUntil: timestamp("contestable_until", { withTimezone: true }),
+    contestReason: text("contest_reason"),
   },
   (table) => [
     check("payments_status_valid", oneOf(table.status, paymentStatuses)),
@@ -580,10 +583,45 @@ export const payments = pgTable(
     check("payments_different_people", sql`${table.fromId} <> ${table.toId} and (${table.onBehalfOfId} is null or (${table.onBehalfOfId} <> ${table.fromId} and ${table.onBehalfOfId} <> ${table.toId}))`),
     check("payments_resolved_matches_status", sql`(${table.status} = 'declared') = (${table.resolvedAt} is null)`),
     check("payments_confirmed_has_source", sql`(${table.status} = 'confirmed') = (${table.confirmedBy} is not null)`),
+    check("payments_contest_matches_status", sql`(${table.status} = 'contested') = (${table.contestReason} is not null)`),
+    check("payments_contestable_only_by_receipt", sql`${table.contestableUntil} is null or ${table.confirmedBy} = 'receipt' or ${table.status} = 'contested'`),
     uniqueIndex("payments_idempotency_idx")
       .on(table.outingId, table.idempotencyKey)
       .where(sql`${table.idempotencyKey} is not null`),
     index("payments_outing_idx").on(table.outingId, table.status),
+  ],
+).enableRLS();
+
+/** What was read from the receipt of a payment, and every difference from what was declared. */
+export const paymentReceiptReadings = pgTable(
+  "payment_receipt_readings",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    paymentId: uuid("payment_id")
+      .notNull()
+      .unique()
+      .references(() => payments.id, { onDelete: "restrict" }),
+    outingId: uuid("outing_id")
+      .notNull()
+      .references(() => outings.id, { onDelete: "restrict" }),
+    fileId: uuid("file_id")
+      .notNull()
+      .references(() => files.id, { onDelete: "restrict" }),
+    amountCents: bigint("amount_cents", { mode: "number" }),
+    readDate: text("read_date"),
+    recipientName: text("recipient_name"),
+    /** The unique code of the Pix: one receipt settles one payment, never two. */
+    transactionId: text("transaction_id"),
+    /** The differences found, as a list of { code, message }; empty when everything matched. */
+    issues: jsonb("issues").$type<{ code: string; message: string }[]>().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    check("receipt_readings_amount_positive", sql`${table.amountCents} is null or ${table.amountCents} > 0`),
+    check("receipt_readings_code_shape", sql`${table.transactionId} is null or ${table.transactionId} ~ '^[ED][0-9]{20}[A-Za-z0-9]{11}$'`),
+    // Not unique: a code stays free again when the payment that used it was refused, so the server checks it under a lock.
+    index("receipt_readings_code_idx").on(table.transactionId).where(sql`${table.transactionId} is not null`),
+    index("receipt_readings_outing_idx").on(table.outingId),
   ],
 ).enableRLS();
 
