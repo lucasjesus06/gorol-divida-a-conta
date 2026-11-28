@@ -29,11 +29,11 @@ import { SettingsForm } from "./settings-form";
 import { ClosingVoteAnswer, CloseOutingButton, LeaveOutingButton, RemoveParticipantButton, RequestClosingButton } from "./lifecycle-controls";
 import { getPhotoUrls, listFiles, type FileView } from "@/server/files";
 import { FileList } from "@/components/files/FileList";
-import { FileUploader } from "@/components/files/FileUploader";
 import { formatFileSize } from "@/domain/file-rules";
 import { getOuting, type OutingDetail } from "@/server/outings";
 import { JoinLinkPanel, JoinRequestItem, ReleaseButton } from "./join-panel";
-import { DeclarePaymentForm, PixReveal, ResolvePayment } from "./pagamentos/payment-forms";
+import { ContestPayment, DeclarePaymentForm, PixReveal, ResolvePayment } from "./pagamentos/payment-forms";
+import { ReceiptSender } from "./pagamentos/receipt-sender";
 import { RequestDecision } from "./despesas/request-item";
 import { ParticipantForm } from "./participant-form";
 import { PayerButton } from "./payer-button";
@@ -373,10 +373,24 @@ function PaymentsView({
                     .filter((file) => file.subjectId === payment.id)
                     .map((file) => ({ id: file.id, name: file.name, sizeLabel: formatFileSize(file.sizeBytes), canRemove: false }))}
                 />
-                {payment.from.id === me && payment.status === "declared" && (
-                  <FileUploader kind="payment_receipt" outingId={outing.id} subjectId={payment.id} label="Anexar comprovante (opcional)" revalidate={`/roles/${outing.id}`} />
+                {payment.status === "contested" && payment.contestReason && (
+                  <p className="text-sm text-destructive">Contestado: {payment.contestReason}</p>
                 )}
+                {payment.receipt && payment.receipt.issues.length > 0 && (
+                  <div className="flex flex-col gap-1 rounded-2xl border border-destructive/40 p-3 text-sm">
+                    <p className="font-semibold">O comprovante tem diferenças em relação ao pagamento declarado:</p>
+                    <ul className="list-disc pl-5 text-muted-foreground">
+                      {payment.receipt.issues.map((issue) => (
+                        <li key={issue.code}>{issue.message}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {payment.canSendReceipt && <ReceiptSender outingId={outing.id} paymentId={payment.id} />}
                 {payment.canResolve && <ResolvePayment outingId={outing.id} paymentId={payment.id} />}
+                {payment.canContest && payment.contestableUntil && (
+                  <ContestPayment outingId={outing.id} paymentId={payment.id} until={dateFormat.format(payment.contestableUntil)} />
+                )}
               </li>
             ))}
           </ul>

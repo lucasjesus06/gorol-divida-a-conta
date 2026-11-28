@@ -3,11 +3,13 @@ import { DomainError } from "@/domain/domain-error";
 
 const auth = vi.hoisted(() => ({ getRenderProfile: vi.fn() }));
 const pix = vi.hoisted(() => ({ getPixPayment: vi.fn() }));
+const receipts = vi.hoisted(() => ({ sendReceipt: vi.fn(), contestReceiptPayment: vi.fn() }));
 const payments = vi.hoisted(() => ({ declarePayment: vi.fn(), confirmPayment: vi.fn(), rejectPayment: vi.fn() }));
 
 vi.mock("@/server/auth", () => auth);
 vi.mock("@/server/payments", () => payments);
 vi.mock("@/server/pix", () => pix);
+vi.mock("@/server/payment-receipts", () => receipts);
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 
 const actions = await import("./actions");
@@ -72,5 +74,30 @@ describe("revealPixAction", () => {
   it("devolve a mensagem da regra quando não pode ver a chave", async () => {
     pix.getPixPayment.mockRejectedValue(new DomainError("pix_not_allowed", "Sem permissão."));
     expect(await actions.revealPixAction({}, form({ outingId, toId: "p2", amountCents: "3000" }))).toEqual({ error: "Sem permissão." });
+  });
+});
+
+describe("sendReceiptAction e contestPaymentAction", () => {
+  const paymentId = "22222222-2222-4222-8222-222222222222";
+  const fileId = "33333333-3333-4333-8333-333333333333";
+
+  it("manda o texto lido para conferência em nome de quem está logado", async () => {
+    receipts.sendReceipt.mockResolvedValue({ outcome: "review", issues: [{ code: "amount_differs", message: "x" }] });
+    expect(await actions.sendReceiptAction({ outingId, paymentId, fileId, text: "texto" })).toEqual({ outcome: "review", issues: [{ code: "amount_differs", message: "x" }] });
+    expect(receipts.sendReceipt).toHaveBeenCalledWith("p1", outingId, paymentId, { fileId, text: "texto" });
+  });
+
+  it("recusa identificadores inválidos e devolve o aviso da regra de negócio", async () => {
+    expect((await actions.sendReceiptAction({ outingId: "x", paymentId, fileId, text: "" })).error).toBeDefined();
+    expect(receipts.sendReceipt).not.toHaveBeenCalled();
+    receipts.sendReceipt.mockRejectedValue(new DomainError("receipt_already_sent", "Já foi enviado."));
+    expect(await actions.sendReceiptAction({ outingId, paymentId, fileId, text: "" })).toEqual({ error: "Já foi enviado." });
+  });
+
+  it("contesta com o motivo digitado", async () => {
+    expect(await actions.contestPaymentAction({}, form({ outingId, paymentId, reason: "Não caiu" }))).toEqual({ done: true });
+    expect(receipts.contestReceiptPayment).toHaveBeenCalledWith("p1", outingId, paymentId, "Não caiu");
+    receipts.contestReceiptPayment.mockRejectedValue(new DomainError("contest_window_closed", "O prazo acabou."));
+    expect(await actions.contestPaymentAction({}, form({ outingId, paymentId, reason: "x" }))).toEqual({ error: "O prazo acabou." });
   });
 });
