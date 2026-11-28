@@ -82,6 +82,14 @@ describe("quem participa", () => {
     ).rejects.toThrow();
   });
 
+  it("o apelido não se lê nem se altera pelo acesso do usuário, e tem limite de tamanho", async () => {
+    await expect(as(maria, (tx) => tx.select({ nickname: people.nickname }).from(people))).rejects.toThrow();
+    await expect(as(maria, (tx) => tx.update(people).set({ nickname: "Mari" }).where(eq(people.id, maria)))).rejects.toThrow();
+    await db.update(people).set({ nickname: "Mari" }).where(eq(people.id, maria));
+    await expect(db.update(people).set({ nickname: "   " }).where(eq(people.id, maria))).rejects.toThrow();
+    await expect(db.update(people).set({ nickname: "x".repeat(41) }).where(eq(people.id, maria))).rejects.toThrow();
+  });
+
   it("exige chave e tipo juntos", async () => {
     await expect(db.update(people).set({ pixKey: "maria@exemplo.com" }).where(eq(people.id, maria))).rejects.toThrow();
     await expect(

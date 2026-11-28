@@ -1,0 +1,2 @@
+ALTER TABLE "people" ADD COLUMN "nickname" text;--> statement-breakpoint
+ALTER TABLE "people" ADD CONSTRAINT "people_nickname_size" CHECK ("people"."nickname" is null or length(btrim("people"."nickname")) between 1 and 40);

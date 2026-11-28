@@ -28,12 +28,15 @@ export const people = pgTable(
       .unique()
       .references(() => authUsers.id, { onDelete: "set null" }),
     accountApprovedAt: timestamp("account_approved_at", { withTimezone: true }),
+    /** How the person likes to be called in reminders; empty means the first name. */
+    nickname: text("nickname"),
     pixKey: text("pix_key"),
     pixKeyType: text("pix_key_type", { enum: pixKeyTypes }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
     check("people_pix_key_type_valid", sql`${table.pixKeyType} is null or ${oneOf(table.pixKeyType, pixKeyTypes)}`),
+    check("people_nickname_size", sql`${table.nickname} is null or length(btrim(${table.nickname})) between 1 and 40`),
     check(
       "people_pix_key_complete",
       sql`(${table.pixKey} is null) = (${table.pixKeyType} is null)`,
