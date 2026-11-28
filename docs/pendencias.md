@@ -6,8 +6,13 @@ Tudo o que ainda precisa ser feito ou decidido. O que fica para versões futuras
 
 - **Verificação do login de ponta a ponta (GOR-04 em diante):** o ambiente do agente só sai por HTTPS e não alcança o Postgres do Supabase. O agente verifica com Postgres local e a camada de autenticação simulada, e o Lucas confere o login real, na máquina dele, com um projeto Supabase de desenvolvimento (separado do de produção) e as chaves só no `.env.local`.
 - **Dependências novas além das do Kalu:** pacote de QR code (GOR-07) e Playwright nos testes de contexto (GOR-04).
+- **Termos de uso (GOR-20c), o que ficou de fora:**
+  - o **texto dos termos e do aviso de privacidade é um rascunho** (`src/content/terms.ts`) escrito em linguagem simples, **sem parecer jurídico**: **um advogado precisa revisá-lo antes do lançamento público**. Ao mudar o texto, mude `TERMS_VERSION` em `src/domain/terms.ts` para todos aceitarem de novo;
+  - **convidados sem conta não aceitam termos** (não são cobrados, pois não têm relação de longo prazo); ao criarem cadastro, aceitam como qualquer conta. Se um dia houver cobrança de convidado, o aceite entra no link do rolê;
+  - o consentimento dos lembretes por **WhatsApp** é o mesmo dos termos; se o envio passar a ser automático pela API da Meta, o texto e o consentimento devem ser revistos;
+  - não há tela para o super admin ver quem aceitou quais termos.
 - **Cobrança (GOR-14), o que ficou de fora:**
-  - o **aceite dos termos de uso** (com o consentimento para lembretes) ainda não existe; por enquanto a regra que o exige é dispensada (`TERMS_NOT_ENFORCED_YET` em `src/server/charges.ts`). Vira história própria, antes de qualquer envio automático;
+  - o **aceite dos termos** já existe (GOR-20c) e a cobrança o respeita; ver "Termos de uso" abaixo;
   - os **parâmetros** (intervalo de 24 h, janela de 10 h às 20 h, pausa após 3, 3 dias, máximo 2) são fixos no código e viram ajustáveis na tela de parâmetros do sistema (parte 2 da GOR-20);
   - **não há envio automático nem cron**: o envio é manual, pela tela do super admin. A API da Meta (GOR-21 e GOR-22) fica como evolução;
   - **não foi possível validar neste ambiente** que o botão "Abrir WhatsApp" abre o app do WhatsApp Business na conversa certa (`wa.me`) nem o aviso no app em um aparelho; teste com seu número e o de um amigo;
