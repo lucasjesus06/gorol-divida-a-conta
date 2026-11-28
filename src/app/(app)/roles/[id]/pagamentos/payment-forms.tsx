@@ -13,15 +13,19 @@ export function DeclarePaymentForm({
   me,
   idempotencyKey,
   defaults,
+  partner,
 }: {
   outingId: string;
   people: Person[];
   me: string;
   idempotencyKey: string;
   defaults?: { toId?: string; amount?: string };
+  /** Someone who shares the same money with the payer: paying their part too is offered, never imposed. */
+  partner?: Person;
 }) {
   const [state, action, pending] = useActionState<PaymentFormState, FormData>(declarePaymentAction, {});
   const [onBehalf, setOnBehalf] = useState(false);
+  const [behalfOf, setBehalfOf] = useState("");
   const others = people.filter((person) => person.personId !== me);
 
   return (
@@ -45,6 +49,18 @@ export function DeclarePaymentForm({
         Valor (R$)
         <input name="amount" inputMode="decimal" required defaultValue={defaults?.amount ?? ""} className={inputClass} />
       </label>
+      {partner && !onBehalf && (
+        <button
+          type="button"
+          onClick={() => {
+            setOnBehalf(true);
+            setBehalfOf(partner.personId);
+          }}
+          className="self-start text-sm font-semibold text-primary-glow hover:underline"
+        >
+          Pagar também a parte de {partner.name}
+        </button>
+      )}
       <label className="flex items-center gap-2 text-sm text-muted-foreground">
         <input type="checkbox" checked={onBehalf} onChange={(event) => setOnBehalf(event.target.checked)} />
         Estou pagando em nome de outra pessoa
@@ -52,7 +68,7 @@ export function DeclarePaymentForm({
       {onBehalf && (
         <label className="flex flex-col gap-2 text-sm font-medium">
           Em nome de quem
-          <select name="onBehalfOfId" required defaultValue="" className={inputClass}>
+          <select name="onBehalfOfId" required value={behalfOf} onChange={(event) => setBehalfOf(event.target.value)} className={inputClass}>
             <option value="" disabled>
               Escolha
             </option>

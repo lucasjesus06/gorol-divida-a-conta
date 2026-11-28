@@ -1,7 +1,7 @@
 import "server-only";
 import { and, eq, inArray, or } from "drizzle-orm";
 import { asService, getDb } from "@/db/client";
-import { amnestyItems, amnesties, sharedFunds } from "@/db/schema";
+import { amnestyItems, amnesties, people, sharedFunds } from "@/db/schema";
 import { planClearingAmnesty } from "@/domain/amnesty";
 import { DomainError } from "@/domain/domain-error";
 import { sharedFundRequested, sharedFundResolved } from "@/domain/notification";
@@ -32,9 +32,18 @@ async function loadOpen(personId: string) {
   return row ?? null;
 }
 
-async function nameOf(personId: string, otherId: string) {
-  const ledger = await loadLedger(personId);
-  return ledger.personNames.get(otherId) ?? "Pessoa";
+async function nameOf(otherId: string) {
+  const [row] = await asService(() => getDb().select({ name: people.displayName }).from(people).where(eq(people.id, otherId)));
+  return row?.name ?? "Pessoa";
+}
+
+/** The person the reader shares the same money with right now, if any: a single light query, for pages that only need the suggestion. */
+export async function getActivePartnerId(personId: string): Promise<string | null> {
+  const row = await loadOpen(personId);
+  if (!row || row.status !== "active") {
+    return null;
+  }
+  return row.personA === personId ? row.personB : row.personA;
 }
 
 /** The pending or active arrangement of the reader, if there is one: only the two people can see it. */
@@ -47,7 +56,7 @@ export async function getMyFund(personId: string): Promise<SharedFundView | null
   return {
     id: row.id,
     status: row.status as "pending" | "active",
-    other: { id: otherId, name: await nameOf(personId, otherId) },
+    other: { id: otherId, name: await nameOf(otherId) },
     requestedByMe: row.requestedBy === personId,
     acceptedAt: row.acceptedAt,
   };

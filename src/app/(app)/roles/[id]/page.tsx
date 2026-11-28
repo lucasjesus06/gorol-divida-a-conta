@@ -19,6 +19,7 @@ import { listBills, type BillView } from "@/server/bills";
 import { listExpenses, listPayers, type ExpenseView } from "@/server/expenses";
 import { listPayerRequests, type PayerRequestView } from "@/server/payer-requests";
 import { listPayments, type PaymentView } from "@/server/payments";
+import { getActivePartnerId } from "@/server/shared-funds";
 import { getCloseBlockers } from "@/server/outing-lifecycle";
 import type { Blocker } from "@/domain/outing-closing";
 import { getClosingVote, type ClosingVoteView } from "@/server/closing-votes";
@@ -327,6 +328,7 @@ function PaymentsView({
   people,
   me,
   defaults,
+  partner,
   receipts,
 }: {
   outing: OutingDetail;
@@ -335,6 +337,7 @@ function PaymentsView({
   people: { personId: string; name: string }[];
   me: string;
   defaults: { toId?: string; amount?: string };
+  partner?: { personId: string; name: string };
 }) {
   return (
     <div className="flex flex-col gap-8">
@@ -342,7 +345,7 @@ function PaymentsView({
         <section className="flex flex-col gap-3">
           <h2 className="text-xl font-bold">Declarar um pagamento</h2>
           <div className="card-surface p-6">
-            <DeclarePaymentForm outingId={outing.id} people={people} me={me} idempotencyKey={crypto.randomUUID()} defaults={defaults} />
+            <DeclarePaymentForm outingId={outing.id} people={people} me={me} idempotencyKey={crypto.randomUUID()} defaults={defaults} partner={partner} />
           </div>
         </section>
       )}
@@ -434,6 +437,17 @@ function SettlementsView({ outing, balances, me, route }: { outing: OutingDetail
             ? `Menos Pix possível: ${balances.smart.length} no total${balances.transfersSaved > 0 ? `, ${balances.transfersSaved} a menos que na rota manual` : ""}. Ninguém precisa pagar quem pagou a despesa original; só os saldos finais importam.`
             : "Cada um paga direto a quem deve, só descontando o que duas pessoas devem uma à outra neste rolê."}
         </p>
+        {route === "inteligente" &&
+          balances.sharedFundNotices.map((notice) => (
+            <details key={`${notice.aId}-${notice.bId}`} className="card-surface p-4 text-sm">
+              <summary className="cursor-pointer font-semibold">
+                Por que não há transferência entre {notice.aId === me ? "você" : notice.a} e {notice.bId === me ? "você" : notice.b}?
+              </summary>
+              <p className="mt-2 text-muted-foreground">
+                Porque eles têm despesas compartilhadas permanentes: a origem do dinheiro é a mesma (cônjuges, por exemplo), então não há por que um pagar o outro.
+              </p>
+            </details>
+          ))}
         {transfers.length === 0 ? (
           <p className="card-surface p-5 text-sm text-muted-foreground">Nada a acertar neste rolê.</p>
         ) : (
@@ -596,9 +610,10 @@ async function OutingContent({ params, searchParams }: Pick<PageProps<"/roles/[i
     view === "ajustes" && isAdmin ? getOutingSettings(profile.personId, id) : null,
     view === "participantes" ? getPhotoUrls(profile.personId, outing.participants.map((participant) => participant.personId)) : new Map<string, string>(),
   ]);
-  const [closeBlockers, receipts] = await Promise.all([
+  const [closeBlockers, receipts, partnerId] = await Promise.all([
     isAdmin && view === "resumo" && outing.status === "active" ? getCloseBlockers(profile.personId, id) : null,
     view === "pagamentos" ? listFiles(profile.personId, "payment_receipt", id, payments.map((payment) => payment.id)) : [],
+    view === "pagamentos" ? getActivePartnerId(profile.personId) : null,
   ]);
   const suggestedRoute = effective?.suggestedRoute === "manual" ? "manual" : "inteligente";
   const voteDays = effective?.voteDays ?? CLOSING_VOTE_DAYS;
@@ -622,6 +637,7 @@ async function OutingContent({ params, searchParams }: Pick<PageProps<"/roles/[i
           receipts={receipts}
           people={people}
           me={profile.personId}
+          partner={people.find((person) => person.personId === partnerId)}
           defaults={{ toId: typeof query.para === "string" ? query.para : undefined, amount: typeof query.valor === "string" ? query.valor : undefined }}
         />
       )}
