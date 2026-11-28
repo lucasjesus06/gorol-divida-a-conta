@@ -171,10 +171,10 @@ export async function insertVersion(tx: Tx, outingId: string, personId: string, 
   });
   await tx
     .insert(expensePayers)
-    .values(expense.payers.map((payer) => ({ expenseId: expense.id, personId: payer.participantId, amountCents: payer.amountCents })));
+    .values(expense.payers.map((payer) => ({ outingId, expenseId: expense.id, personId: payer.participantId, amountCents: payer.amountCents })));
   await tx
     .insert(expenseShares)
-    .values([...expense.shares].map(([shareholder, amountCents]) => ({ expenseId: expense.id, personId: shareholder, amountCents })));
+    .values([...expense.shares].map(([shareholder, amountCents]) => ({ outingId, expenseId: expense.id, personId: shareholder, amountCents })));
 }
 
 async function findByKey(outingId: string, key: string) {

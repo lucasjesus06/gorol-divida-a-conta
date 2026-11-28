@@ -35,8 +35,8 @@ function registerAs(personId: string, total: number, payers: Record<string, numb
       .insert(expenses)
       .values({ outingId, registeredBy: personId, totalCents: total, description: "Pizza", splitMethod: "exact", occurredAt: new Date() })
       .returning({ id: expenses.id });
-    await tx.insert(expensePayers).values(Object.entries(payers).map(([id, amountCents]) => ({ expenseId: expense.id, personId: id, amountCents })));
-    await tx.insert(expenseShares).values(Object.entries(shares).map(([id, amountCents]) => ({ expenseId: expense.id, personId: id, amountCents })));
+    await tx.insert(expensePayers).values(Object.entries(payers).map(([id, amountCents]) => ({ outingId, expenseId: expense.id, personId: id, amountCents })));
+    await tx.insert(expenseShares).values(Object.entries(shares).map(([id, amountCents]) => ({ outingId, expenseId: expense.id, personId: id, amountCents })));
     return expense.id;
   });
 }

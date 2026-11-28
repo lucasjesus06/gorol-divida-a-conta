@@ -290,6 +290,10 @@ export const expenses = pgTable(
 export const expensePayers = pgTable(
   "expense_payers",
   {
+    /** Copied from the expense, so that who may read the row is decided by a short list of outings instead of one lookup per row. */
+    outingId: uuid("outing_id")
+      .notNull()
+      .references(() => outings.id, { onDelete: "restrict" }),
     expenseId: uuid("expense_id")
       .notNull()
       .references(() => expenses.id, { onDelete: "restrict" }),
@@ -300,6 +304,7 @@ export const expensePayers = pgTable(
   },
   (table) => [
     primaryKey({ columns: [table.expenseId, table.personId] }),
+    index("expense_payers_outing_idx").on(table.outingId),
     check("expense_payers_amount_positive", sql`${table.amountCents} > 0`),
   ],
 ).enableRLS();
@@ -307,6 +312,10 @@ export const expensePayers = pgTable(
 export const expenseShares = pgTable(
   "expense_shares",
   {
+    /** Copied from the expense, so that who may read the row is decided by a short list of outings instead of one lookup per row. */
+    outingId: uuid("outing_id")
+      .notNull()
+      .references(() => outings.id, { onDelete: "restrict" }),
     expenseId: uuid("expense_id")
       .notNull()
       .references(() => expenses.id, { onDelete: "restrict" }),
@@ -317,6 +326,7 @@ export const expenseShares = pgTable(
   },
   (table) => [
     primaryKey({ columns: [table.expenseId, table.personId] }),
+    index("expense_shares_outing_idx").on(table.outingId),
     check("expense_shares_amount_non_negative", sql`${table.amountCents} >= 0`),
   ],
 ).enableRLS();
