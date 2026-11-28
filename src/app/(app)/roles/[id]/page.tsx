@@ -68,7 +68,7 @@ function Tabs({ outingId, view, isAdmin }: { outingId: string; view: View; isAdm
   ];
 
   return (
-    <nav aria-label="Visões do rolê" className="mb-6 flex gap-2 overflow-x-auto">
+    <nav aria-label="Visões do rolê" className="mb-6 flex flex-wrap gap-2">
       {tabs.map((tab) => (
         <Link
           key={tab.view}

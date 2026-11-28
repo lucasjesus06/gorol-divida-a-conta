@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
 import { Suspense } from "react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { isSuperAdmin } from "@/server/access";
-import { getIdentity } from "@/server/auth";
+import { requireReadyAccount } from "@/server/auth";
 
 export const metadata: Metadata = {
   title: "Configurações · GoRolê",
@@ -24,32 +24,59 @@ function SettingsLink({ href, icon, title, description }: { href: string; icon: 
   );
 }
 
-async function AdminLink() {
-  const identity = await getIdentity();
-  if (!identity || !(await isSuperAdmin(identity.userId))) {
-    return null;
-  }
+async function SettingsContent() {
+  const { identity } = await requireReadyAccount();
+  const isAdmin = await isSuperAdmin(identity.userId);
+
   return (
-    <>
+    <div className="flex flex-col gap-3">
       <SettingsLink
-        href="/configuracoes/administracao"
-        icon={<ShieldCheck className="size-5" />}
-        title="Administração"
-        description="Pedidos de acesso, convites e contas."
+        href="/configuracoes/perfil"
+        icon={<UserRound className="size-5" />}
+        title="Perfil"
+        description="Foto e como você quer ser chamado."
       />
       <SettingsLink
-        href="/configuracoes/cobrancas"
-        icon={<HandCoins className="size-5" />}
-        title="Cobranças"
-        description="Quem deve, mensagens prontas e textos."
+        href="/configuracoes/pix"
+        icon={<KeyRound className="size-5" />}
+        title="Chave Pix"
+        description="É a chave que seus amigos usam para te pagar."
       />
       <SettingsLink
-        href="/configuracoes/parametros"
-        icon={<SlidersHorizontal className="size-5" />}
-        title="Parâmetros"
-        description="Prazos e regras do sistema, com histórico."
+        href="/configuracoes/avisos"
+        icon={<Bell className="size-5" />}
+        title="Avisos no aparelho"
+        description="Ligue para ser avisado no celular."
       />
-    </>
+      <SettingsLink
+        href="/configuracoes/privacidade"
+        icon={<ShieldHalf className="size-5" />}
+        title="Privacidade"
+        description="Termos aceitos e lembretes de pagamento."
+      />
+      {isAdmin && (
+        <>
+          <SettingsLink
+            href="/configuracoes/administracao"
+            icon={<ShieldCheck className="size-5" />}
+            title="Administração"
+            description="Pedidos de acesso, convites e contas."
+          />
+          <SettingsLink
+            href="/configuracoes/cobrancas"
+            icon={<HandCoins className="size-5" />}
+            title="Cobranças"
+            description="Quem deve, mensagens prontas e textos."
+          />
+          <SettingsLink
+            href="/configuracoes/parametros"
+            icon={<SlidersHorizontal className="size-5" />}
+            title="Parâmetros"
+            description="Prazos e regras do sistema, com histórico."
+          />
+        </>
+      )}
+    </div>
   );
 }
 
@@ -57,35 +84,9 @@ export default function SettingsPage() {
   return (
     <>
       <PageHeader title="Configurações" description="Seus dados e o funcionamento da sua conta." />
-      <div className="flex flex-col gap-3">
-        <SettingsLink
-          href="/configuracoes/perfil"
-          icon={<UserRound className="size-5" />}
-          title="Perfil"
-          description="Foto e como você quer ser chamado."
-        />
-        <SettingsLink
-          href="/configuracoes/pix"
-          icon={<KeyRound className="size-5" />}
-          title="Chave Pix"
-          description="É a chave que seus amigos usam para te pagar."
-        />
-        <SettingsLink
-          href="/configuracoes/avisos"
-          icon={<Bell className="size-5" />}
-          title="Avisos no aparelho"
-          description="Ligue para ser avisado no celular."
-        />
-        <SettingsLink
-          href="/configuracoes/privacidade"
-          icon={<ShieldHalf className="size-5" />}
-          title="Privacidade"
-          description="Termos aceitos e lembretes de pagamento."
-        />
-        <Suspense fallback={null}>
-          <AdminLink />
-        </Suspense>
-      </div>
+      <Suspense fallback={null}>
+        <SettingsContent />
+      </Suspense>
     </>
   );
 }
