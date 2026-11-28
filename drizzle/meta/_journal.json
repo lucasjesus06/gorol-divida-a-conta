@@ -267,6 +267,20 @@
       "when": 1795826600441,
       "tag": "0037_politicas_termos_de_uso",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1795829814703,
+      "tag": "0038_parametros_do_sistema",
+      "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1795829815663,
+      "tag": "0039_politicas_parametros_do_sistema",
+      "breakpoints": true
     }
   ]
 }

@@ -785,3 +785,30 @@ export const termsAcceptances = pgTable(
     uniqueIndex("terms_acceptances_person_version_idx").on(table.personId, table.version),
   ],
 ).enableRLS();
+
+export const systemParameters = pgTable("system_parameters", {
+  key: text("key").primaryKey(),
+  value: integer("value").notNull(),
+  updatedBy: uuid("updated_by")
+    .notNull()
+    .references(() => people.id, { onDelete: "restrict" }),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}).enableRLS();
+
+export const systemParameterChanges = pgTable(
+  "system_parameter_changes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    key: text("key").notNull(),
+    /** The value that was in force before, whether it was the default or an earlier change. */
+    previousValue: integer("previous_value").notNull(),
+    newValue: integer("new_value").notNull(),
+    /** True when the change put the default value back. */
+    reset: boolean("reset").notNull().default(false),
+    changedBy: uuid("changed_by")
+      .notNull()
+      .references(() => people.id, { onDelete: "restrict" }),
+    changedAt: timestamp("changed_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index("system_parameter_changes_key_idx").on(table.key, table.changedAt)],
+).enableRLS();
