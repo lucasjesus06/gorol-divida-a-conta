@@ -171,6 +171,8 @@ Há três níveis de configuração, todos em telas do aplicativo:
 - **Rolê (dono do rolê):** rota de acerto sugerida e taxa de serviço padrão, entre outros ajustes do rolê. A forma de divisão não é ajuste do rolê: é escolhida em cada despesa.
 - **Sistema (super administrador):** os parâmetros dos **motores de regras**, como os da cobrança (intervalo, janela de horário, quando oferecer pausa, duração e número de pausas) e o prazo para contestar um comprovante.
 - Cada parâmetro tem **valor padrão e limites mínimo e máximo**, e toda mudança é registrada. Mudar um parâmetro vale daí em diante e **não reescreve o histórico**.
+  - **Como funciona (GOR-20d):** os parâmetros do sistema ficam em **Configurações, Parâmetros** (só o super admin), agrupados em **Cobrança** e **Encerramento e contestação**. Cada um mostra descrição, limites, valor padrão, se foi alterado e o botão **"Voltar ao padrão"**; salvar pede **confirmação** ("tem certeza?"). O banco guarda só o que foi alterado (sem linha, vale o padrão) e **cada mudança fica no histórico**, que não se altera nem se apaga: quem mudou, quando, o valor anterior e o novo. Valor fora dos limites ou não inteiro é recusado com a mensagem dos limites.
+  - **Três níveis, com esta precedência:** padrão do sistema, depois o **ajuste do rolê** (só o dono, dentro dos limites do sistema), depois a preferência da pessoa (só onde faz sentido, como avisos). **Cobrança, prazo de contestação do comprovante e validade de convite e de link ficam só no sistema ou fixos**; governança do grupo (prazo da votação de encerramento, prazo de contestação depois do encerramento, forma de divisão, rota e taxa de serviço padrão) é a que o dono poderá ajustar por rolê (20f).
 
 ### Leitura de documentos (foto, print e PDF)
 

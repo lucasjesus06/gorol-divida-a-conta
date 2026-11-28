@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DISPUTE_WINDOW_DAYS, LATE_DISPUTE_WARNING, assertLateDisputeConfirmed, disputeWindow } from "./dispute-window";
+import { DISPUTE_WINDOW_DAYS, assertLateDisputeConfirmed, disputeWindow, lateDisputeWarning } from "./dispute-window";
 
 const closedAt = new Date("2026-03-01T12:00:00Z");
 const daysAfter = (days: number, extraMs = 0) => new Date(closedAt.getTime() + days * 86_400_000 + extraMs);
@@ -21,9 +21,17 @@ describe("disputeWindow", () => {
   });
 });
 
+describe("prazo configurável", () => {
+  it("usa o número de dias informado, e a mensagem diz o mesmo número", () => {
+    expect(disputeWindow(closedAt, daysAfter(10), 14)).toBe("within");
+    expect(disputeWindow(closedAt, daysAfter(10), 7)).toBe("late");
+    expect(() => assertLateDisputeConfirmed("late", false, 14)).toThrow("mais de 14 dias");
+  });
+});
+
 describe("assertLateDisputeConfirmed", () => {
   it("fora do prazo só segue com a confirmação, e a mensagem explica o efeito", () => {
-    expect(() => assertLateDisputeConfirmed("late", false)).toThrow(LATE_DISPUTE_WARNING);
+    expect(() => assertLateDisputeConfirmed("late", false)).toThrow(lateDisputeWarning());
     expect(() => assertLateDisputeConfirmed("late", true)).not.toThrow();
   });
 

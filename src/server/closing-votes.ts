@@ -5,7 +5,6 @@ import { closingVoteChoices, closingVotes, people } from "@/db/schema";
 import {
   assertCanAskForVote,
   balanceSnapshot,
-  CLOSING_VOTE_DAYS,
   closingVoteDeadline,
   closingVoteOutcome,
   closingVoters,
@@ -20,6 +19,7 @@ import { closeBlockers } from "@/domain/outing-closing";
 import { assertActiveOuting, outingContext } from "./expenses";
 import { closeInput, finalizeClose } from "./outing-lifecycle";
 import { notify } from "./push";
+import { getParameterValues } from "./system-parameters";
 
 type Context = Awaited<ReturnType<typeof outingContext>>;
 
@@ -119,18 +119,19 @@ export async function requestClosing(ownerId: string, outingId: string, now: Dat
   }
 
   const voters = closingVoters(input.people);
+  const days = (await getParameterValues())["closing.vote_days"] as number;
   await asService(() =>
     getDb().transaction(async (tx) => {
       const [vote] = await tx
         .insert(closingVotes)
-        .values({ outingId, requestedBy: ownerId, snapshot: balanceSnapshot(input.people), deadline: closingVoteDeadline(now) })
+        .values({ outingId, requestedBy: ownerId, snapshot: balanceSnapshot(input.people), deadline: closingVoteDeadline(now, days) })
         .returning({ id: closingVotes.id });
       await tx.insert(closingVoteChoices).values(
         voters.map((personId) => (personId === ownerId ? { voteId: vote.id, personId, decision: "accepted" as const, decidedAt: now } : { voteId: vote.id, personId })),
       );
     }),
   );
-  const notice = closingVoteRequested({ outingId, outingName: refreshed.outing.name, ownerName: refreshed.names.get(ownerId) ?? "O dono" });
+  const notice = closingVoteRequested({ outingId, outingName: refreshed.outing.name, ownerName: refreshed.names.get(ownerId) ?? "O dono", days });
   await Promise.all(voters.filter((personId) => personId !== ownerId).map((personId) => notify(personId, notice)));
   return { closed: false };
 }
@@ -173,6 +174,7 @@ export type ClosingVoteView = {
 /** The latest vote of the outing, after settling it if it is due. */
 export async function getClosingVote(personId: string, outingId: string, now: Date = new Date()): Promise<ClosingVoteView | null> {
   const context = await outingContext(personId, outingId);
+  const days = (await getParameterValues())["closing.vote_days"] as number;
   await resolveClosing(outingId, now);
 
   const [vote] = await getDb().select().from(closingVotes).where(eq(closingVotes.outingId, outingId)).orderBy(desc(closingVotes.createdAt)).limit(1);
@@ -189,6 +191,6 @@ export async function getClosingVote(personId: string, outingId: string, now: Da
     requestedBy: { id: vote.requestedBy, name: nameOf(vote.requestedBy) },
     choices: choices.map((choice) => ({ personId: choice.personId, name: nameOf(choice.personId), decision: choice.decision })),
     canAnswer: vote.status === "open" && choices.some((choice) => choice.personId === personId && choice.decision === "pending"),
-    recentlyEnded: vote.resolvedAt !== null && now.getTime() - vote.resolvedAt.getTime() < CLOSING_VOTE_DAYS * 86_400_000,
+    recentlyEnded: vote.resolvedAt !== null && now.getTime() - vote.resolvedAt.getTime() < days * 86_400_000,
   };
 }

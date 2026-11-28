@@ -40,6 +40,10 @@ describe("resultado da votação", () => {
     expect(deadline.toISOString()).toBe("2026-03-13T12:00:00.000Z");
   });
 
+  it("o prazo segue o número de dias informado", () => {
+    expect(closingVoteDeadline(now, 5).toISOString()).toBe("2026-03-15T12:00:00.000Z");
+  });
+
   it("um não recusa, mesmo antes do fim do prazo e mesmo com os outros calados", () => {
     expect(closingVoteOutcome(["accepted", "rejected", "pending"], deadline, now)).toBe("rejected");
   });

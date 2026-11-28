@@ -14,6 +14,7 @@ const outingsServer = await import("./outings");
 const expensesServer = await import("./expenses");
 const paymentsServer = await import("./payments");
 const server = await import("./closing-votes");
+const params = await import("./system-parameters");
 
 type TestDb = Awaited<ReturnType<typeof createTestDatabase>>;
 const db = () => state.db as TestDb;
@@ -84,6 +85,17 @@ describe("quando há outros com a receber", () => {
     expect(view.deadline.toISOString()).toBe(daysLater(3).toISOString());
     expect((await db().select().from(notifications)).map((notice) => [notice.personId, notice.kind])).toEqual([[maria, "closing_vote_requested"]]);
     expect(await status()).toBe("active");
+  });
+
+  it("o prazo da votação segue o parâmetro do sistema", async () => {
+    await params.saveParameter(lucas, "closing.vote_days", 5);
+    await server.requestClosing(lucas, outingId, t0);
+    expect((await server.getClosingVote(maria, outingId, t0))!.deadline.toISOString()).toBe(daysLater(5).toISOString());
+    expect((await db().select().from(notifications))[0].body).toContain("5 dias");
+    await server.getClosingVote(lucas, outingId, daysLater(4));
+    expect(await status()).toBe("active");
+    await server.getClosingVote(lucas, outingId, daysLater(5));
+    expect(await status()).toBe("closed");
   });
 
   it("quem deve não vota", async () => {

@@ -192,3 +192,40 @@ describe("textos", () => {
     expect(await server.getTemplates()).toEqual(["Oi {nome}"]);
   });
 });
+
+describe("parâmetros do sistema na cobrança", () => {
+  const paramsServer = () => import("./system-parameters");
+
+  it("o intervalo alterado vale na fila e na hora de registrar", async () => {
+    const params = await paramsServer();
+    await params.saveParameter(lucas, "reminder.min_interval_hours", 48);
+    await server.recordReminder(lucas, { debtorId: maria, creditorId: lucas, channel: "whatsapp" }, noon);
+    const at30h = (await server.getChargeQueue(hoursLater(30))).find((item) => item.debtor.id === maria)!;
+    expect(at30h.decision).toMatchObject({ action: "wait", reason: "min_interval" });
+    expect((await server.getChargeQueue(hoursLater(48))).find((item) => item.debtor.id === maria)!.decision.action).toBe("send");
+  });
+
+  it("o horário de envio alterado vale: com o fim às 16h, 17h já está fora", async () => {
+    const params = await paramsServer();
+    await params.saveParameter(lucas, "reminder.window_end_hour", 16);
+    const at17 = new Date("2026-03-12T20:00:00Z");
+    expect((await server.getChargeQueue(at17)).find((item) => item.debtor.id === maria)!.decision).toMatchObject({ action: "wait", reason: "outside_window" });
+  });
+
+  it("a pausa só fica disponível depois do número de lembretes configurado", async () => {
+    const params = await paramsServer();
+    await params.saveParameter(lucas, "reminder.offer_pause_after", 1);
+    expect((await server.getChargeQueue(noon)).find((item) => item.debtor.id === maria)!.canPause).toBe(false);
+    await server.recordReminder(lucas, { debtorId: maria, creditorId: lucas, channel: "whatsapp" }, noon);
+    expect((await server.getChargeQueue(hoursLater(24))).find((item) => item.debtor.id === maria)!.canPause).toBe(true);
+    await server.pauseCharges(lucas, { debtorId: maria, creditorId: lucas }, hoursLater(24));
+  });
+
+  it("com zero pausas permitidas a pausa nunca fica disponível", async () => {
+    const params = await paramsServer();
+    await params.saveParameter(lucas, "reminder.max_pauses", 0);
+    await server.recordReminder(lucas, { debtorId: maria, creditorId: lucas, channel: "whatsapp" }, noon);
+    expect((await server.getChargeQueue(hoursLater(24))).find((item) => item.debtor.id === maria)!.canPause).toBe(false);
+    await expect(server.pauseCharges(lucas, { debtorId: maria, creditorId: lucas }, hoursLater(24))).rejects.toMatchObject({ code: "pause_limit_reached" });
+  });
+});

@@ -11,7 +11,6 @@ export const metadata: Metadata = {
 };
 
 const dateFormat = new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short", timeZone: "America/Sao_Paulo" });
-const PAUSE_AVAILABLE_AFTER = 3;
 
 const waitReasons = {
   paused: "Em pausa",
@@ -32,7 +31,7 @@ function toCard(item: ChargeItem): ChargeCardItem {
   };
   const { decision } = item;
   if (decision.action === "send") {
-    return { ...base, status: { kind: "send", message: item.message ?? "", whatsappUrl: item.whatsappUrl, canPause: item.sentCount >= PAUSE_AVAILABLE_AFTER && decision.offerPause } };
+    return { ...base, status: { kind: "send", message: item.message ?? "", whatsappUrl: item.whatsappUrl, canPause: item.canPause } };
   }
   if (decision.action === "wait") {
     return { ...base, status: { kind: "wait", label: `${waitReasons[decision.reason]}: pode cobrar de novo a partir de ${dateFormat.format(decision.until)}.` } };

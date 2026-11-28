@@ -11,12 +11,14 @@ import {
 import { DomainError } from "@/domain/domain-error";
 import { paymentReminder } from "@/domain/notification";
 import { pairStatement } from "@/domain/pair-statement";
+import { reminderPolicyFrom } from "@/domain/system-parameters";
 import { TERMS_VERSION, remindersConsentedAt } from "@/domain/terms";
 import type { ReminderChannel } from "@/domain/reminder-channels";
 import { DEFAULT_TEMPLATES, pickTemplate, renderTemplate, validateTemplates, whatsappLink } from "@/domain/reminder-message";
 import { accountIds, loadLedgerForOutings } from "./balances";
 import { getMyPixKey } from "./pix";
 import { notify } from "./push";
+import { getParameterValues } from "./system-parameters";
 
 export type ChargeItem = {
   debtor: { id: string; name: string; phone: string };
@@ -27,6 +29,8 @@ export type ChargeItem = {
   sentCount: number;
   lastSentAt: Date | null;
   pausesUsed: number;
+  /** The super admin can register a pause now: enough reminders since the last one, and pauses left. */
+  canPause: boolean;
   pausedUntil: Date | null;
   /** Ready to open in WhatsApp; only when the reminder can go out now. */
   message: string | null;
@@ -93,11 +97,12 @@ function stateFor(pair: Pair, facts: Awaited<ReturnType<typeof loadFacts>>): Rem
 /** Who owes whom right now and whether a reminder can go out; the super admin's work list. */
 export async function getChargeQueue(now: Date = new Date()): Promise<ChargeItem[]> {
   return asService(async () => {
-    const [{ pairs, ledger }, facts, templates] = await Promise.all([openPairs(), loadFacts(), loadTemplates()]);
+    const [{ pairs, ledger }, facts, templates, parameters] = await Promise.all([openPairs(), loadFacts(), loadTemplates(), getParameterValues()]);
+    const policy = reminderPolicyFrom(parameters);
     const items: ChargeItem[] = [];
     for (const pair of pairs) {
       const state = stateFor(pair, facts);
-      const decision = decideReminder(state, now);
+      const decision = decideReminder(state, now, policy);
       if (decision.action === "stop") continue;
 
       const debtorName = ledger.personNames.get(pair.debtorId) ?? "Pessoa";
@@ -125,6 +130,9 @@ export async function getChargeQueue(now: Date = new Date()): Promise<ChargeItem
         sentCount: state.sentAt.length,
         lastSentAt: state.sentAt.length > 0 ? new Date(Math.max(...state.sentAt.map((date) => date.getTime()))) : null,
         pausesUsed: state.pausesUsed,
+        canPause:
+          state.pausesUsed < policy.maxPauses &&
+          state.sentAt.filter((sent) => !state.pausedAt || sent > state.pausedAt).length >= policy.offerPauseAfter,
         pausedUntil: state.pausedUntil,
         message,
         whatsappUrl: message && phone ? whatsappLink(phone, message) : null,
@@ -179,7 +187,7 @@ export async function pauseCharges(adminId: string, input: { debtorId: string; c
     { debtorId: input.debtorId, creditorId: input.creditorId, amountCents: item.amountCents, outingIds: [] },
     facts,
   );
-  const paused = pauseRemindersDomain({ ...state, hasOpenDispute: false }, now);
+  const paused = pauseRemindersDomain({ ...state, hasOpenDispute: false }, now, reminderPolicyFrom(await getParameterValues()));
   await asService(() =>
     getDb().insert(reminderPauses).values({
       debtorId: input.debtorId,

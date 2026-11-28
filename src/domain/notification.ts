@@ -1,3 +1,4 @@
+import { CLOSING_VOTE_DAYS } from "./closing-vote";
 import { formatCents, type Cents } from "./money";
 import type { NotificationKind } from "./notification-kinds";
 
@@ -89,11 +90,11 @@ export function participantLeft(input: { personName: string; outingId: string; o
 }
 
 /** To whoever is owed money: the owner wants to close the outing and they have a say. */
-export function closingVoteRequested(input: { outingId: string; outingName: string; ownerName: string }) {
+export function closingVoteRequested(input: { outingId: string; outingName: string; ownerName: string; days?: number }) {
   return draft(
     "closing_vote_requested",
     "Encerrar o rolê?",
-    `${input.ownerName} quer encerrar ${input.outingName}. A dívida entre vocês continua. Se ninguém disser nada em 3 dias, vale como aceite.`,
+    `${input.ownerName} quer encerrar ${input.outingName}. A dívida entre vocês continua. Se ninguém disser nada em ${input.days ?? CLOSING_VOTE_DAYS} dias, vale como aceite.`,
     `/roles/${input.outingId}`,
   );
 }

@@ -1,4 +1,4 @@
-import { Bell, ChevronRight, HandCoins, KeyRound, ShieldCheck, ShieldHalf, UserRound } from "lucide-react";
+import { Bell, ChevronRight, HandCoins, KeyRound, ShieldCheck, ShieldHalf, SlidersHorizontal, UserRound } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { ReactNode } from "react";
@@ -42,6 +42,12 @@ async function AdminLink() {
         icon={<HandCoins className="size-5" />}
         title="Cobranças"
         description="Quem deve, mensagens prontas e textos."
+      />
+      <SettingsLink
+        href="/configuracoes/parametros"
+        icon={<SlidersHorizontal className="size-5" />}
+        title="Parâmetros"
+        description="Prazos e regras do sistema, com histórico."
       />
     </>
   );

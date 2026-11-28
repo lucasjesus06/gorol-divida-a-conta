@@ -101,12 +101,12 @@ export function LeaveOutingButton({ outingId }: { outingId: string }) {
   );
 }
 
-export function RequestClosingButton({ outingId }: { outingId: string }) {
+export function RequestClosingButton({ outingId, days }: { outingId: string; days: number }) {
   return (
     <ConfirmAction
       label="Pedir encerramento"
       confirmLabel="Sim, pedir"
-      question="Quem tem a receber será avisado e decide em até 3 dias; quem não responder aceita. A dívida entre as pessoas continua. Confirma?"
+      question={`Quem tem a receber será avisado e decide em até ${days} dias; quem não responder aceita. A dívida entre as pessoas continua. Confirma?`}
       run={() => requestClosingAction(outingId)}
     />
   );

@@ -4,13 +4,13 @@ import type { Cents } from "./money";
 
 export { closingVoteDecisions, closingVoteStatuses, type ClosingVoteDecision, type ClosingVoteStatus } from "./closing-vote-status";
 
-/** Silence counts as acceptance after this long. */
+/** Default: silence counts as acceptance after this long. The system parameter can change it. */
 export const CLOSING_VOTE_DAYS = 3;
 
 export type PersonBalance = { personId: string; netCents: Cents };
 
-export function closingVoteDeadline(now: Date): Date {
-  return new Date(now.getTime() + CLOSING_VOTE_DAYS * 24 * 60 * 60 * 1000);
+export function closingVoteDeadline(now: Date, days: number = CLOSING_VOTE_DAYS): Date {
+  return new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
 }
 
 /** Only who has money to receive votes: whoever owes does not decide how others give up their credit. */

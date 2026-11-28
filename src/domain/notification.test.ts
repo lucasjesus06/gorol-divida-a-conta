@@ -42,7 +42,7 @@ describe("avisos", () => {
   });
 
   it("avisos da votação de encerramento explicam o prazo e o resultado", () => {
-    expect(closingVoteRequested({ outingId, outingName: "Churrasco", ownerName: "Lucas" }).body).toContain("3 dias");
+    expect(closingVoteRequested({ outingId, outingName: "Churrasco", ownerName: "Lucas", days: 5 }).body).toContain("5 dias");
     expect(closingVoteResolved({ outingId, outingName: "Churrasco", result: "approved" }).title).toBe("Rolê encerrado");
     expect(closingVoteResolved({ outingId, outingName: "Churrasco", result: "rejected" }).body).toContain("continua aberto");
     expect(closingVoteResolved({ outingId, outingName: "Churrasco", result: "cancelled" }).body).toContain("mudaram");
