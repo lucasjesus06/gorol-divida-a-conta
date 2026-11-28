@@ -1,4 +1,5 @@
 import { activeExpenses, type Expense } from "./expense";
+import type { Amnesty } from "./amnesty";
 import type { Cents } from "./money";
 import type { Payment } from "./payment";
 
@@ -13,6 +14,9 @@ export type ParticipantBalance = {
   /** Confirmed payments sent to / received from other participants. */
   sentCents: Cents;
   receivedCents: Cents;
+  /** Amnesties: what this person forgave to others / was forgiven by others. */
+  amnestyGivenCents: Cents;
+  amnestyReceivedCents: Cents;
   /** Positive: has money to receive. Negative: has money to pay. */
   netCents: Cents;
   /** Declared payments still waiting for the creditor's confirmation. */
@@ -28,6 +32,7 @@ export function computeOutingBalances(
   outingId: string,
   expenses: Expense[],
   payments: Payment[],
+  amnesties: Amnesty[] = [],
 ): Map<string, ParticipantBalance> {
   const balances = new Map<string, ParticipantBalance>();
   const of = (participantId: string): ParticipantBalance => {
@@ -40,6 +45,8 @@ export function computeOutingBalances(
         advancedCents: 0,
         sentCents: 0,
         receivedCents: 0,
+        amnestyGivenCents: 0,
+        amnestyReceivedCents: 0,
         netCents: 0,
         awaitingConfirmationSentCents: 0,
         awaitingConfirmationReceivedCents: 0,
@@ -70,9 +77,17 @@ export function computeOutingBalances(
     }
   }
 
+  for (const amnesty of amnesties) {
+    for (const item of amnesty.items) {
+      if (item.outingId !== outingId) continue;
+      of(amnesty.creditorId).amnestyGivenCents += item.amountCents;
+      of(amnesty.debtorId).amnestyReceivedCents += item.amountCents;
+    }
+  }
+
   for (const balance of balances.values()) {
     balance.advancedCents = balance.paidCents - balance.owedCents;
-    balance.netCents = balance.advancedCents + balance.sentCents - balance.receivedCents;
+    balance.netCents = balance.advancedCents + balance.sentCents - balance.receivedCents + balance.amnestyReceivedCents - balance.amnestyGivenCents;
   }
   return balances;
 }

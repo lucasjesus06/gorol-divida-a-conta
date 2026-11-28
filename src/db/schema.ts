@@ -586,6 +586,55 @@ export const payments = pgTable(
   ],
 ).enableRLS();
 
+/** A creditor forgiving part of what someone owes them. Immutable: it lowers the balance without erasing anything. */
+export const amnesties = pgTable(
+  "amnesties",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    creditorId: uuid("creditor_id")
+      .notNull()
+      .references(() => people.id, { onDelete: "restrict" }),
+    debtorId: uuid("debtor_id")
+      .notNull()
+      .references(() => people.id, { onDelete: "restrict" }),
+    totalCents: bigint("total_cents", { mode: "number" }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    idempotencyKey: text("idempotency_key"),
+  },
+  (table) => [
+    check("amnesties_total_positive", sql`${table.totalCents} > 0`),
+    check("amnesties_different_people", sql`${table.creditorId} <> ${table.debtorId}`),
+    uniqueIndex("amnesties_idempotency_idx")
+      .on(table.creditorId, table.idempotencyKey)
+      .where(sql`${table.idempotencyKey} is not null`),
+    index("amnesties_creditor_idx").on(table.creditorId, table.createdAt),
+    index("amnesties_debtor_idx").on(table.debtorId, table.createdAt),
+  ],
+).enableRLS();
+
+/** What was forgiven, expense by expense, so the debtor and the history can say where it came from. */
+export const amnestyItems = pgTable(
+  "amnesty_items",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    amnestyId: uuid("amnesty_id")
+      .notNull()
+      .references(() => amnesties.id, { onDelete: "restrict" }),
+    outingId: uuid("outing_id")
+      .notNull()
+      .references(() => outings.id, { onDelete: "restrict" }),
+    expenseId: uuid("expense_id")
+      .notNull()
+      .references(() => expenses.id, { onDelete: "restrict" }),
+    amountCents: bigint("amount_cents", { mode: "number" }).notNull(),
+  },
+  (table) => [
+    check("amnesty_items_amount_positive", sql`${table.amountCents} > 0`),
+    uniqueIndex("amnesty_items_expense_idx").on(table.amnestyId, table.expenseId),
+    index("amnesty_items_outing_idx").on(table.outingId),
+  ],
+).enableRLS();
+
 export const notifications = pgTable(
   "notifications",
   {

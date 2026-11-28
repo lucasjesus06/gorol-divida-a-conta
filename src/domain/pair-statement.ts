@@ -1,3 +1,4 @@
+import type { Amnesty } from "./amnesty";
 import { activeExpenses, type Expense } from "./expense";
 import { expenseObligations } from "./obligations";
 import type { Cents } from "./money";
@@ -11,6 +12,15 @@ export type PairEntry =
       description: string;
       occurredAt: Date;
       /** From the viewer's perspective: positive means the other person owes the viewer. */
+      effectCents: Cents;
+    }
+  | {
+      kind: "amnesty";
+      outingId: string;
+      amnestyId: string;
+      expenseId: string;
+      occurredAt: Date;
+      /** From the viewer's perspective: negative when the viewer forgave, positive when the viewer was forgiven. */
       effectCents: Cents;
     }
   | {
@@ -46,6 +56,7 @@ export function pairStatement(
   otherId: string,
   expenses: Expense[],
   payments: Payment[],
+  amnesties: Amnesty[] = [],
 ): PairStatement {
   const entries: PairEntry[] = [];
 
@@ -81,6 +92,22 @@ export function pairStatement(
         status: payment.status,
         occurredAt: payment.declaredAt,
         effectCents: effect,
+      });
+    }
+  }
+
+  for (const amnesty of amnesties) {
+    const forgave = amnesty.creditorId === viewerId && amnesty.debtorId === otherId;
+    const wasForgiven = amnesty.creditorId === otherId && amnesty.debtorId === viewerId;
+    if (!forgave && !wasForgiven) continue;
+    for (const item of amnesty.items) {
+      entries.push({
+        kind: "amnesty",
+        outingId: item.outingId,
+        amnestyId: amnesty.id,
+        expenseId: item.expenseId,
+        occurredAt: amnesty.createdAt,
+        effectCents: forgave ? -item.amountCents : item.amountCents,
       });
     }
   }

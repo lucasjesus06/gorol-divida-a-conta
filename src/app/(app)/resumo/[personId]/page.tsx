@@ -57,6 +57,11 @@ async function Detail({ params }: Pick<PageProps<"/resumo/[personId]">, "params"
               <p className="text-sm text-muted-foreground">A soma de todos os rolês que vocês dividem: o que um deve num rolê abate o que o outro deve em outro.</p>
             </>
           )}
+          {total !== null && total > 0 && (
+            <Button asChild variant="secondary" className="self-start">
+              <Link href={`/resumo/${detail.otherId}/perdoar`}>Perdoar dívida</Link>
+            </Button>
+          )}
           {total !== null && total < 0 && iOwe[0] && (
             <Button asChild className="self-start">
               <Link href={payLink(iOwe[0].outingId, detail.otherId, total)}>Pagar o total</Link>
@@ -92,7 +97,7 @@ async function Detail({ params }: Pick<PageProps<"/resumo/[personId]">, "params"
           <h2 className="text-xl font-bold">Histórico</h2>
           <ul className="flex flex-col gap-2">
             {detail.entries.map((entry) => (
-              <li key={`${entry.kind}-${entry.kind === "expense" ? entry.expenseId : entry.paymentId}`} className="card-surface flex items-center justify-between gap-3 p-3 text-sm">
+              <li key={`${entry.kind}-${entry.kind === "expense" ? entry.expenseId : entry.kind === "payment" ? entry.paymentId : `${entry.amnestyId}-${entry.expenseId}`}`} className="card-surface flex items-center justify-between gap-3 p-3 text-sm">
                 <span className="flex min-w-0 flex-col">
                   <span className="truncate font-semibold">{entry.label}</span>
                   <span className="text-xs text-muted-foreground">
@@ -101,6 +106,7 @@ async function Detail({ params }: Pick<PageProps<"/resumo/[personId]">, "params"
                   </span>
                 </span>
                 {entry.kind === "payment" && <Pill>Pagamento</Pill>}
+                {entry.kind === "amnesty" && <Pill>Anistia</Pill>}
                 <span className={cn("font-bold", entry.effectCents < 0 ? "text-destructive" : "text-primary-glow")}>
                   {entry.effectCents < 0 ? "−" : "+"}
                   {formatCents(Math.abs(entry.effectCents))}

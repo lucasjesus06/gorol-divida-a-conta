@@ -1,4 +1,5 @@
 import type { ParticipantBalance } from "./outing-balance";
+import type { Amnesty } from "./amnesty";
 import { pairStatement } from "./pair-statement";
 import type { Expense } from "./expense";
 import type { Cents } from "./money";
@@ -122,9 +123,11 @@ export function manualRoute(
   outingId: string,
   expenses: Expense[],
   payments: Payment[],
+  amnesties: Amnesty[] = [],
 ): Transfer[] {
   const outingExpenses = expenses.filter((expense) => expense.outingId === outingId);
   const outingPayments = payments.filter((payment) => payment.outingId === outingId);
+  const outingAmnesties = amnesties.map((amnesty) => ({ ...amnesty, items: amnesty.items.filter((item) => item.outingId === outingId) }));
 
   const people = new Set<string>();
   for (const expense of outingExpenses) {
@@ -138,7 +141,7 @@ export function manualRoute(
     for (let j = i + 1; j < ordered.length; j += 1) {
       const a = ordered[i] as string;
       const b = ordered[j] as string;
-      const statement = pairStatement(a, b, outingExpenses, outingPayments);
+      const statement = pairStatement(a, b, outingExpenses, outingPayments, outingAmnesties);
       const owedToA = statement.projectedNetByOutingCents.get(outingId) ?? 0;
       if (owedToA > 0) transfers.push({ fromId: b, toId: a, amountCents: owedToA });
       if (owedToA < 0) transfers.push({ fromId: a, toId: b, amountCents: -owedToA });
@@ -162,10 +165,11 @@ export function summarizeRoutes(
   balances: Iterable<ParticipantBalance>,
   expenses: Expense[],
   payments: Payment[],
+  amnesties: Amnesty[] = [],
 ): RouteSummary {
   const list = [...balances];
   const smartTransfers = smartRoute(list);
-  const manualTransfers = manualRoute(outingId, expenses, payments);
+  const manualTransfers = manualRoute(outingId, expenses, payments, amnesties);
   return {
     netByParticipant: new Map(
       list.map((balance) => [balance.participantId, projectedNet(balance)]),

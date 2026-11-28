@@ -323,6 +323,20 @@
       "when": 1795834627136,
       "tag": "0045_politicas_conta_direta_e_itens_em_aberto",
       "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "7",
+      "when": 1795836001494,
+      "tag": "0046_anistias",
+      "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1795836002494,
+      "tag": "0047_politicas_anistias",
+      "breakpoints": true
     }
   ]
 }

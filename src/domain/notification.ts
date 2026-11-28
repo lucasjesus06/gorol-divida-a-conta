@@ -118,3 +118,15 @@ export function outingReopened(input: { outingId: string; outingName: string; pe
     `/roles/${input.outingId}`,
   );
 }
+
+/** To the debtor: one notification per amnesty, listing what was forgiven. */
+export function amnestyGranted(input: { creditorId: string; creditorName: string; totalCents: Cents; descriptions: string[] }) {
+  const shown = input.descriptions.slice(0, 3).join(", ");
+  const rest = input.descriptions.length > 3 ? ` e mais ${input.descriptions.length - 3}` : "";
+  return draft(
+    "amnesty_granted",
+    "Dívida perdoada",
+    `${input.creditorName} perdoou ${formatCents(input.totalCents)} do que você devia: ${shown}${rest}.`,
+    `/resumo/${input.creditorId}`,
+  );
+}

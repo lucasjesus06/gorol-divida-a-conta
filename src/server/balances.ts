@@ -1,7 +1,8 @@
 import "server-only";
 import { and, desc, eq, inArray, isNotNull, isNull } from "drizzle-orm";
 import { asService, getDb } from "@/db/client";
-import { expensePayers, expenseShares, expenses, outingParticipants, outings, payments, people } from "@/db/schema";
+import { amnestyItems, amnesties, expensePayers, expenseShares, expenses, outingParticipants, outings, payments, people } from "@/db/schema";
+import type { Amnesty } from "@/domain/amnesty";
 import type { Expense } from "@/domain/expense";
 import { computeOutingBalances, debtSummary, type DebtSummary, type ParticipantBalance } from "@/domain/outing-balance";
 import { pairStatement, type PairEntry } from "@/domain/pair-statement";
@@ -15,14 +16,28 @@ import {
 import { DomainError } from "@/domain/domain-error";
 import { readOutingContext } from "./expenses";
 
+type AmnestyRow = { id: string; creditorId: string; debtorId: string; createdAt: Date; outingId: string; expenseId: string; amountCents: number };
+
+export function groupAmnesties(rows: AmnestyRow[]): Amnesty[] {
+  const byId = new Map<string, Amnesty>();
+  for (const row of rows) {
+    const amnesty = byId.get(row.id) ?? { id: row.id, creditorId: row.creditorId, debtorId: row.debtorId, createdAt: row.createdAt, items: [] };
+    amnesty.items.push({ outingId: row.outingId, expenseId: row.expenseId, amountCents: row.amountCents });
+    byId.set(row.id, amnesty);
+  }
+  return [...byId.values()];
+}
+
 export type Ledger = {
   outingNames: Map<string, string>;
   personNames: Map<string, string>;
   expenses: Expense[];
   payments: Payment[];
+  /** Every amnesty on these outings: the balances need them all, even those between other people. */
+  amnesties: Amnesty[];
 };
 
-async function loadLedger(personId: string, onlyOutingId?: string): Promise<Ledger> {
+export async function loadLedger(personId: string, onlyOutingId?: string): Promise<Ledger> {
   const mine = await getDb()
     .select({ outingId: outingParticipants.outingId })
     .from(outingParticipants)
@@ -33,10 +48,10 @@ async function loadLedger(personId: string, onlyOutingId?: string): Promise<Ledg
 /** Everything the balances need for these outings; the caller decides which ones the reader may see. */
 export async function loadLedgerForOutings(outingIds: string[]): Promise<Ledger> {
   if (outingIds.length === 0) {
-    return { outingNames: new Map(), personNames: new Map(), expenses: [], payments: [] };
+    return { outingNames: new Map(), personNames: new Map(), expenses: [], payments: [], amnesties: [] };
   }
 
-  const [outingRows, participantRows, expenseRows, paymentRows] = await Promise.all([
+  const [outingRows, participantRows, expenseRows, paymentRows, amnestyRows] = await Promise.all([
     getDb().select({ id: outings.id, name: outings.name }).from(outings).where(inArray(outings.id, outingIds)),
     getDb()
       .select({ personId: outingParticipants.personId, name: outingParticipants.displayName })
@@ -45,6 +60,22 @@ export async function loadLedgerForOutings(outingIds: string[]): Promise<Ledger>
       .orderBy(desc(outingParticipants.joinedAt)),
     getDb().select().from(expenses).where(and(inArray(expenses.outingId, outingIds), eq(expenses.status, "active"))),
     getDb().select().from(payments).where(inArray(payments.outingId, outingIds)),
+    // A forgiven debt changes everyone's route, so the amounts are read for the whole outing; the detail stays with the two people.
+    asService(() =>
+      getDb()
+        .select({
+          id: amnesties.id,
+          creditorId: amnesties.creditorId,
+          debtorId: amnesties.debtorId,
+          createdAt: amnesties.createdAt,
+          outingId: amnestyItems.outingId,
+          expenseId: amnestyItems.expenseId,
+          amountCents: amnestyItems.amountCents,
+        })
+        .from(amnestyItems)
+        .innerJoin(amnesties, eq(amnesties.id, amnestyItems.amnestyId))
+        .where(inArray(amnestyItems.outingId, outingIds)),
+    ),
   ]);
   const expenseIds = expenseRows.map((row) => row.id);
   const [payerRows, shareRows] =
@@ -65,6 +96,7 @@ export async function loadLedgerForOutings(outingIds: string[]): Promise<Ledger>
   return {
     outingNames: new Map(outingRows.map((row) => [row.id, row.name])),
     personNames,
+    amnesties: groupAmnesties(amnestyRows),
     expenses: expenseRows.map((row) => {
       const shares = new Map(shareRows.filter((share) => share.expenseId === row.id).map((share) => [share.personId, share.amountCents]));
       return {
@@ -116,14 +148,14 @@ export type OutingBalancesView = {
 export async function getOutingBalances(personId: string, outingId: string): Promise<OutingBalancesView> {
   await readOutingContext(personId, outingId);
   const ledger = await loadLedger(personId);
-  const outingBalances = computeOutingBalances(outingId, ledger.expenses, ledger.payments);
-  const summary = summarizeRoutes(outingId, outingBalances.values(), ledger.expenses, ledger.payments);
+  const outingBalances = computeOutingBalances(outingId, ledger.expenses, ledger.payments, ledger.amnesties);
+  const summary = summarizeRoutes(outingId, outingBalances.values(), ledger.expenses, ledger.payments, ledger.amnesties);
   const name = (id: string) => ledger.personNames.get(id) ?? "Pessoa";
   const named = (transfer: Transfer) => ({ fromId: transfer.fromId, from: name(transfer.fromId), toId: transfer.toId, to: name(transfer.toId), amountCents: transfer.amountCents });
 
   const byOuting = new Map<string, Map<string, ParticipantBalance>>();
   for (const id of ledger.outingNames.keys()) {
-    byOuting.set(id, computeOutingBalances(id, ledger.expenses, ledger.payments));
+    byOuting.set(id, computeOutingBalances(id, ledger.expenses, ledger.payments, ledger.amnesties));
   }
   const mineBalance = outingBalances.get(personId);
 
@@ -171,7 +203,7 @@ export async function accountIds(ids: string[]): Promise<Set<string>> {
 }
 
 function relationOf(personId: string, otherId: string, ledger: Ledger, accounts: Set<string>): RelationView {
-  const statement = pairStatement(personId, otherId, ledger.expenses, ledger.payments);
+  const statement = pairStatement(personId, otherId, ledger.expenses, ledger.payments, ledger.amnesties);
   const isAccount = accounts.has(otherId) && accounts.has(personId);
   return {
     otherId,
@@ -205,13 +237,13 @@ export async function getRelationDetail(personId: string, otherId: string): Prom
   }
   const accounts = await accountIds([personId, otherId]);
   const relation = relationOf(personId, otherId, ledger, accounts);
-  const statement = pairStatement(personId, otherId, ledger.expenses, ledger.payments);
+  const statement = pairStatement(personId, otherId, ledger.expenses, ledger.payments, ledger.amnesties);
   return {
     ...relation,
     entries: statement.entries.map((entry) => ({
       ...entry,
       outingName: ledger.outingNames.get(entry.outingId) ?? "Rolê",
-      label: entry.kind === "expense" ? entry.description : "Pagamento",
+      label: entry.kind === "expense" ? entry.description : entry.kind === "payment" ? "Pagamento" : "Dívida perdoada",
     })),
   };
 }
