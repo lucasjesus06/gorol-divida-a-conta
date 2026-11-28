@@ -1,0 +1,2 @@
+ALTER TABLE "files" DROP CONSTRAINT "files_kind_valid";--> statement-breakpoint
+ALTER TABLE "files" ADD CONSTRAINT "files_kind_valid" CHECK ("files"."kind" in ('expense_evidence', 'payment_receipt', 'bill_document', 'profile_photo'));

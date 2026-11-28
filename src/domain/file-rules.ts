@@ -11,6 +11,7 @@ type Rule = { maxBytes: number; allowed: readonly DetectedMime[] };
 
 export const fileRules: Record<FileKind, Rule> = {
   expense_evidence: { maxBytes: 10 * MB, allowed: ["image/jpeg", "image/png", "image/webp", "application/pdf"] },
+  bill_document: { maxBytes: 10 * MB, allowed: ["image/jpeg", "image/png", "image/webp", "application/pdf"] },
   payment_receipt: { maxBytes: 10 * MB, allowed: ["image/jpeg", "image/png", "image/webp", "application/pdf"] },
   profile_photo: { maxBytes: 2 * MB, allowed: ["image/jpeg", "image/webp"] },
 };
