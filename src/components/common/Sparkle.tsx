@@ -6,7 +6,7 @@ export function Sparkle({ className, size = 22 }: { className?: string; size?: n
       viewBox="0 0 24 24"
       width={size}
       height={size}
-      className={cn("text-mint animate-twinkle", className)}
+      className={cn("text-mint motion-safe:animate-twinkle", className)}
       aria-hidden
     >
       <path
