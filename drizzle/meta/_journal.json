@@ -253,6 +253,20 @@
       "when": 1795825968729,
       "tag": "0035_apelido",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1795826599474,
+      "tag": "0036_termos_de_uso",
+      "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1795826600441,
+      "tag": "0037_politicas_termos_de_uso",
+      "breakpoints": true
     }
   ]
 }
