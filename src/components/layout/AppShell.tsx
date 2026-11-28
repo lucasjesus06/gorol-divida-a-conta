@@ -9,7 +9,8 @@ import { NavLink } from "@/components/layout/NavLink";
 import { Button } from "@/components/ui/button";
 import { signOut } from "@/app/login/actions";
 import { getIdentity } from "@/server/auth";
-import { loadProfile } from "@/server/profiles";
+import { getMyPhoto } from "@/server/files";
+import { getMyProfileDetails, loadProfile } from "@/server/profiles";
 import { countUnread } from "@/server/push";
 
 async function unreadCount() {
@@ -51,11 +52,14 @@ function SignOutButton() {
 async function UserCard() {
   const identity = await getIdentity();
   const profile = identity ? await loadProfile(identity.userId) : null;
+  const isAccount = identity?.kind === "account";
+  const [details, photo] = profile && isAccount ? await Promise.all([getMyProfileDetails(profile.personId), getMyPhoto(profile.personId)]) : [null, null];
+  const shownName = details?.nickname ?? profile?.displayName ?? "Convidado";
 
   return (
     <div className="flex items-center gap-3 rounded-2xl border border-border bg-card/60 p-3">
-      <Avatar name={profile?.displayName ?? "?"} size="sm" />
-      <span className="min-w-0 flex-1 truncate text-sm font-semibold">{profile?.displayName ?? "Convidado"}</span>
+      <Avatar name={shownName} size="sm" src={photo?.url} />
+      <span className="min-w-0 flex-1 truncate text-sm font-semibold">{shownName}</span>
       <SignOutButton />
     </div>
   );
