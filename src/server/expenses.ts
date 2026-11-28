@@ -1,7 +1,7 @@
 import "server-only";
 import { and, desc, eq, inArray, isNotNull } from "drizzle-orm";
 import { asService, getDb } from "@/db/client";
-import { expenseDisputes, expensePayers, expenseShares, expenses, outingParticipants, outingPayers } from "@/db/schema";
+import { expenseDisputes, expensePayers, expenseShares, expenses, outingParticipants, outingPayers, outings } from "@/db/schema";
 import { DomainError } from "@/domain/domain-error";
 import {
   createExpense,
@@ -17,9 +17,8 @@ import {
   assertPeopleInOuting,
   peopleInExpense,
 } from "@/domain/expense-access";
-import { assertAdmin } from "@/domain/outing-access";
+import { assertAdmin, assertParticipant } from "@/domain/outing-access";
 import type { Payer, SplitRule } from "@/domain/split";
-import { findOuting } from "./outings";
 
 export type ExpenseInput = {
   description: string;
@@ -46,15 +45,22 @@ export type ExpenseView = {
 
 export type ExpenseDetail = ExpenseView & { history: ExpenseView[]; canChange: boolean };
 
+/**
+ * Everything the checks of an outing need, read in one round trip: the outing, who is in it and who
+ * may pay. The membership of the person comes from the same list, instead of a separate query.
+ */
 export async function outingContext(personId: string, outingId: string) {
-  const outing = await findOuting(personId, outingId);
-  const [everyone, declared] = await Promise.all([
+  const [[outingRow], everyone, declared] = await Promise.all([
+    getDb().select({ id: outings.id, name: outings.name, kind: outings.kind, status: outings.status }).from(outings).where(eq(outings.id, outingId)),
     getDb()
       .select({ personId: outingParticipants.personId, name: outingParticipants.displayName, role: outingParticipants.role, leftAt: outingParticipants.leftAt })
       .from(outingParticipants)
       .where(and(eq(outingParticipants.outingId, outingId), isNotNull(outingParticipants.confirmedAt))),
     getDb().select({ personId: outingPayers.personId }).from(outingPayers).where(eq(outingPayers.outingId, outingId)),
   ]);
+  const mine = everyone.find((participant) => participant.personId === personId && participant.leftAt === null);
+  assertParticipant(outingRow && mine ? { role: mine.role, status: "active" } : null);
+  const outing = { ...outingRow, role: mine!.role };
   // Whoever left stays in `names`, so past expenses still show their name, but cannot take part in anything new.
   const participants = everyone.filter((participant) => participant.leftAt === null);
   const declaredIds = new Set(declared.map((row) => row.personId));
