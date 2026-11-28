@@ -150,3 +150,33 @@ export function sharedFundResolved(input: { name: string; result: "accepted" | "
   } as const;
   return draft("shared_fund_resolved", "Despesas compartilhadas", texts[input.result], "/configuracoes/despesas-compartilhadas");
 }
+
+/** To the creditor: the receipt matched the declared payment, which is settled for now; they can still contest it. */
+export function paymentSettledByReceipt(input: { fromName: string; amountCents: Cents; outingId: string; outingName: string; contestDays: number }) {
+  return draft(
+    "payment_declared",
+    "Pagamento confirmado por comprovante",
+    `${input.fromName} enviou o comprovante de ${formatCents(input.amountCents)} em ${input.outingName}. Se o dinheiro não chegou, você tem ${input.contestDays} dias para contestar.`,
+    `/roles/${input.outingId}?visao=pagamentos`,
+  );
+}
+
+/** To the creditor: the receipt differs from the declared payment, so it waits for their decision. */
+export function paymentReceiptNeedsReview(input: { fromName: string; amountCents: Cents; outingId: string; outingName: string }) {
+  return draft(
+    "payment_receipt_review",
+    "Comprovante para avaliar",
+    `O comprovante de ${input.fromName} (${formatCents(input.amountCents)}, ${input.outingName}) tem diferenças em relação ao pagamento declarado. Veja e decida.`,
+    `/roles/${input.outingId}?visao=pagamentos`,
+  );
+}
+
+/** To the payer: the creditor says the money did not arrive. */
+export function paymentContested(input: { toName: string; amountCents: Cents; outingId: string; outingName: string }) {
+  return draft(
+    "payment_contested",
+    "Pagamento contestado",
+    `${input.toName} disse que o pagamento de ${formatCents(input.amountCents)} em ${input.outingName} não chegou. Fale com a pessoa e confirme o Pix.`,
+    `/roles/${input.outingId}?visao=pagamentos`,
+  );
+}
