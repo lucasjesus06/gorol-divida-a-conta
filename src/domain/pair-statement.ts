@@ -3,6 +3,7 @@ import { activeExpenses, type Expense } from "./expense";
 import { expenseObligations } from "./obligations";
 import type { Cents } from "./money";
 import type { Payment, PaymentStatus } from "./payment";
+import { areNeutralAt, type SharedFund } from "./shared-fund";
 
 export type PairEntry =
   | {
@@ -57,10 +58,13 @@ export function pairStatement(
   expenses: Expense[],
   payments: Payment[],
   amnesties: Amnesty[] = [],
+  funds: SharedFund[] = [],
 ): PairStatement {
   const entries: PairEntry[] = [];
 
   for (const expense of activeExpenses(expenses)) {
+    // Between two people who share the same money nothing is owed for what was registered while they did.
+    if (areNeutralAt(funds, viewerId, otherId, expense.createdAt)) continue;
     let effect = 0;
     for (const obligation of expenseObligations(expense)) {
       if (obligation.debtorId === otherId && obligation.creditorId === viewerId) {
@@ -83,7 +87,7 @@ export function pairStatement(
 
   for (const payment of payments) {
     if (payment.status === "rejected") continue;
-    const effect = paymentEffectForViewer(payment, viewerId, otherId);
+    const effect = paymentEffectForViewer(payment, viewerId, otherId, areNeutralAt(funds, viewerId, otherId, payment.declaredAt));
     if (effect !== 0) {
       entries.push({
         kind: "payment",
@@ -154,7 +158,7 @@ function addTo(totals: Map<string, Cents>, key: string, value: Cents): void {
  * - Payment received by one of them on behalf of the other settles the other's debt.
  * - Payment made by one of them on behalf of the other creates a debt to the payer.
  */
-function paymentEffectForViewer(payment: Payment, viewerId: string, otherId: string): Cents {
+function paymentEffectForViewer(payment: Payment, viewerId: string, otherId: string, neutral: boolean): Cents {
   const { fromId, toId, onBehalfOfId, amountCents } = payment;
   const debtorId = onBehalfOfId ?? fromId;
 
@@ -162,8 +166,10 @@ function paymentEffectForViewer(payment: Payment, viewerId: string, otherId: str
   // The receiver's credit against the debtor is reduced.
   if (debtorId === otherId && toId === viewerId) effect -= amountCents;
   if (debtorId === viewerId && toId === otherId) effect += amountCents;
-  // Paying on someone's behalf makes them owe the payer.
-  if (onBehalfOfId === otherId && fromId === viewerId) effect += amountCents;
-  if (onBehalfOfId === viewerId && fromId === otherId) effect -= amountCents;
+  // Paying on someone's behalf makes them owe the payer, unless the two share the same money.
+  if (!neutral) {
+    if (onBehalfOfId === otherId && fromId === viewerId) effect += amountCents;
+    if (onBehalfOfId === viewerId && fromId === otherId) effect -= amountCents;
+  }
   return effect;
 }

@@ -4,6 +4,7 @@ import { pairStatement } from "./pair-statement";
 import type { Expense } from "./expense";
 import type { Cents } from "./money";
 import type { Payment } from "./payment";
+import { liveFundPairs, type SharedFund } from "./shared-fund";
 
 export type Transfer = {
   fromId: string;
@@ -124,6 +125,7 @@ export function manualRoute(
   expenses: Expense[],
   payments: Payment[],
   amnesties: Amnesty[] = [],
+  funds: SharedFund[] = [],
 ): Transfer[] {
   const outingExpenses = expenses.filter((expense) => expense.outingId === outingId);
   const outingPayments = payments.filter((payment) => payment.outingId === outingId);
@@ -141,7 +143,7 @@ export function manualRoute(
     for (let j = i + 1; j < ordered.length; j += 1) {
       const a = ordered[i] as string;
       const b = ordered[j] as string;
-      const statement = pairStatement(a, b, outingExpenses, outingPayments, outingAmnesties);
+      const statement = pairStatement(a, b, outingExpenses, outingPayments, outingAmnesties, funds);
       const owedToA = statement.projectedNetByOutingCents.get(outingId) ?? 0;
       if (owedToA > 0) transfers.push({ fromId: b, toId: a, amountCents: owedToA });
       if (owedToA < 0) transfers.push({ fromId: a, toId: b, amountCents: -owedToA });
@@ -157,6 +159,8 @@ export type RouteSummary = {
   manualTransfers: Transfer[];
   /** How many Pix the smart route saves compared to the manual one. */
   transfersSaved: number;
+  /** Pairs who share the same money and would have had to pay each other: the route leaves that transfer out. */
+  sharedFundNotices: [string, string][];
 };
 
 /** Everything the payer needs to understand the smart route before choosing it. */
@@ -166,10 +170,12 @@ export function summarizeRoutes(
   expenses: Expense[],
   payments: Payment[],
   amnesties: Amnesty[] = [],
+  funds: SharedFund[] = [],
+  now: Date = new Date(),
 ): RouteSummary {
   const list = [...balances];
-  const smartTransfers = smartRoute(list);
-  const manualTransfers = manualRoute(outingId, expenses, payments, amnesties);
+  const { transfers: smartTransfers, avoided } = smartRouteWithFunds(list, funds, now);
+  const manualTransfers = manualRoute(outingId, expenses, payments, amnesties, funds);
   return {
     netByParticipant: new Map(
       list.map((balance) => [balance.participantId, projectedNet(balance)]),
@@ -177,6 +183,7 @@ export function summarizeRoutes(
     smartTransfers,
     manualTransfers,
     transfersSaved: Math.max(manualTransfers.length - smartTransfers.length, 0),
+    sharedFundNotices: avoided,
   };
 }
 
@@ -195,4 +202,78 @@ export function otherOutingsWithDebt(
     }
   }
   return result;
+}
+
+/**
+ * The smart route when some people share the same money: each such pair is settled as one person, so
+ * nobody is told to pay the one they share money with, and what the pair pays or receives is split
+ * between the two (whoever owes most pays first, whoever is owed most receives first).
+ */
+export function smartRouteWithFunds(
+  balances: ParticipantBalance[],
+  funds: SharedFund[],
+  now: Date,
+): { transfers: Transfer[]; avoided: [string, string][] } {
+  const present = new Map(balances.map((balance) => [balance.participantId, projectedNet(balance)]));
+  const pairs = liveFundPairs(funds, now).filter(([a, b]) => present.has(a) && present.has(b));
+  const plain = smartRoute(balances);
+  if (pairs.length === 0) {
+    return { transfers: plain, avoided: [] };
+  }
+
+  const avoided = pairs.filter(([a, b]) => plain.some((transfer) => (transfer.fromId === a && transfer.toId === b) || (transfer.fromId === b && transfer.toId === a)));
+
+  const groupOf = new Map<string, [string, string]>();
+  for (const pair of pairs) {
+    groupOf.set(pair[0], pair);
+    groupOf.set(pair[1], pair);
+  }
+  const keyOf = (id: string) => {
+    const pair = groupOf.get(id);
+    return pair ? `fund:${pair[0]}:${pair[1]}` : id;
+  };
+  const merged = new Map<string, ParticipantBalance>();
+  for (const balance of balances) {
+    const key = keyOf(balance.participantId);
+    const net = projectedNet(balance);
+    const existing = merged.get(key);
+    merged.set(key, existing ? { ...existing, netCents: existing.netCents + net } : { ...balance, participantId: key, netCents: net, awaitingConfirmationSentCents: 0, awaitingConfirmationReceivedCents: 0 });
+  }
+
+  // How much of what a merged pair pays (or receives) each of the two takes, the one with most to pay (or receive) first.
+  const portions = (key: string, amount: Cents, paying: boolean): { id: string; cents: Cents }[] => {
+    const pair = [...groupOf.values()].find((candidate) => `fund:${candidate[0]}:${candidate[1]}` === key);
+    if (!pair) return [{ id: key, cents: amount }];
+    const ordered = [...pair].sort((x, y) => {
+      const nx = present.get(x) ?? 0;
+      const ny = present.get(y) ?? 0;
+      return paying ? nx - ny || (x < y ? -1 : 1) : ny - nx || (x < y ? -1 : 1);
+    });
+    const first = ordered[0] as string;
+    const second = ordered[1] as string;
+    const firstNet = present.get(first) ?? 0;
+    const firstCapacity = Math.max(paying ? -firstNet : firstNet, 0);
+    const firstCents = Math.min(amount, firstCapacity);
+    const result = [{ id: first, cents: firstCents }, { id: second, cents: amount - firstCents }];
+    return result.filter((portion) => portion.cents > 0);
+  };
+
+  const transfers: Transfer[] = [];
+  for (const transfer of smartRoute([...merged.values()])) {
+    const senders = portions(transfer.fromId, transfer.amountCents, true);
+    const receivers = portions(transfer.toId, transfer.amountCents, false);
+    let s = 0;
+    let r = 0;
+    const left = senders.map((portion) => portion.cents);
+    const owed = receivers.map((portion) => portion.cents);
+    while (s < senders.length && r < receivers.length) {
+      const amount = Math.min(left[s] as number, owed[r] as number);
+      transfers.push({ fromId: (senders[s] as { id: string }).id, toId: (receivers[r] as { id: string }).id, amountCents: amount });
+      left[s] = (left[s] as number) - amount;
+      owed[r] = (owed[r] as number) - amount;
+      if (left[s] === 0) s += 1;
+      if (owed[r] === 0) r += 1;
+    }
+  }
+  return { transfers, avoided };
 }

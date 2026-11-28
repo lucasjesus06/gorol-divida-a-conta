@@ -1,7 +1,9 @@
 import { activeExpenses, type Expense } from "./expense";
 import type { Amnesty } from "./amnesty";
 import type { Cents } from "./money";
+import { expenseObligations } from "./obligations";
 import type { Payment } from "./payment";
+import { areNeutralAt, type SharedFund } from "./shared-fund";
 
 export type ParticipantBalance = {
   participantId: string;
@@ -17,6 +19,8 @@ export type ParticipantBalance = {
   /** Amnesties: what this person forgave to others / was forgiven by others. */
   amnestyGivenCents: Cents;
   amnestyReceivedCents: Cents;
+  /** What shared money between two people takes out of what one owes the other (and out of what the other is owed). */
+  fundAdjustmentCents: Cents;
   /** Positive: has money to receive. Negative: has money to pay. */
   netCents: Cents;
   /** Declared payments still waiting for the creditor's confirmation. */
@@ -33,6 +37,7 @@ export function computeOutingBalances(
   expenses: Expense[],
   payments: Payment[],
   amnesties: Amnesty[] = [],
+  funds: SharedFund[] = [],
 ): Map<string, ParticipantBalance> {
   const balances = new Map<string, ParticipantBalance>();
   const of = (participantId: string): ParticipantBalance => {
@@ -47,6 +52,7 @@ export function computeOutingBalances(
         receivedCents: 0,
         amnestyGivenCents: 0,
         amnestyReceivedCents: 0,
+        fundAdjustmentCents: 0,
         netCents: 0,
         awaitingConfirmationSentCents: 0,
         awaitingConfirmationReceivedCents: 0,
@@ -64,15 +70,24 @@ export function computeOutingBalances(
     for (const [participantId, share] of expense.shares) {
       of(participantId).owedCents += share;
     }
+    // What one owes the other is not owed when they share the same money: the debtor is relieved, the creditor gives it up.
+    for (const obligation of expenseObligations(expense)) {
+      if (areNeutralAt(funds, obligation.debtorId, obligation.creditorId, expense.createdAt)) {
+        of(obligation.debtorId).fundAdjustmentCents += obligation.amountCents;
+        of(obligation.creditorId).fundAdjustmentCents -= obligation.amountCents;
+      }
+    }
   }
 
   for (const payment of payments) {
     if (payment.outingId !== outingId) continue;
+    // Paying a third person for someone who shares the same money settles that person's debt, not the payer's.
+    const settles = payment.onBehalfOfId && areNeutralAt(funds, payment.fromId, payment.onBehalfOfId, payment.declaredAt) ? payment.onBehalfOfId : payment.fromId;
     if (payment.status === "confirmed") {
-      of(payment.fromId).sentCents += payment.amountCents;
+      of(settles).sentCents += payment.amountCents;
       of(payment.toId).receivedCents += payment.amountCents;
     } else if (payment.status === "declared") {
-      of(payment.fromId).awaitingConfirmationSentCents += payment.amountCents;
+      of(settles).awaitingConfirmationSentCents += payment.amountCents;
       of(payment.toId).awaitingConfirmationReceivedCents += payment.amountCents;
     }
   }
@@ -86,7 +101,7 @@ export function computeOutingBalances(
   }
 
   for (const balance of balances.values()) {
-    balance.advancedCents = balance.paidCents - balance.owedCents;
+    balance.advancedCents = balance.paidCents - balance.owedCents + balance.fundAdjustmentCents;
     balance.netCents = balance.advancedCents + balance.sentCents - balance.receivedCents + balance.amnestyReceivedCents - balance.amnestyGivenCents;
   }
   return balances;
