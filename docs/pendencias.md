@@ -13,7 +13,7 @@ Tudo o que ainda precisa ser feito ou decidido. O que fica para versões futuras
   - não há tela para o super admin ver quem aceitou quais termos.
 - **Cobrança (GOR-14), o que ficou de fora:**
   - o **aceite dos termos** já existe (GOR-20c) e a cobrança o respeita; ver "Termos de uso" abaixo;
-  - os **parâmetros** (intervalo de 24 h, janela de 10 h às 20 h, pausa após 3, 3 dias, máximo 2) são fixos no código e viram ajustáveis na tela de parâmetros do sistema (parte 2 da GOR-20);
+  - os **parâmetros** da cobrança já são ajustáveis (GOR-20d), na tela do super admin;
   - **não há envio automático nem cron**: o envio é manual, pela tela do super admin. A API da Meta (GOR-21 e GOR-22) fica como evolução;
   - **não foi possível validar neste ambiente** que o botão "Abrir WhatsApp" abre o app do WhatsApp Business na conversa certa (`wa.me`) nem o aviso no app em um aparelho; teste com seu número e o de um amigo;
   - a fila só inclui **contas**; dívida de convidado sem conta continua só dentro do rolê;
@@ -40,12 +40,15 @@ Tudo o que ainda precisa ser feito ou decidido. O que fica para versões futuras
 - **Configurações (GOR-20), o que ainda falta:**
   - **canal preferido dos avisos** (WhatsApp, app ou os dois), **situação dos lembretes** e **privacidade e termos**;
   - **foto e apelido (20b, feitos), o que ficou de fora:** a foto só aparece no menu e na lista de participantes (nas demais listas continua a inicial colorida); o apelido só vale nas mensagens de cobrança e no menu da própria pessoa, porque nos rolês vale o nome que o dono cadastrou; o **recorte e a redução** da foto são feitos no aparelho e **não foi possível validar aqui** (teste com uma foto do celular, inclusive uma tirada na hora); o nome e o telefone ainda não se editam pela pessoa;
-  - o **motor de regras** (parâmetros do sistema, como prazos, cobrança e taxa de serviço) e a tela para ajustá-lo;
+  - **parâmetros do sistema (20d, feitos), o que ficou de fora:**
+    - entraram só as regras que já têm quem as leia: os 5 da cobrança, o **prazo da votação de encerramento** e o **prazo para contestar depois de encerrado**. O **prazo de contestação do comprovante** só entra com a GOR-17 (hoje nada o usa), e a validade de convite e de link continua fixa por segurança;
+    - os **limites mínimo e máximo** são propostas minhas (por exemplo, intervalo de 12 h a 7 dias; votação de 1 a 14 dias): **revise a lista na tela** e ajuste o catálogo (`src/domain/system-parameters.ts`) se quiser outros;
+    - o **ajuste por rolê** (o dono sobrescrever o padrão só no seu rolê, dentro dos limites) é a **20f**; forma de divisão, rota de acerto e taxa de serviço padrão entram nela;
+    - mudar um parâmetro **não reescreve o que já foi gravado**: a votação aberta mantém o prazo que tinha, e o rolê já encerrado continua contando o prazo de contestação pelo valor em vigor na hora de contestar;
   - o Pix copia e cola usa cidade "BRASIL" e o primeiro nome do recebedor, porque o app não sabe a cidade; **não foi possível validar neste ambiente que um app de banco aceita o código** (a conferência do CRC segue o vetor de referência). Teste pagando um valor pequeno;
   - confirmar a lista de parâmetros ajustáveis (cobrança, prazo de contestação do comprovante, forma de divisão, rota e taxa de serviço padrão);
   - **não são configuráveis** os invariantes financeiros: centavos exatos, histórico imutável, saldo calculado do histórico, só pagamento confirmado entra no saldo e quem não participa não vê o rolê;
   - o que é "personalizar a experiência" na tela da pessoa.
-- **Valores padrão da cobrança** (passam a ser parâmetros do sistema, ver GOR-20): intervalo de 24 h, janela de 10 h às 20 h, pausa oferecida após 3 lembretes, pausa de 3 dias e limite de 2 pausas.
 - **Textos dos lembretes** (tom de meme; frases de efeito de divulgação não entram na interface) e modelos de mensagem do WhatsApp, que precisam de aprovação da Meta.
 - **Termos e condições** do primeiro acesso, incluindo o consentimento para os lembretes: texto a escrever, de preferência com orientação jurídica (LGPD).
 - **Leitura de documentos (GOR-17, GOR-18):**
