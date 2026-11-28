@@ -6,6 +6,7 @@ import { billModes, billStatuses, leftoverModes } from "../domain/bill-status";
 import { approvalDecisions, disputeStatuses, disputeSubjects } from "../domain/dispute-status";
 import { expenseSplitMethods, expenseStatuses } from "../domain/expense-status";
 import { confirmationSources, paymentStatuses } from "../domain/payment-status";
+import { sharedFundStatuses } from "../domain/shared-fund-status";
 import { payerRequestStatuses } from "../domain/payer-request";
 import { joinRequestStatuses } from "../domain/join";
 import { outingKinds, outingRoles, outingStatuses } from "../domain/outing";
@@ -632,6 +633,39 @@ export const amnestyItems = pgTable(
     check("amnesty_items_amount_positive", sql`${table.amountCents} > 0`),
     uniqueIndex("amnesty_items_expense_idx").on(table.amnestyId, table.expenseId),
     index("amnesty_items_outing_idx").on(table.outingId),
+  ],
+).enableRLS();
+
+/** Two people who share the same money (spouses, for example): between them nothing is owed from the moment the other accepts. */
+export const sharedFunds = pgTable(
+  "shared_funds",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    /** The two people, always stored with `personA` smaller than `personB`, so a pair has one spelling. */
+    personA: uuid("person_a")
+      .notNull()
+      .references(() => people.id, { onDelete: "restrict" }),
+    personB: uuid("person_b")
+      .notNull()
+      .references(() => people.id, { onDelete: "restrict" }),
+    requestedBy: uuid("requested_by")
+      .notNull()
+      .references(() => people.id, { onDelete: "restrict" }),
+    status: text("status", { enum: sharedFundStatuses }).notNull().default("pending"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    /** Neutral from this moment on. */
+    acceptedAt: timestamp("accepted_at", { withTimezone: true }),
+    /** What was lived while it lasted stays neutral; only what comes after counts again. */
+    endedAt: timestamp("ended_at", { withTimezone: true }),
+    endedBy: uuid("ended_by").references(() => people.id, { onDelete: "restrict" }),
+  },
+  (table) => [
+    check("shared_funds_status_valid", oneOf(table.status, sharedFundStatuses)),
+    check("shared_funds_ordered_pair", sql`${table.personA} < ${table.personB}`),
+    check("shared_funds_requester_in_pair", sql`${table.requestedBy} in (${table.personA}, ${table.personB})`),
+    check("shared_funds_dates_match_status", sql`(${table.status} in ('active', 'ended')) = (${table.acceptedAt} is not null) and (${table.status} = 'ended') = (${table.endedAt} is not null)`),
+    index("shared_funds_person_a_idx").on(table.personA),
+    index("shared_funds_person_b_idx").on(table.personB),
   ],
 ).enableRLS();
 
