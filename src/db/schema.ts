@@ -812,3 +812,29 @@ export const systemParameterChanges = pgTable(
   },
   (table) => [index("system_parameter_changes_key_idx").on(table.key, table.changedAt)],
 ).enableRLS();
+
+/** What the owner chose for one outing. A missing value means "use the system default". */
+export const outingSettings = pgTable(
+  "outing_settings",
+  {
+    outingId: uuid("outing_id")
+      .primaryKey()
+      .references(() => outings.id, { onDelete: "cascade" }),
+    voteDays: integer("vote_days"),
+    disputeWindowDays: integer("dispute_window_days"),
+    defaultSplit: text("default_split"),
+    suggestedRoute: text("suggested_route"),
+    serviceFeePercent: integer("service_fee_percent"),
+    updatedBy: uuid("updated_by")
+      .notNull()
+      .references(() => people.id, { onDelete: "restrict" }),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    check("outing_settings_vote_days_range", sql`${table.voteDays} is null or ${table.voteDays} between 1 and 14`),
+    check("outing_settings_dispute_days_range", sql`${table.disputeWindowDays} is null or ${table.disputeWindowDays} between 1 and 60`),
+    check("outing_settings_default_split_valid", sql`${table.defaultSplit} is null or ${table.defaultSplit} in ('equal', 'exact')`),
+    check("outing_settings_suggested_route_valid", sql`${table.suggestedRoute} is null or ${table.suggestedRoute} in ('smart', 'manual')`),
+    check("outing_settings_service_fee_valid", sql`${table.serviceFeePercent} is null or ${table.serviceFeePercent} in (0, 10, 13)`),
+  ],
+).enableRLS();
