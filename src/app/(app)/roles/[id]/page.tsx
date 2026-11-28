@@ -263,16 +263,16 @@ function ExpensesView({
   return (
     <div className="flex flex-col gap-4">
       {outing.status === "active" && (
-        <Button asChild className="self-start" variant={canRegister ? "default" : "secondary"}>
-          <Link href={canRegister ? `/roles/${outing.id}/despesas/nova` : `/roles/${outing.id}/despesas/pedir`}>
-            {canRegister ? "Nova despesa" : "Pedir para virar pagante"}
-          </Link>
-        </Button>
-      )}
-      {canRegister && outing.status === "active" && (
-        <Button asChild variant="secondary" className="self-start">
-          <Link href={`/roles/${outing.id}/contas/nova`}>Nova conta por consumo</Link>
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button asChild>
+            <Link href={`/roles/${outing.id}/contas/nova`}>Nova conta</Link>
+          </Button>
+          <Button asChild variant="secondary">
+            <Link href={canRegister ? `/roles/${outing.id}/despesas/nova` : `/roles/${outing.id}/despesas/pedir`}>
+              {canRegister ? "Despesa com divisão manual" : "Pedir para virar pagante"}
+            </Link>
+          </Button>
+        </div>
       )}
       {openBills.length > 0 && (
         <section className="flex flex-col gap-2">
@@ -283,7 +283,7 @@ function ExpensesView({
                 <Link href={`/roles/${outing.id}/contas/${bill.id}`} className="card-surface flex items-center justify-between gap-3 p-4">
                   <span className="flex min-w-0 flex-col">
                     <span className="truncate font-semibold">{bill.description}</span>
-                    <span className="text-xs text-muted-foreground">{bill.status === "closing" ? "Aguardando aceite" : "Marque o que você consumiu"}</span>
+                    <span className="text-xs text-muted-foreground">{bill.status === "closing" ? "Aguardando aceite" : bill.mode === "direct" ? "Aguardando o fechamento" : "Lance e marque o que você consumiu"}</span>
                   </span>
                   <span className="font-bold">{formatCents(bill.totalCents)}</span>
                 </Link>

@@ -10,7 +10,6 @@ function form(entries: [string, string][]) {
 const base: [string, string][] = [
   ["description", "Bar do Zé"],
   ["date", "2026-03-10"],
-  ["payer", "p1"],
   ["itemDescription", "Pizza"],
   ["itemTotal", "40,00"],
   ["itemQuantity", "1"],
@@ -23,19 +22,24 @@ const base: [string, string][] = [
 ];
 
 describe("parseBillForm", () => {
-  it("lê itens repetidos, taxa e desconto, e o pagador paga o total da conta", () => {
+  it("lê itens repetidos, taxa e desconto, sem nada sobre quem pagou", () => {
     const input = parseBillForm(form(base));
-    expect(input.items).toEqual([
+    expect(input).toMatchObject({ mode: "detailed" });
+    expect("items" in input && input.items).toEqual([
       { description: "Pizza", totalCents: 4000, quantity: "1" },
       { description: "Cerveja", totalCents: 2000, quantity: "2" },
     ]);
     expect(input).toMatchObject({ serviceChargeCents: 600, discountCents: 0, idempotencyKey: "k1" });
-    expect(input.payers).toEqual([{ personId: "p1", amountCents: 6600 }]);
   });
 
   it("ignora linhas de item vazias e usa quantidade 1 quando fica em branco", () => {
     const input = parseBillForm(form([...base.filter(([key]) => !key.startsWith("item")), ["itemDescription", "Água"], ["itemTotal", "5"], ["itemQuantity", ""], ["itemDescription", ""], ["itemTotal", ""], ["itemQuantity", ""]]));
-    expect(input.items).toEqual([{ description: "Água", totalCents: 500, quantity: "1" }]);
+    expect("items" in input && input.items).toEqual([{ description: "Água", totalCents: 500, quantity: "1" }]);
+  });
+
+  it("na conta direta lê só o valor", () => {
+    const input = parseBillForm(form([["mode", "direct"], ["description", "Mercado"], ["date", "2026-03-10"], ["directTotal", "123,45"]]));
+    expect(input).toMatchObject({ mode: "direct", directTotalCents: 12345 });
   });
 
   it("recusa valor e data inválidos", () => {

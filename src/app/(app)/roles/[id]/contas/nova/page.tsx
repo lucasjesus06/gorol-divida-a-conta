@@ -6,12 +6,12 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { DomainError } from "@/domain/domain-error";
 import { isUuid } from "@/lib/uuid";
 import { getRenderProfile } from "@/server/auth";
-import { getEffectiveSettings } from "@/server/outing-settings";
 import { listPayers } from "@/server/expenses";
+import { getEffectiveSettings } from "@/server/outing-settings";
 import { BillForm } from "./bill-form";
 
 export const metadata: Metadata = {
-  title: "Nova conta por consumo · GoRolê",
+  title: "Nova conta · GoRolê",
 };
 
 async function NewBill({ params }: Pick<PageProps<"/roles/[id]/contas/nova">, "params">) {
@@ -20,10 +20,8 @@ async function NewBill({ params }: Pick<PageProps<"/roles/[id]/contas/nova">, "p
     notFound();
   }
   const profile = await getRenderProfile();
-
-  let people;
   try {
-    people = await listPayers(profile.personId, id);
+    await listPayers(profile.personId, id);
   } catch (error) {
     if (error instanceof DomainError && error.code === "outing_not_found") {
       notFound();
@@ -31,23 +29,18 @@ async function NewBill({ params }: Pick<PageProps<"/roles/[id]/contas/nova">, "p
     throw error;
   }
   const settings = await getEffectiveSettings(id);
-  const payers = people.filter((person) => person.isPayer);
-  const canOpen = payers.some((person) => person.personId === profile.personId);
+
   const today = new Date().toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" });
 
   return (
     <>
       <PageHeader
-        title="Nova conta por consumo"
-        description="Cada um marca o que consumiu. O que ninguém marcar é dividido entre todos ao fechar."
+        title="Nova conta"
+        description="Lance só o valor ou abra uma conta com itens. Quem pagou e a divisão ficam para o fechamento."
         backHref={`/roles/${id}?visao=despesas`}
       />
       <div className="card-surface p-6">
-        {canOpen ? (
-          <BillForm outingId={id} me={profile.personId} payers={payers} today={today} idempotencyKey={crypto.randomUUID()} serviceFeePercent={settings.serviceFeePercent} />
-        ) : (
-          <p className="text-sm">Só o dono do rolê e os pagantes declarados abrem uma conta.</p>
-        )}
+        <BillForm outingId={id} today={today} idempotencyKey={crypto.randomUUID()} serviceFeePercent={settings.serviceFeePercent} />
       </div>
     </>
   );

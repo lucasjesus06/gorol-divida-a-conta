@@ -5,27 +5,38 @@ import { billClaims, billItems, billPayers, consumptionBills } from "@/db/schema
 import { DomainError } from "@/domain/domain-error";
 import {
   claimItem as claimItemDomain,
-  openConsumptionBill,
   remainingQuantity,
   toItemizedSplit,
   type ConsumptionBill,
 } from "@/domain/consumption-bill";
+import {
+  billTotalCents,
+  planBillClosing,
+  validateBillItem,
+  validateDirectTotal,
+  type BillDivision,
+  type BillItemInput,
+} from "@/domain/bill-closing";
 import { assertBillOpen, assertCanClaimFor, assertCanCloseBill } from "@/domain/consumption-bill-access";
 import { createExpense } from "@/domain/expense";
-import { assertCanRegisterExpense, assertPayersAllowed, assertPeopleInOuting } from "@/domain/expense-access";
+import { assertPeopleInOuting } from "@/domain/expense-access";
 import { Fraction } from "@/domain/fraction";
 import { billPartTransferred } from "@/domain/notification";
-import type { BillStatus } from "@/domain/bill-status";
+import type { BillMode, BillStatus } from "@/domain/bill-status";
+import type { Payer, SplitRule } from "@/domain/split";
 import { assertActiveOuting, insertVersion, outingContext, type Tx, readOutingContext } from "./expenses";
 import { notify } from "./push";
 
 export type BillInput = {
   description: string;
   occurredAt: Date;
-  serviceChargeCents: number;
-  discountCents: number;
-  items: { description: string; totalCents: number; quantity: string }[];
-  payers: { personId: string; amountCents: number }[];
+  mode: BillMode;
+  /** The typed total of a direct bill. */
+  directTotalCents?: number;
+  /** Items typed right away, when the person already has them; more can be added while the bill is open. */
+  items?: BillItemInput[];
+  serviceChargeCents?: number;
+  discountCents?: number;
   idempotencyKey?: string;
 };
 
@@ -33,8 +44,10 @@ export type BillView = {
   id: string;
   description: string;
   status: BillStatus;
+  mode: BillMode;
   occurredAt: Date;
   openedBy: { id: string; name: string };
+  /** The total so far: for a bill still open it grows as items are added. */
   totalCents: number;
   serviceChargeCents: number;
   discountCents: number;
@@ -45,8 +58,15 @@ export type BillView = {
     totalCents: number;
     quantity: string;
     remaining: string;
+    addedBy: { id: string; name: string };
+    /** The person may change or remove it: who typed it, who opened the bill or the owner, while nobody marked it. */
+    canEdit: boolean;
     claims: { personId: string; name: string; quantity: string }[];
   }[];
+  /** Any participant can add items while the bill is open. */
+  canAddItem: boolean;
+  /** Payers chosen when the bill was opened by the old flow: they stay, and closing does not ask again. */
+  payersFixed: boolean;
   leftoverTo: { id: string; name: string } | null;
   resultExpenseId: string | null;
   canClose: boolean;
@@ -63,6 +83,12 @@ function translate(error: unknown): never {
   if (text.includes("bill_not_open")) {
     throw new DomainError("bill_already_closed", "Esta conta já foi fechada.");
   }
+  if (text.includes("item_has_claims")) {
+    throw new DomainError("item_has_claims", "Alguém já marcou este item, então ele não pode mais mudar.");
+  }
+  if (text.includes("bill_not_balanced")) {
+    throw new DomainError("bill_changed", "A conta mudou enquanto era fechada. Confira os valores e tente de novo.");
+  }
   throw error;
 }
 
@@ -74,10 +100,10 @@ async function findByKey(outingId: string, key: string) {
   return existing?.id ?? null;
 }
 
+/** Any participant opens a bill; who paid and how it is divided are asked only when it is closed. */
 export async function openBill(personId: string, outingId: string, input: BillInput): Promise<string> {
   const context = await outingContext(personId, outingId);
   assertActiveOuting(context.outing.status);
-  assertCanRegisterExpense(context.outing.role, context.declaredIds.has(personId));
 
   if (input.idempotencyKey) {
     const existing = await findByKey(outingId, input.idempotencyKey);
@@ -85,24 +111,16 @@ export async function openBill(personId: string, outingId: string, input: BillIn
       return existing;
     }
   }
-
-  const items = input.items.map((item, index) => ({
-    id: `item-${index}`,
-    description: item.description.trim(),
-    totalCents: item.totalCents,
-    quantity: Fraction.parse(item.quantity),
-  }));
-  openConsumptionBill({ source: "manual", items, serviceChargeCents: input.serviceChargeCents, discountCents: input.discountCents });
   if (input.description.trim() === "") {
     throw new DomainError("description_required", "Informe a descrição da despesa.");
   }
-  const total = items.reduce((sum, item) => sum + item.totalCents, 0) + input.serviceChargeCents - input.discountCents;
-  const paid = input.payers.reduce((sum, payer) => sum + payer.amountCents, 0);
-  if (paid !== total) {
-    throw new DomainError("payers_total_mismatch", `A soma dos pagamentos (${paid}) é diferente do total da conta (${total}).`);
+  const service = input.serviceChargeCents ?? 0;
+  const discount = input.discountCents ?? 0;
+  if (service < 0 || discount < 0) {
+    throw new DomainError("amount_negative", "A taxa e o desconto não podem ser negativos.");
   }
-  assertPayersAllowed(input.payers.map((payer) => ({ participantId: payer.personId, amountCents: payer.amountCents })), context.allowedPayerIds);
-  assertPeopleInOuting(new Set(input.payers.map((payer) => payer.personId)), context.participantIds);
+  const directTotal = input.mode === "direct" ? validateDirectTotal(input.directTotalCents ?? 0) : null;
+  const items = input.mode === "detailed" ? (input.items ?? []).map(validateBillItem) : [];
 
   const billId = crypto.randomUUID();
   try {
@@ -111,23 +129,27 @@ export async function openBill(personId: string, outingId: string, input: BillIn
         id: billId,
         outingId,
         description: input.description.trim(),
+        mode: input.mode,
+        directTotalCents: directTotal,
         openedBy: personId,
         occurredAt: input.occurredAt,
-        serviceChargeCents: input.serviceChargeCents,
-        discountCents: input.discountCents,
+        serviceChargeCents: input.mode === "detailed" ? service : 0,
+        discountCents: input.mode === "detailed" ? discount : 0,
         idempotencyKey: input.idempotencyKey,
       });
-      await tx.insert(billPayers).values(input.payers.map((payer) => ({ billId, personId: payer.personId, amountCents: payer.amountCents })));
-      await tx.insert(billItems).values(
-        items.map((item, position) => ({
-          billId,
-          position,
-          description: item.description,
-          totalCents: item.totalCents,
-          quantityNum: Number(item.quantity.numerator),
-          quantityDen: Number(item.quantity.denominator),
-        })),
-      );
+      if (items.length > 0) {
+        await tx.insert(billItems).values(
+          items.map((item) => ({
+            billId,
+            position: 0,
+            addedBy: personId,
+            description: item.description,
+            totalCents: item.totalCents,
+            quantityNum: Number(item.quantity.numerator),
+            quantityDen: Number(item.quantity.denominator),
+          })),
+        );
+      }
     });
   } catch (error) {
     const existing = input.idempotencyKey ? await findByKey(outingId, input.idempotencyKey) : null;
@@ -137,6 +159,110 @@ export async function openBill(personId: string, outingId: string, input: BillIn
     throw error;
   }
   return billId;
+}
+
+async function openDetailedBill(context: Awaited<ReturnType<typeof outingContext>>, outingId: string, billId: string) {
+  assertActiveOuting(context.outing.status);
+  const loaded = await loadBill(outingId, billId, context.names);
+  assertBillOpen(loaded.bill.status === "open" ? "open" : "closed");
+  if (loaded.bill.mode !== "detailed") {
+    throw new DomainError("bill_without_items_mode", "Esta conta é só de valor: não tem itens para lançar.");
+  }
+  return loaded;
+}
+
+/** Anyone in the outing adds an item while the bill is open; the order and the author are kept. */
+export async function addBillItem(personId: string, outingId: string, billId: string, input: BillItemInput): Promise<string> {
+  const context = await outingContext(personId, outingId);
+  await openDetailedBill(context, outingId, billId);
+  const item = validateBillItem(input);
+  try {
+    const [row] = await getDb()
+      .insert(billItems)
+      .values({
+        billId,
+        position: 0,
+        addedBy: personId,
+        description: item.description,
+        totalCents: item.totalCents,
+        quantityNum: Number(item.quantity.numerator),
+        quantityDen: Number(item.quantity.denominator),
+      })
+      .returning({ id: billItems.id });
+    return row.id;
+  } catch (error) {
+    translate(error);
+  }
+}
+
+function assertCanEditItem(loaded: Awaited<ReturnType<typeof loadBill>>, itemId: string, personId: string, role: "admin" | "member") {
+  const item = loaded.items.find((candidate) => candidate.id === itemId);
+  if (!item) {
+    throw new DomainError("item_not_found", "Item não encontrado nesta conta.");
+  }
+  if (loaded.claims.some((claim) => claim.itemId === itemId)) {
+    throw new DomainError("item_has_claims", "Alguém já marcou este item, então ele não pode mais mudar.");
+  }
+  if (!((item.addedBy ?? loaded.bill.openedBy) === personId || loaded.bill.openedBy === personId || role === "admin")) {
+    throw new DomainError("item_not_yours", "Só quem lançou o item, quem abriu a conta ou o dono muda o item.");
+  }
+}
+
+export async function updateBillItem(personId: string, outingId: string, billId: string, itemId: string, input: BillItemInput) {
+  const context = await outingContext(personId, outingId);
+  const loaded = await openDetailedBill(context, outingId, billId);
+  assertCanEditItem(loaded, itemId, personId, context.outing.role);
+  const item = validateBillItem(input);
+  try {
+    await getDb()
+      .update(billItems)
+      .set({ description: item.description, totalCents: item.totalCents, quantityNum: Number(item.quantity.numerator), quantityDen: Number(item.quantity.denominator) })
+      .where(and(eq(billItems.id, itemId), eq(billItems.billId, billId)));
+  } catch (error) {
+    translate(error);
+  }
+}
+
+export async function removeBillItem(personId: string, outingId: string, billId: string, itemId: string) {
+  const context = await outingContext(personId, outingId);
+  const loaded = await openDetailedBill(context, outingId, billId);
+  assertCanEditItem(loaded, itemId, personId, context.outing.role);
+  try {
+    await getDb().delete(billItems).where(and(eq(billItems.id, itemId), eq(billItems.billId, billId)));
+  } catch (error) {
+    translate(error);
+  }
+}
+
+/** The value of a direct bill, or the service charge and discount of a detailed one; only while it is open. */
+export async function updateBillAmounts(
+  personId: string,
+  outingId: string,
+  billId: string,
+  input: { directTotalCents?: number; serviceChargeCents?: number; discountCents?: number },
+) {
+  const context = await outingContext(personId, outingId);
+  assertActiveOuting(context.outing.status);
+  const loaded = await loadBill(outingId, billId, context.names);
+  assertBillOpen(loaded.bill.status === "open" ? "open" : "closed");
+  assertCanCloseBill(loaded.bill.openedBy, personId, context.outing.role);
+
+  const set: { directTotalCents?: number; serviceChargeCents?: number; discountCents?: number } = {};
+  if (loaded.bill.mode === "direct") {
+    if (input.directTotalCents !== undefined) set.directTotalCents = validateDirectTotal(input.directTotalCents);
+  } else {
+    for (const [key, value] of [["serviceChargeCents", input.serviceChargeCents], ["discountCents", input.discountCents]] as const) {
+      if (value === undefined) continue;
+      if (!Number.isInteger(value) || value < 0) {
+        throw new DomainError("amount_negative", "A taxa e o desconto não podem ser negativos.");
+      }
+      set[key] = value;
+    }
+  }
+  if (Object.keys(set).length === 0) {
+    return;
+  }
+  await asService(() => getDb().update(consumptionBills).set(set).where(and(eq(consumptionBills.id, billId), eq(consumptionBills.status, "open"))));
 }
 
 type Reader = Pick<ReturnType<typeof getDb>, "select">;
@@ -173,32 +299,50 @@ function toView(
   role: "admin" | "member",
 ): BillView {
   const { bill, payers, items, claims, domain, nameOf } = loaded;
-  const total = items.reduce((sum, item) => sum + item.totalCents, 0) + bill.serviceChargeCents - bill.discountCents;
+  const total = billTotalOf(bill, items);
+  const open = bill.status === "open";
   return {
     id: bill.id,
     description: bill.description,
     status: bill.status,
+    mode: bill.mode,
     occurredAt: bill.occurredAt,
     openedBy: { id: bill.openedBy, name: nameOf(bill.openedBy) },
     totalCents: total,
     serviceChargeCents: bill.serviceChargeCents,
     discountCents: bill.discountCents,
     payers: payers.map((payer) => ({ personId: payer.personId, name: nameOf(payer.personId), amountCents: payer.amountCents })),
-    items: items.map((item) => ({
-      id: item.id,
-      description: item.description,
-      totalCents: item.totalCents,
-      quantity: Fraction.of(item.quantityNum, item.quantityDen).toText(),
-      remaining: remainingQuantity(domain, item.id).toText(),
-      claims: claims
-        .filter((claim) => claim.itemId === item.id)
-        .map((claim) => ({ personId: claim.personId, name: nameOf(claim.personId), quantity: Fraction.of(claim.quantityNum, claim.quantityDen).toText() })),
-    })),
+    items: items.map((item) => {
+      const addedBy = item.addedBy ?? bill.openedBy;
+      const marked = claims.some((claim) => claim.itemId === item.id);
+      return {
+        id: item.id,
+        description: item.description,
+        totalCents: item.totalCents,
+        quantity: Fraction.of(item.quantityNum, item.quantityDen).toText(),
+        remaining: remainingQuantity(domain, item.id).toText(),
+        addedBy: { id: addedBy, name: nameOf(addedBy) },
+        canEdit: open && !marked && (addedBy === personId || bill.openedBy === personId || role === "admin"),
+        claims: claims
+          .filter((claim) => claim.itemId === item.id)
+          .map((claim) => ({ personId: claim.personId, name: nameOf(claim.personId), quantity: Fraction.of(claim.quantityNum, claim.quantityDen).toText() })),
+      };
+    }),
+    canAddItem: open && bill.mode === "detailed",
+    payersFixed: payers.length > 0,
     leftoverTo: bill.leftoverTo ? { id: bill.leftoverTo, name: nameOf(bill.leftoverTo) } : null,
     resultExpenseId: bill.resultExpenseId,
     canClose: bill.status !== "closed" && (bill.openedBy === personId || role === "admin"),
     mustAcceptLeftover: bill.status === "closing" && bill.leftoverTo === personId,
   };
+}
+
+/** The total of the bill as it stands: the typed value, or the items so far plus the service charge minus the discount. */
+function billTotalOf(bill: { mode: BillMode; directTotalCents: number | null; serviceChargeCents: number; discountCents: number }, items: { totalCents: number }[]): number {
+  if (bill.mode === "direct") {
+    return bill.directTotalCents ?? 0;
+  }
+  return items.reduce((sum, item) => sum + item.totalCents, 0) + bill.serviceChargeCents - bill.discountCents;
 }
 
 export async function listBills(personId: string, outingId: string): Promise<BillView[]> {
@@ -269,36 +413,75 @@ export async function releaseClaim(personId: string, outingId: string, billId: s
   }
 }
 
-async function finalize(tx: Tx, outingId: string, billId: string, leftover: Leftover, context: Awaited<ReturnType<typeof outingContext>>) {
+type Closing =
+  | { kind: "marks"; leftover: Leftover }
+  | { kind: "split"; split: Extract<SplitRule, { method: "equal" | "exact" }> };
+
+/**
+ * Writes the expense a closed bill becomes, and closes the bill, in one transaction. The bill row is
+ * locked first, so nobody adds an item or closes it twice while this runs.
+ */
+async function finalize(
+  tx: Tx,
+  outingId: string,
+  billId: string,
+  closing: Closing,
+  payers: Payer[],
+  context: Awaited<ReturnType<typeof outingContext>>,
+) {
+  await tx.select({ id: consumptionBills.id }).from(consumptionBills).where(eq(consumptionBills.id, billId)).for("update");
   const loaded = await loadBill(outingId, billId, context.names, tx);
   const { bill, domain } = loaded;
+  if (bill.status === "closed") {
+    throw new DomainError("bill_already_closed", "Esta conta já foi fechada.");
+  }
   const everyone = context.participants.map((participant) => participant.personId);
-
-  const claims = new Map(domain.claims);
-  for (const item of domain.items) {
-    const remaining = remainingQuantity(domain, item.id);
-    if (remaining.isZero()) {
-      continue;
-    }
-    const merged = new Map(claims.get(item.id));
-    if (leftover.mode === "spread") {
-      const part = Fraction.of(remaining.numerator, remaining.denominator * BigInt(everyone.length));
-      for (const person of everyone) {
-        merged.set(person, (merged.get(person) ?? Fraction.ZERO).add(part));
-      }
-    } else {
-      merged.set(leftover.personId, (merged.get(leftover.personId) ?? Fraction.ZERO).add(remaining));
-    }
-    claims.set(item.id, merged);
+  const total = billTotalCents({
+    mode: bill.mode,
+    directTotalCents: bill.directTotalCents,
+    itemCents: loaded.items.map((item) => item.totalCents),
+    serviceChargeCents: bill.serviceChargeCents,
+    discountCents: bill.discountCents,
+  });
+  if (loaded.payers.length === 0) {
+    await tx.insert(billPayers).values(payers.map((payer) => ({ billId, personId: payer.participantId, amountCents: payer.amountCents })));
   }
 
-  const split = toItemizedSplit({ ...domain, claims });
+  let split: SplitRule;
+  let leftoverMode: Leftover["mode"] | null = null;
+  let leftoverTo: string | null = null;
+  if (closing.kind === "split") {
+    split = closing.split;
+  } else {
+    const leftover = closing.leftover;
+    const claims = new Map(domain.claims);
+    for (const item of domain.items) {
+      const remaining = remainingQuantity(domain, item.id);
+      if (remaining.isZero()) {
+        continue;
+      }
+      const merged = new Map(claims.get(item.id));
+      if (leftover.mode === "spread") {
+        const part = Fraction.of(remaining.numerator, remaining.denominator * BigInt(everyone.length));
+        for (const person of everyone) {
+          merged.set(person, (merged.get(person) ?? Fraction.ZERO).add(part));
+        }
+      } else {
+        merged.set(leftover.personId, (merged.get(leftover.personId) ?? Fraction.ZERO).add(remaining));
+      }
+      claims.set(item.id, merged);
+    }
+    split = toItemizedSplit({ ...domain, claims });
+    leftoverMode = leftover.mode;
+    leftoverTo = leftover.mode === "transfer" ? leftover.personId : null;
+  }
+
   const expense = createExpense({
     id: crypto.randomUUID(),
     outingId,
     description: bill.description,
-    totalCents: domain.items.reduce((sum, item) => sum + item.totalCents, 0) + bill.serviceChargeCents - bill.discountCents,
-    payers: loaded.payers.map((payer) => ({ participantId: payer.personId, amountCents: payer.amountCents })),
+    totalCents: total,
+    payers: loaded.payers.length > 0 ? loaded.payers.map((payer) => ({ participantId: payer.personId, amountCents: payer.amountCents })) : payers,
     split,
     registeredBy: bill.openedBy,
     occurredAt: bill.occurredAt,
@@ -307,48 +490,96 @@ async function finalize(tx: Tx, outingId: string, billId: string, leftover: Left
   await insertVersion(tx, outingId, bill.openedBy, expense, undefined);
   await tx
     .update(consumptionBills)
-    .set({
-      status: "closed",
-      closedAt: new Date(),
-      resultExpenseId: expense.id,
-      leftoverMode: leftover.mode,
-      leftoverTo: leftover.mode === "transfer" ? leftover.personId : null,
-    })
+    .set({ status: "closed", closedAt: new Date(), resultExpenseId: expense.id, leftoverMode, leftoverTo })
     .where(eq(consumptionBills.id, billId));
   return expense.id;
 }
 
-export async function closeBill(personId: string, outingId: string, billId: string, leftover: Leftover): Promise<{ status: "closed" | "awaiting_acceptance" }> {
+export type CloseBillInput = {
+  /** Who paid. Left out when the payers were already chosen by the old flow. */
+  payers?: { personId: string; amountCents: number }[];
+  division: BillDivision;
+  /** What nobody marked, when dividing by what each one consumed. */
+  leftover?: Leftover;
+};
+
+/**
+ * Closes the bill: now it is asked who paid and how to divide. By what each one marked, the part nobody
+ * marked is spread or handed to someone, who may have to accept it first; any other division closes at once.
+ */
+export async function closeBill(personId: string, outingId: string, billId: string, input: CloseBillInput): Promise<{ status: "closed" | "awaiting_acceptance" }> {
   const context = await outingContext(personId, outingId);
   assertActiveOuting(context.outing.status);
   const loaded = await loadBill(outingId, billId, context.names);
   assertBillOpen(loaded.bill.status === "open" ? "open" : "closed");
   assertCanCloseBill(loaded.bill.openedBy, personId, context.outing.role);
-  if (leftover.mode === "transfer" && !context.participantIds.has(leftover.personId)) {
-    throw new DomainError("person_not_in_outing", "Todas as pessoas da despesa precisam participar do rolê.");
-  }
 
-  if (leftover.mode === "transfer" && leftover.personId !== personId) {
-    await asService(() =>
-      getDb()
-        .update(consumptionBills)
-        .set({ status: "closing", leftoverMode: "transfer", leftoverTo: leftover.personId })
-        .where(and(eq(consumptionBills.id, billId), eq(consumptionBills.status, "open"))),
-    );
-    await notify(
-      leftover.personId,
-      billPartTransferred({
-        fromName: context.names.get(personId) ?? "Alguém",
-        billName: loaded.bill.description,
-        outingId,
-        billId,
-      }),
-    );
-    return { status: "awaiting_acceptance" };
-  }
+  const total = billTotalCents({
+    mode: loaded.bill.mode,
+    directTotalCents: loaded.bill.directTotalCents,
+    itemCents: loaded.items.map((item) => item.totalCents),
+    serviceChargeCents: loaded.bill.serviceChargeCents,
+    discountCents: loaded.bill.discountCents,
+  });
+  const payers: Payer[] =
+    loaded.payers.length > 0
+      ? loaded.payers.map((payer) => ({ participantId: payer.personId, amountCents: payer.amountCents }))
+      : (input.payers ?? []).map((payer) => ({ participantId: payer.personId, amountCents: payer.amountCents }));
+  const plan = planBillClosing({
+    mode: loaded.bill.mode,
+    totalCents: total,
+    payers,
+    division: input.division,
+    allowedPayerIds: context.allowedPayerIds,
+    participantIds: context.participantIds,
+  });
 
-  await asService(() => getDb().transaction((tx) => finalize(tx, outingId, billId, leftover, context)));
+  if (!plan.split) {
+    const leftover = input.leftover ?? { mode: "spread" as const };
+    if (leftover.mode === "transfer" && !context.participantIds.has(leftover.personId)) {
+      throw new DomainError("person_not_in_outing", "Todas as pessoas da despesa precisam participar do rolê.");
+    }
+    if (leftover.mode === "transfer" && leftover.personId !== personId) {
+      await asService(() =>
+        getDb().transaction(async (tx) => {
+          await tx.select({ id: consumptionBills.id }).from(consumptionBills).where(eq(consumptionBills.id, billId)).for("update");
+          if (loaded.payers.length === 0) {
+            await tx.insert(billPayers).values(plan.payers.map((payer) => ({ billId, personId: payer.participantId, amountCents: payer.amountCents })));
+          }
+          const moved = await tx
+            .update(consumptionBills)
+            .set({ status: "closing", leftoverMode: "transfer", leftoverTo: leftover.personId })
+            .where(and(eq(consumptionBills.id, billId), eq(consumptionBills.status, "open")))
+            .returning({ id: consumptionBills.id });
+          if (moved.length === 0) {
+            throw new DomainError("bill_already_closed", "Esta conta já foi fechada.");
+          }
+        }),
+      );
+      await notify(
+        leftover.personId,
+        billPartTransferred({
+          fromName: context.names.get(personId) ?? "Alguém",
+          billName: loaded.bill.description,
+          outingId,
+          billId,
+        }),
+      );
+      return { status: "awaiting_acceptance" };
+    }
+    await runFinalize(outingId, billId, { kind: "marks", leftover }, plan.payers, context);
+    return { status: "closed" };
+  }
+  await runFinalize(outingId, billId, { kind: "split", split: plan.split }, plan.payers, context);
   return { status: "closed" };
+}
+
+async function runFinalize(outingId: string, billId: string, closing: Closing, payers: Payer[], context: Awaited<ReturnType<typeof outingContext>>) {
+  try {
+    await asService(() => getDb().transaction((tx) => finalize(tx, outingId, billId, closing, payers, context)));
+  } catch (error) {
+    translate(error);
+  }
 }
 
 export async function answerLeftover(personId: string, outingId: string, billId: string, accept: boolean) {
@@ -375,5 +606,5 @@ export async function answerLeftover(personId: string, outingId: string, billId:
     );
     return;
   }
-  await asService(() => getDb().transaction((tx) => finalize(tx, outingId, billId, { mode: "transfer", personId }, context)));
+  await runFinalize(outingId, billId, { kind: "marks", leftover: { mode: "transfer", personId } }, [], context);
 }

@@ -2,7 +2,7 @@ import { sql } from "drizzle-orm";
 import { bigint, boolean, check, index, integer, pgTable, primaryKey, text, timestamp, uniqueIndex, uuid, type AnyPgColumn } from "drizzle-orm/pg-core";
 import { authUsers } from "drizzle-orm/supabase";
 import { accessRequestSources, accessRequestStatuses } from "../domain/access";
-import { billStatuses, leftoverModes } from "../domain/bill-status";
+import { billModes, billStatuses, leftoverModes } from "../domain/bill-status";
 import { approvalDecisions, disputeStatuses, disputeSubjects } from "../domain/dispute-status";
 import { expenseSplitMethods, expenseStatuses } from "../domain/expense-status";
 import { confirmationSources, paymentStatuses } from "../domain/payment-status";
@@ -460,6 +460,9 @@ export const consumptionBills = pgTable(
       .references(() => outings.id, { onDelete: "restrict" }),
     description: text("description").notNull(),
     status: text("status", { enum: billStatuses }).notNull().default("open"),
+    /** "direct": only a total is typed. "detailed": the items are listed and can be split by what each one consumed. */
+    mode: text("mode", { enum: billModes }).notNull().default("detailed"),
+    directTotalCents: bigint("direct_total_cents", { mode: "number" }),
     openedBy: uuid("opened_by")
       .notNull()
       .references(() => people.id, { onDelete: "restrict" }),
@@ -475,6 +478,8 @@ export const consumptionBills = pgTable(
   },
   (table) => [
     check("consumption_bills_status_valid", oneOf(table.status, billStatuses)),
+    check("consumption_bills_mode_valid", oneOf(table.mode, billModes)),
+    check("consumption_bills_direct_total_matches_mode", sql`(${table.mode} = 'direct') = (${table.directTotalCents} is not null) and (${table.directTotalCents} is null or ${table.directTotalCents} > 0)`),
     check("consumption_bills_leftover_mode_valid", sql`${table.leftoverMode} is null or ${table.leftoverMode} in ('spread', 'transfer')`),
     check("consumption_bills_description_filled", sql`length(btrim(${table.description})) > 0`),
     check("consumption_bills_amounts_non_negative", sql`${table.serviceChargeCents} >= 0 and ${table.discountCents} >= 0`),
@@ -509,6 +514,8 @@ export const billItems = pgTable(
       .notNull()
       .references(() => consumptionBills.id, { onDelete: "restrict" }),
     position: integer("position").notNull(),
+    /** Who typed the item; empty for items typed when the bill was opened by the old flow (then it is the opener). */
+    addedBy: uuid("added_by").references(() => people.id, { onDelete: "restrict" }),
     description: text("description").notNull(),
     totalCents: bigint("total_cents", { mode: "number" }).notNull(),
     quantityNum: bigint("quantity_num", { mode: "number" }).notNull(),
