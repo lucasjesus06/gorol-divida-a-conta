@@ -15,6 +15,7 @@ const expensesServer = await import("./expenses");
 const paymentsServer = await import("./payments");
 const server = await import("./closing-votes");
 const params = await import("./system-parameters");
+const settings = await import("./outing-settings");
 
 type TestDb = Awaited<ReturnType<typeof createTestDatabase>>;
 const db = () => state.db as TestDb;
@@ -96,6 +97,13 @@ describe("quando há outros com a receber", () => {
     expect(await status()).toBe("active");
     await server.getClosingVote(lucas, outingId, daysLater(5));
     expect(await status()).toBe("closed");
+  });
+
+  it("o ajuste do rolê vence o padrão do sistema no prazo da votação", async () => {
+    await params.saveParameter(lucas, "closing.vote_days", 5);
+    await settings.saveOutingSettings(lucas, outingId, { voteDays: 2, disputeWindowDays: null, defaultSplit: null, suggestedRoute: null, serviceFeePercent: null });
+    await server.requestClosing(lucas, outingId, t0);
+    expect((await server.getClosingVote(maria, outingId, t0))!.deadline.toISOString()).toBe(daysLater(2).toISOString());
   });
 
   it("quem deve não vota", async () => {

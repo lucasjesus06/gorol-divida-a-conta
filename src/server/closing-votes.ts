@@ -19,7 +19,7 @@ import { closeBlockers } from "@/domain/outing-closing";
 import { assertActiveOuting, outingContext } from "./expenses";
 import { closeInput, finalizeClose } from "./outing-lifecycle";
 import { notify } from "./push";
-import { getParameterValues } from "./system-parameters";
+import { getEffectiveSettings } from "./outing-settings";
 
 type Context = Awaited<ReturnType<typeof outingContext>>;
 
@@ -119,7 +119,7 @@ export async function requestClosing(ownerId: string, outingId: string, now: Dat
   }
 
   const voters = closingVoters(input.people);
-  const days = (await getParameterValues())["closing.vote_days"] as number;
+  const days = (await getEffectiveSettings(outingId)).voteDays;
   await asService(() =>
     getDb().transaction(async (tx) => {
       const [vote] = await tx
@@ -174,7 +174,7 @@ export type ClosingVoteView = {
 /** The latest vote of the outing, after settling it if it is due. */
 export async function getClosingVote(personId: string, outingId: string, now: Date = new Date()): Promise<ClosingVoteView | null> {
   const context = await outingContext(personId, outingId);
-  const days = (await getParameterValues())["closing.vote_days"] as number;
+  const days = (await getEffectiveSettings(outingId)).voteDays;
   await resolveClosing(outingId, now);
 
   const [vote] = await getDb().select().from(closingVotes).where(eq(closingVotes.outingId, outingId)).orderBy(desc(closingVotes.createdAt)).limit(1);
