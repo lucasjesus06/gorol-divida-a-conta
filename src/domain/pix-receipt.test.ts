@@ -56,6 +56,39 @@ describe("readPixReceipt", () => {
   });
 });
 
+// Saída real do leitor (Tesseract, em português) sobre uma imagem limpa do texto de exemplo acima, com as linhas em branco que ele deixa.
+const lido = `Comprovante de transferência
+28 NOV 2026 - 14:32:10
+
+Valor
+
+R$ 45,00
+
+Tipo de transferência
+
+Pix
+
+Destino
+
+Nome
+
+Maria Silva Santos
+
+Instituição
+
+Banco Exemplo S.A.
+
+ID da transação
+${E2E}
+`;
+
+describe("texto vindo do leitor, com linhas em branco", () => {
+  it("lê os mesmos campos que o texto sem linhas em branco", () => {
+    expect(readPixReceipt(lido)).toEqual({ amountCents: 4500, date: "2026-11-28", recipientName: "Maria Silva Santos", transactionId: E2E });
+    expect(isPixReceiptText(lido)).toBe(true);
+  });
+});
+
 describe("isPixReceiptText", () => {
   it("aceita comprovante de Pix e recusa outro documento", () => {
     expect(isPixReceiptText(nubank)).toBe(true);

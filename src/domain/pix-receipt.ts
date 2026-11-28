@@ -123,7 +123,8 @@ export function isPixReceiptText(text: string): boolean {
 
 /** Turns the text read from a receipt into fields; what could not be read stays null. */
 export function readPixReceipt(text: string): PixReceiptReading {
-  const clean = text.replace(/\r/g, "");
+  // Optical reading leaves blank lines and stray spaces between the lines of the receipt.
+  const clean = text.split(/\r?\n/).map((line) => line.trim()).filter((line) => line !== "").join("\n");
   const transactionId = readTransactionId(clean);
   return {
     amountCents: readAmount(clean),
