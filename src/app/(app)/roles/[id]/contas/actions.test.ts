@@ -42,6 +42,11 @@ describe("openBillAction", () => {
     expect(bills.openBill).toHaveBeenCalledWith("p1", outingId, expect.objectContaining({ description: "Bar", mode: "detailed" }));
   });
 
+  it("com a nota para anexar, devolve a conta aberta em vez de redirecionar", async () => {
+    expect(await actions.openBillAction({}, form([...valid, ["keepOpen", "1"]]))).toEqual({ billId });
+    expect(navigation.redirect).not.toHaveBeenCalled();
+  });
+
   it("mostra o aviso da regra de negócio, sem redirecionar", async () => {
     bills.openBill.mockRejectedValue(new DomainError("no_items", "A conta precisa ter os itens."));
     expect(await actions.openBillAction({}, form(valid))).toEqual({ error: "A conta precisa ter os itens." });

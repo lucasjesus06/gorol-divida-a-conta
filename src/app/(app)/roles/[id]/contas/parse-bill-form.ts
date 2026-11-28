@@ -1,3 +1,4 @@
+import { describeUnderTotal } from "@/domain/bill-document";
 import { DomainError } from "@/domain/domain-error";
 import { parseMoneyToCents } from "@/domain/money";
 import type { BillInput } from "@/server/bills";
@@ -38,6 +39,11 @@ export function parseBillForm(formData: FormData): BillInput {
   };
   if (mode === "direct") {
     return { ...base, mode, directTotalCents: parseMoneyToCents(String(formData.get("directTotal") ?? "")) };
+  }
+  // A card slip gives only the total: what is described cannot pass it, and the rest is added as one line.
+  const slipTotal = String(formData.get("slipTotal") ?? "").trim();
+  if (slipTotal !== "") {
+    return { ...base, mode, items: describeUnderTotal(parseMoneyToCents(slipTotal), parseItemRows(formData)).items };
   }
   return {
     ...base,
