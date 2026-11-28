@@ -14,6 +14,7 @@ const outingsServer = await import("./outings");
 const expensesServer = await import("./expenses");
 const paymentsServer = await import("./payments");
 const pixServer = await import("./pix");
+const termsServer = await import("./terms");
 const server = await import("./charges");
 
 type TestDb = Awaited<ReturnType<typeof createTestDatabase>>;
@@ -43,6 +44,9 @@ beforeEach(async () => {
   outingId = await outingsServer.createOuting({ personId: lucas, displayName: "Lucas Jesus" }, { name: "Churrasco", kind: "event" });
   maria = await member("Maria Souza", "11999990001");
   caio = await member("Caio", "11999990002");
+  for (const personId of [lucas, maria, caio]) {
+    await termsServer.acceptTerms(personId, { acceptedTerms: true, acceptedReminders: true });
+  }
   await expensesServer.registerExpense(lucas, outingId, {
     description: "Carne",
     totalCents: 9000,
@@ -71,6 +75,33 @@ describe("fila de cobrança", () => {
     await server.saveTemplates(lucas, ["Oi {nome}, é o {credor}"]);
     const item = (await server.getChargeQueue(noon)).find((candidate) => candidate.debtor.id === maria)!;
     expect(item.message).toBe("Oi Mari, é o Lucas");
+  });
+
+  it("quem não aceitou os termos não é cobrado: fica bloqueado, sem mensagem nem link", async () => {
+    const [bia] = await db().insert(people).values({ displayName: "Bia", phone: "+5511999990008" }).returning();
+    await approveAccount(db(), bia.id);
+    await outingsServer.addParticipant(lucas, outingId, { name: "Bia", phone: "11999990008" });
+    await expensesServer.registerExpense(lucas, outingId, {
+      description: "Gelo",
+      totalCents: 3000,
+      payers: [{ personId: lucas, amountCents: 3000 }],
+      split: { method: "equal", personIds: [lucas, bia.id] },
+      occurredAt: new Date("2026-03-11T20:00:00Z"),
+    });
+    const item = (await server.getChargeQueue(noon)).find((candidate) => candidate.debtor.id === bia.id)!;
+    expect(item.decision).toMatchObject({ action: "blocked", reason: "terms_not_accepted" });
+    expect(item.message).toBeNull();
+    expect(item.whatsappUrl).toBeNull();
+    await expect(server.recordReminder(lucas, { debtorId: bia.id, creditorId: lucas, channel: "app" }, noon)).rejects.toMatchObject({ code: "reminder_not_allowed" });
+  });
+
+  it("retirar o consentimento dos lembretes bloqueia a cobrança, devolver libera, e a dívida continua", async () => {
+    await termsServer.withdrawRemindersConsent(maria);
+    const blocked = (await server.getChargeQueue(noon)).find((candidate) => candidate.debtor.id === maria)!;
+    expect(blocked).toMatchObject({ amountCents: 3000, decision: { action: "blocked" } });
+
+    await termsServer.restoreRemindersConsent(maria);
+    expect((await server.getChargeQueue(noon)).find((candidate) => candidate.debtor.id === maria)!.decision.action).toBe("send");
   });
 
   it("fora da janela de horário espera, sem mensagem nem link", async () => {

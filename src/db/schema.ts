@@ -764,3 +764,24 @@ export const outingReopenings = pgTable(
   },
   (table) => [index("outing_reopenings_outing_idx").on(table.outingId, table.reopenedAt)],
 ).enableRLS();
+
+export const termsAcceptances = pgTable(
+  "terms_acceptances",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    personId: uuid("person_id")
+      .notNull()
+      .references(() => people.id, { onDelete: "restrict" }),
+    /** Which text of the terms the person agreed to. */
+    version: text("version").notNull(),
+    acceptedAt: timestamp("accepted_at", { withTimezone: true }).notNull().defaultNow(),
+    /** Agreement to receive payment reminders, given together with the terms and withdrawable later. */
+    remindersConsent: boolean("reminders_consent").notNull(),
+    remindersWithdrawnAt: timestamp("reminders_withdrawn_at", { withTimezone: true }),
+  },
+  (table) => [
+    check("terms_acceptances_version_filled", sql`length(btrim(${table.version})) > 0`),
+    check("terms_acceptances_withdrawn_needs_consent", sql`${table.remindersWithdrawnAt} is null or ${table.remindersConsent}`),
+    uniqueIndex("terms_acceptances_person_version_idx").on(table.personId, table.version),
+  ],
+).enableRLS();

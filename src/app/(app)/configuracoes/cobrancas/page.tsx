@@ -39,7 +39,7 @@ function toCard(item: ChargeItem): ChargeCardItem {
   }
   return {
     ...base,
-    status: { kind: "hold", label: decision.action === "hold" ? "Contestação aberta: cobrança suspensa até a decisão." : "Esta pessoa ainda não aceitou os termos." },
+    status: { kind: "hold", label: decision.action === "hold" ? "Contestação aberta: cobrança suspensa até a decisão." : "Esta pessoa ainda não aceitou os termos ou retirou o consentimento dos lembretes." },
   };
 }
 
