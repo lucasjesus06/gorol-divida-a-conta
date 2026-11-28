@@ -239,10 +239,14 @@ export async function getPhotoUrls(viewerId: string, ownerIds: string[]): Promis
 
 /** The person's own photo: its id (to remove it) and a link to show it. */
 export async function getMyPhoto(personId: string): Promise<{ id: string; url: string } | null> {
-  const [row] = await getDb()
-    .select({ id: files.id, path: files.path })
-    .from(files)
-    .where(and(eq(files.kind, "profile_photo"), eq(files.status, "ready"), eq(files.ownerId, personId)));
+  // The menu card asks for this before any page has tied the request to a person (the terms screen, for
+  // one), so it reads as the server and filters by the person explicitly.
+  const [row] = await asService(() =>
+    getDb()
+      .select({ id: files.id, path: files.path })
+      .from(files)
+      .where(and(eq(files.kind, "profile_photo"), eq(files.status, "ready"), eq(files.ownerId, personId))),
+  );
   if (!row) {
     return null;
   }
