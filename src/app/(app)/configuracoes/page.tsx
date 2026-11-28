@@ -1,4 +1,4 @@
-import { Bell, ChevronRight, HandCoins, KeyRound, ShieldCheck, UserRound } from "lucide-react";
+import { Bell, ChevronRight, HandCoins, KeyRound, ShieldCheck, ShieldHalf, UserRound } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { ReactNode } from "react";
@@ -69,6 +69,12 @@ export default function SettingsPage() {
           icon={<Bell className="size-5" />}
           title="Avisos no aparelho"
           description="Ligue para ser avisado no celular."
+        />
+        <SettingsLink
+          href="/configuracoes/privacidade"
+          icon={<ShieldHalf className="size-5" />}
+          title="Privacidade"
+          description="Termos aceitos e lembretes de pagamento."
         />
         <Suspense fallback={null}>
           <AdminLink />
