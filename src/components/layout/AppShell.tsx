@@ -1,26 +1,27 @@
 import { Bell, LogOut } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { Suspense } from "react";
+import { Suspense, cache } from "react";
 import { Avatar } from "@/components/common/Avatar";
 import { Backdrop } from "@/components/layout/Backdrop";
 import { Logo } from "@/components/layout/Logo";
 import { NavLink } from "@/components/layout/NavLink";
 import { Button } from "@/components/ui/button";
 import { signOut } from "@/app/login/actions";
-import { getIdentity, isOnboarded } from "@/server/auth";
+import { getIdentity, getProfile, isOnboarded } from "@/server/auth";
 import { getMyPhoto } from "@/server/files";
-import { getMyProfileDetails, loadProfile } from "@/server/profiles";
+import { getMyProfileDetails } from "@/server/profiles";
 import { countUnread } from "@/server/push";
 
-async function unreadCount() {
+// The sidebar and the phone header both ask for the count; one answer serves both.
+const unreadCount = cache(async () => {
   if (!(await isOnboarded())) {
     return null;
   }
   const identity = await getIdentity();
-  const profile = identity?.kind === "account" ? await loadProfile(identity.userId) : null;
+  const profile = identity?.kind === "account" ? await getProfile(identity.userId) : null;
   return profile ? countUnread(profile.personId) : null;
-}
+});
 
 async function NoticesNav() {
   const unread = await unreadCount();
@@ -54,7 +55,7 @@ function SignOutButton() {
 
 async function UserCard() {
   const identity = await getIdentity();
-  const profile = identity ? await loadProfile(identity.userId) : null;
+  const profile = identity ? await getProfile(identity.userId) : null;
   const isAccount = identity?.kind === "account";
   const [details, photo] = profile && isAccount ? await Promise.all([getMyProfileDetails(profile.personId), getMyPhoto(profile.personId)]) : [null, null];
   const shownName = details?.nickname ?? profile?.displayName ?? "Convidado";

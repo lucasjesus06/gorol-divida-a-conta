@@ -12,6 +12,7 @@ import {
   insertVersion,
   loadCurrent,
   outingContext,
+  readOutingContext,
   toDomainInput,
   validate,
   type ExpenseInput,
@@ -112,7 +113,7 @@ export async function createPayerRequest(
 }
 
 export async function listPayerRequests(personId: string, outingId: string): Promise<PayerRequestView[]> {
-  const context = await outingContext(personId, outingId);
+  const context = await readOutingContext(personId, outingId);
   const isAdmin = context.outing.role === "admin";
   const rows = await getDb()
     .select()

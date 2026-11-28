@@ -16,7 +16,7 @@ import { assertCanRegisterExpense, assertPayersAllowed, assertPeopleInOuting } f
 import { Fraction } from "@/domain/fraction";
 import { billPartTransferred } from "@/domain/notification";
 import type { BillStatus } from "@/domain/bill-status";
-import { assertActiveOuting, insertVersion, outingContext, type Tx } from "./expenses";
+import { assertActiveOuting, insertVersion, outingContext, type Tx, readOutingContext } from "./expenses";
 import { notify } from "./push";
 
 export type BillInput = {
@@ -202,13 +202,13 @@ function toView(
 }
 
 export async function listBills(personId: string, outingId: string): Promise<BillView[]> {
-  const context = await outingContext(personId, outingId);
+  const context = await readOutingContext(personId, outingId);
   const rows = await getDb().select({ id: consumptionBills.id }).from(consumptionBills).where(eq(consumptionBills.outingId, outingId)).orderBy(desc(consumptionBills.createdAt));
   return Promise.all(rows.map(async (row) => toView(await loadBill(outingId, row.id, context.names), personId, context.outing.role)));
 }
 
 export async function getBill(personId: string, outingId: string, billId: string): Promise<BillView> {
-  const context = await outingContext(personId, outingId);
+  const context = await readOutingContext(personId, outingId);
   return toView(await loadBill(outingId, billId, context.names), personId, context.outing.role);
 }
 

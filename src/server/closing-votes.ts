@@ -16,7 +16,7 @@ import { DomainError } from "@/domain/domain-error";
 import { closingVoteRequested, closingVoteResolved } from "@/domain/notification";
 import { assertAdmin } from "@/domain/outing-access";
 import { closeBlockers } from "@/domain/outing-closing";
-import { assertActiveOuting, outingContext } from "./expenses";
+import { assertActiveOuting, outingContext, readOutingContext } from "./expenses";
 import { closeInput, finalizeClose } from "./outing-lifecycle";
 import { notify } from "./push";
 import { getEffectiveSettings } from "./outing-settings";
@@ -173,7 +173,7 @@ export type ClosingVoteView = {
 
 /** The latest vote of the outing, after settling it if it is due. */
 export async function getClosingVote(personId: string, outingId: string, now: Date = new Date()): Promise<ClosingVoteView | null> {
-  const context = await outingContext(personId, outingId);
+  const context = await readOutingContext(personId, outingId);
   const days = (await getEffectiveSettings(outingId)).voteDays;
   await resolveClosing(outingId, now);
 

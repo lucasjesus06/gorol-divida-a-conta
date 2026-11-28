@@ -68,8 +68,8 @@ export async function insertExpense(
         previousVersionId: input.previousVersionId,
       })
       .returning();
-    await tx.insert(schema.expensePayers).values(Object.entries(input.payers).map(([personId, amountCents]) => ({ expenseId: expense.id, personId, amountCents })));
-    await tx.insert(schema.expenseShares).values(Object.entries(input.shares).map(([personId, amountCents]) => ({ expenseId: expense.id, personId, amountCents })));
+    await tx.insert(schema.expensePayers).values(Object.entries(input.payers).map(([personId, amountCents]) => ({ outingId: input.outingId, expenseId: expense.id, personId, amountCents })));
+    await tx.insert(schema.expenseShares).values(Object.entries(input.shares).map(([personId, amountCents]) => ({ outingId: input.outingId, expenseId: expense.id, personId, amountCents })));
     return expense;
   });
 }

@@ -13,7 +13,7 @@ import {
   type Transfer,
 } from "@/domain/settlement-routes";
 import { DomainError } from "@/domain/domain-error";
-import { outingContext } from "./expenses";
+import { readOutingContext } from "./expenses";
 
 export type Ledger = {
   outingNames: Map<string, string>;
@@ -114,7 +114,7 @@ export type OutingBalancesView = {
 };
 
 export async function getOutingBalances(personId: string, outingId: string): Promise<OutingBalancesView> {
-  await outingContext(personId, outingId);
+  await readOutingContext(personId, outingId);
   const ledger = await loadLedger(personId);
   const outingBalances = computeOutingBalances(outingId, ledger.expenses, ledger.payments);
   const summary = summarizeRoutes(outingId, outingBalances.values(), ledger.expenses, ledger.payments);

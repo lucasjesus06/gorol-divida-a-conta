@@ -10,7 +10,7 @@ import {
   type EffectiveOutingSettings,
   type OutingSettingsInput,
 } from "@/domain/outing-settings";
-import { assertActiveOuting, outingContext } from "./expenses";
+import { assertActiveOuting, outingContext, readOutingContext } from "./expenses";
 import { getParameterValues } from "./system-parameters";
 
 async function overridesOf(outingId: string): Promise<OutingSettingsInput> {
@@ -42,7 +42,7 @@ export type OutingSettingsView = {
 };
 
 export async function getOutingSettings(personId: string, outingId: string): Promise<OutingSettingsView> {
-  const context = await outingContext(personId, outingId);
+  const context = await readOutingContext(personId, outingId);
   const [overrides, system] = await Promise.all([overridesOf(outingId), getParameterValues()]);
   return {
     overrides,

@@ -1,7 +1,8 @@
 import "server-only";
+import { cache } from "react";
 import { and, desc, eq, inArray, isNotNull } from "drizzle-orm";
 import { asService, getDb } from "@/db/client";
-import { expenseDisputes, expensePayers, expenseShares, expenses, outingParticipants, outingPayers } from "@/db/schema";
+import { expenseDisputes, expensePayers, expenseShares, expenses, outingParticipants, outingPayers, outings } from "@/db/schema";
 import { DomainError } from "@/domain/domain-error";
 import {
   createExpense,
@@ -17,9 +18,8 @@ import {
   assertPeopleInOuting,
   peopleInExpense,
 } from "@/domain/expense-access";
-import { assertAdmin } from "@/domain/outing-access";
+import { assertAdmin, assertParticipant } from "@/domain/outing-access";
 import type { Payer, SplitRule } from "@/domain/split";
-import { findOuting } from "./outings";
 
 export type ExpenseInput = {
   description: string;
@@ -46,15 +46,22 @@ export type ExpenseView = {
 
 export type ExpenseDetail = ExpenseView & { history: ExpenseView[]; canChange: boolean };
 
+/**
+ * Everything the checks of an outing need, read in one round trip: the outing, who is in it and who
+ * may pay. The membership of the person comes from the same list, instead of a separate query.
+ */
 export async function outingContext(personId: string, outingId: string) {
-  const outing = await findOuting(personId, outingId);
-  const [everyone, declared] = await Promise.all([
+  const [[outingRow], everyone, declared] = await Promise.all([
+    getDb().select({ id: outings.id, name: outings.name, kind: outings.kind, status: outings.status }).from(outings).where(eq(outings.id, outingId)),
     getDb()
       .select({ personId: outingParticipants.personId, name: outingParticipants.displayName, role: outingParticipants.role, leftAt: outingParticipants.leftAt })
       .from(outingParticipants)
       .where(and(eq(outingParticipants.outingId, outingId), isNotNull(outingParticipants.confirmedAt))),
     getDb().select({ personId: outingPayers.personId }).from(outingPayers).where(eq(outingPayers.outingId, outingId)),
   ]);
+  const mine = everyone.find((participant) => participant.personId === personId && participant.leftAt === null);
+  assertParticipant(outingRow && mine ? { role: mine.role, status: "active" } : null);
+  const outing = { ...outingRow, role: mine!.role };
   // Whoever left stays in `names`, so past expenses still show their name, but cannot take part in anything new.
   const participants = everyone.filter((participant) => participant.leftAt === null);
   const declaredIds = new Set(declared.map((row) => row.personId));
@@ -69,6 +76,12 @@ export async function outingContext(personId: string, outingId: string) {
     allowedPayerIds: new Set(allowedPayers.map((participant) => participant.personId)),
   };
 }
+
+/**
+ * The same context for read-only screens: several loaders of one page ask for it, so within a
+ * single request it is read once. Anything that changes data uses `outingContext`, which always reads fresh.
+ */
+export const readOutingContext = cache((personId: string, outingId: string) => outingContext(personId, outingId));
 
 export function assertActiveOuting(status: string) {
   if (status !== "active") {
@@ -119,7 +132,7 @@ async function loadViews(outingId: string, names: Map<string, string>, only?: st
 }
 
 export async function listPayers(personId: string, outingId: string) {
-  const context = await outingContext(personId, outingId);
+  const context = await readOutingContext(personId, outingId);
   return context.participants.map((participant) => ({
     personId: participant.personId,
     name: participant.name,
@@ -158,10 +171,10 @@ export async function insertVersion(tx: Tx, outingId: string, personId: string, 
   });
   await tx
     .insert(expensePayers)
-    .values(expense.payers.map((payer) => ({ expenseId: expense.id, personId: payer.participantId, amountCents: payer.amountCents })));
+    .values(expense.payers.map((payer) => ({ outingId, expenseId: expense.id, personId: payer.participantId, amountCents: payer.amountCents })));
   await tx
     .insert(expenseShares)
-    .values([...expense.shares].map(([shareholder, amountCents]) => ({ expenseId: expense.id, personId: shareholder, amountCents })));
+    .values([...expense.shares].map(([shareholder, amountCents]) => ({ outingId, expenseId: expense.id, personId: shareholder, amountCents })));
 }
 
 async function findByKey(outingId: string, key: string) {
@@ -316,13 +329,13 @@ export async function voidExpense(personId: string, outingId: string, expenseId:
 }
 
 export async function listExpenses(personId: string, outingId: string): Promise<ExpenseView[]> {
-  const context = await outingContext(personId, outingId);
+  const context = await readOutingContext(personId, outingId);
   const all = await loadViews(outingId, context.names);
   return all.filter((expense) => expense.status !== "superseded");
 }
 
 export async function getExpense(personId: string, outingId: string, expenseId: string): Promise<ExpenseDetail> {
-  const context = await outingContext(personId, outingId);
+  const context = await readOutingContext(personId, outingId);
   const [all, links] = await Promise.all([
     loadViews(outingId, context.names),
     getDb().select({ id: expenses.id, previousVersionId: expenses.previousVersionId }).from(expenses).where(eq(expenses.outingId, outingId)),

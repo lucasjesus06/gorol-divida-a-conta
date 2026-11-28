@@ -23,7 +23,6 @@ import { getCloseBlockers } from "@/server/outing-lifecycle";
 import type { Blocker } from "@/domain/outing-closing";
 import { getClosingVote, type ClosingVoteView } from "@/server/closing-votes";
 import { CLOSING_VOTE_DAYS } from "@/domain/closing-vote";
-import { getParameterValues } from "@/server/system-parameters";
 import { getEffectiveSettings, getOutingSettings, type OutingSettingsView } from "@/server/outing-settings";
 import { SettingsForm } from "./settings-form";
 import { ClosingVoteAnswer, CloseOutingButton, LeaveOutingButton, RemoveParticipantButton, RequestClosingButton } from "./lifecycle-controls";
@@ -582,7 +581,9 @@ async function OutingContent({ params, searchParams }: Pick<PageProps<"/roles/[i
   const isAdmin = outing.role === "admin";
   const query = await searchParams;
   const view = parseView(query.visao, isAdmin);
-  const [pendingRequests, expenses, people, payerRequests, bills, payments, balances] = await Promise.all([
+  const needsSettings = (view === "resumo" && isAdmin) || view === "acertos";
+  // Everything the view needs is read together; the vote is settled in the same round because it can close the outing.
+  const [pendingRequests, expenses, people, payerRequests, bills, payments, balances, closingVote, effective, outingSettings, photos] = await Promise.all([
     isAdmin && view === "resumo" ? listJoinRequests(profile.personId, id).then((requests) => requests.length) : 0,
     view === "resumo" || view === "despesas" ? listExpenses(profile.personId, id) : [],
     listPayers(profile.personId, id),
@@ -590,14 +591,17 @@ async function OutingContent({ params, searchParams }: Pick<PageProps<"/roles/[i
     view === "despesas" ? listBills(profile.personId, id) : [],
     view === "pagamentos" || view === "resumo" ? listPayments(profile.personId, id) : [],
     view === "acertos" ? getOutingBalances(profile.personId, id) : null,
+    view === "resumo" ? getClosingVote(profile.personId, id) : null,
+    needsSettings ? getEffectiveSettings(id) : null,
+    view === "ajustes" && isAdmin ? getOutingSettings(profile.personId, id) : null,
+    view === "participantes" ? getPhotoUrls(profile.personId, outing.participants.map((participant) => participant.personId)) : new Map<string, string>(),
   ]);
-  const suggestedRoute = view === "acertos" && (await getEffectiveSettings(id)).suggestedRoute === "manual" ? "manual" : "inteligente";
-  const outingSettings = view === "ajustes" && isAdmin ? await getOutingSettings(profile.personId, id) : null;
-  const voteDays = view === "resumo" && isAdmin ? ((await getParameterValues())["closing.vote_days"] as number) : CLOSING_VOTE_DAYS;
-  const closingVote = view === "resumo" ? await getClosingVote(profile.personId, id) : null;
-  const closeBlockers = isAdmin && view === "resumo" && outing.status === "active" ? await getCloseBlockers(profile.personId, id) : null;
-  const photos = view === "participantes" ? await getPhotoUrls(profile.personId, outing.participants.map((participant) => participant.personId)) : new Map<string, string>();
-  const receipts = view === "pagamentos" ? await listFiles(profile.personId, "payment_receipt", id, payments.map((payment) => payment.id)) : [];
+  const [closeBlockers, receipts] = await Promise.all([
+    isAdmin && view === "resumo" && outing.status === "active" ? getCloseBlockers(profile.personId, id) : null,
+    view === "pagamentos" ? listFiles(profile.personId, "payment_receipt", id, payments.map((payment) => payment.id)) : [],
+  ]);
+  const suggestedRoute = effective?.suggestedRoute === "manual" ? "manual" : "inteligente";
+  const voteDays = effective?.voteDays ?? CLOSING_VOTE_DAYS;
   const payerIds = new Set(people.filter((person) => person.isPayer).map((person) => person.personId));
 
   return (
