@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DomainError } from "@/domain/domain-error";
 
 const auth = vi.hoisted(() => ({ getRenderProfile: vi.fn() }));
-const bills = vi.hoisted(() => ({ openBill: vi.fn(), claimItem: vi.fn(), releaseClaim: vi.fn(), closeBill: vi.fn(), answerLeftover: vi.fn() }));
+const bills = vi.hoisted(() => ({ openBill: vi.fn(), claimItem: vi.fn(), releaseClaim: vi.fn(), closeBill: vi.fn(), answerLeftover: vi.fn(), getBill: vi.fn(), addBillItem: vi.fn(), updateBillItem: vi.fn(), removeBillItem: vi.fn(), updateBillAmounts: vi.fn() }));
 const navigation = vi.hoisted(() => ({
   redirect: vi.fn((path: string) => {
     throw new Error(`REDIRECT:${path}`);
@@ -31,14 +31,15 @@ beforeEach(() => {
   auth.getRenderProfile.mockResolvedValue({ personId: "p1", displayName: "Lucas" });
   bills.openBill.mockResolvedValue(billId);
   bills.closeBill.mockResolvedValue({ status: "closed" });
+  bills.getBill.mockResolvedValue({ totalCents: 6600, payersFixed: false });
 });
 
 describe("openBillAction", () => {
-  const valid: [string, string][] = [["outingId", outingId], ["description", "Bar"], ["date", "2026-03-10"], ["payer", "p1"], ["itemDescription", "Pizza"], ["itemTotal", "40"], ["itemQuantity", "1"]];
+  const valid: [string, string][] = [["outingId", outingId], ["description", "Bar"], ["date", "2026-03-10"], ["itemDescription", "Pizza"], ["itemTotal", "40"], ["itemQuantity", "1"]];
 
   it("abre a conta em nome de quem está logado e vai para ela", async () => {
     await expect(actions.openBillAction({}, form(valid))).rejects.toThrow(`REDIRECT:/roles/${outingId}/contas/${billId}`);
-    expect(bills.openBill).toHaveBeenCalledWith("p1", outingId, expect.objectContaining({ description: "Bar", payers: [{ personId: "p1", amountCents: 4000 }] }));
+    expect(bills.openBill).toHaveBeenCalledWith("p1", outingId, expect.objectContaining({ description: "Bar", mode: "detailed" }));
   });
 
   it("mostra o aviso da regra de negócio, sem redirecionar", async () => {
@@ -66,13 +67,13 @@ describe("claimItemAction e releaseClaimAction", () => {
 });
 
 describe("closeBillAction e answerLeftoverAction", () => {
-  const close = (leftover: string): [string, string][] => [["outingId", outingId], ["billId", billId], ["leftover", leftover]];
+  const close = (leftover: string): [string, string][] => [["outingId", outingId], ["billId", billId], ["payer", "p1"], ["division", "marks"], ["leftover", leftover]];
 
   it("ratear ou transferir para alguém", async () => {
     await expect(actions.closeBillAction({}, form(close("spread")))).rejects.toThrow("REDIRECT");
-    expect(bills.closeBill).toHaveBeenLastCalledWith("p1", outingId, billId, { mode: "spread" });
+    expect(bills.closeBill).toHaveBeenLastCalledWith("p1", outingId, billId, { payers: [{ personId: "p1", amountCents: 6600 }], division: { kind: "marks" }, leftover: { mode: "spread" } });
     await expect(actions.closeBillAction({}, form(close("p2")))).rejects.toThrow("REDIRECT");
-    expect(bills.closeBill).toHaveBeenLastCalledWith("p1", outingId, billId, { mode: "transfer", personId: "p2" });
+    expect(bills.closeBill).toHaveBeenLastCalledWith("p1", outingId, billId, { payers: [{ personId: "p1", amountCents: 6600 }], division: { kind: "marks" }, leftover: { mode: "transfer", personId: "p2" } });
   });
 
   it("aceitar ou recusar a parte transferida", async () => {
@@ -80,5 +81,24 @@ describe("closeBillAction e answerLeftoverAction", () => {
     await actions.answerLeftoverAction({}, form([["outingId", outingId], ["billId", billId], ["decision", "decline"]]));
     expect(bills.answerLeftover).toHaveBeenNthCalledWith(1, "p1", outingId, billId, true);
     expect(bills.answerLeftover).toHaveBeenNthCalledWith(2, "p1", outingId, billId, false);
+  });
+});
+
+describe("itens e valores da conta aberta", () => {
+  const ids: [string, string][] = [["outingId", outingId], ["billId", billId]];
+
+  it("adiciona, edita e remove item em nome de quem está logado", async () => {
+    const fields: [string, string][] = [["description", "Pizza"], ["total", "40"], ["quantity", "1"]];
+    await actions.addBillItemAction({}, form([...ids, ...fields]));
+    expect(bills.addBillItem).toHaveBeenCalledWith("p1", outingId, billId, { description: "Pizza", totalCents: 4000, quantity: "1" });
+    await actions.updateBillItemAction({}, form([...ids, ["itemId", itemId], ...fields]));
+    expect(bills.updateBillItem).toHaveBeenCalledWith("p1", outingId, billId, itemId, { description: "Pizza", totalCents: 4000, quantity: "1" });
+    await actions.removeBillItemAction({}, form([...ids, ["itemId", itemId]]));
+    expect(bills.removeBillItem).toHaveBeenCalledWith("p1", outingId, billId, itemId);
+  });
+
+  it("atualiza só os valores preenchidos", async () => {
+    await actions.updateBillAmountsAction({}, form([...ids, ["serviceCharge", "6,00"], ["discount", ""]]));
+    expect(bills.updateBillAmounts).toHaveBeenCalledWith("p1", outingId, billId, { directTotalCents: undefined, serviceChargeCents: 600, discountCents: undefined });
   });
 });

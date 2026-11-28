@@ -4,9 +4,11 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { DomainError } from "@/domain/domain-error";
 import { isUuid } from "@/lib/uuid";
-import { answerLeftover, claimItem, closeBill, openBill, releaseClaim } from "@/server/bills";
+import { addBillItem, answerLeftover, claimItem, closeBill, getBill, openBill, releaseClaim, removeBillItem, updateBillAmounts, updateBillItem } from "@/server/bills";
 import { getRenderProfile } from "@/server/auth";
+import { parseMoneyToCents } from "@/domain/money";
 import { parseBillForm } from "./parse-bill-form";
+import { parseCloseForm } from "./parse-close-form";
 
 export type BillFormState = { error?: string };
 
@@ -75,8 +77,8 @@ export async function closeBillAction(_prevState: BillFormState, formData: FormD
   const failure = await guarded(async () => {
     outingId = idFrom(formData, "outingId");
     billId = idFrom(formData, "billId");
-    const target = String(formData.get("leftover") ?? "spread");
-    await closeBill(profile.personId, outingId, billId, target === "spread" ? { mode: "spread" } : { mode: "transfer", personId: target });
+    const bill = await getBill(profile.personId, outingId, billId);
+    await closeBill(profile.personId, outingId, billId, parseCloseForm(formData, bill.totalCents, bill.payersFixed));
   });
   if (failure.error) {
     return failure;
@@ -91,5 +93,62 @@ export async function answerLeftoverAction(_prevState: BillFormState, formData: 
     const outingId = idFrom(formData, "outingId");
     await answerLeftover(profile.personId, outingId, idFrom(formData, "billId"), formData.get("decision") === "accept");
     revalidatePath(`/roles/${outingId}`, "layout");
+  });
+}
+
+function itemFields(formData: FormData) {
+  return {
+    description: String(formData.get("description") ?? ""),
+    totalCents: parseMoneyToCents(String(formData.get("total") ?? "")),
+    quantity: String(formData.get("quantity") ?? ""),
+  };
+}
+
+export async function addBillItemAction(_prevState: BillFormState, formData: FormData): Promise<BillFormState> {
+  const profile = await getRenderProfile();
+  return guarded(async () => {
+    const outingId = idFrom(formData, "outingId");
+    const billId = idFrom(formData, "billId");
+    await addBillItem(profile.personId, outingId, billId, itemFields(formData));
+    revalidatePath(`/roles/${outingId}/contas/${billId}`);
+  });
+}
+
+export async function updateBillItemAction(_prevState: BillFormState, formData: FormData): Promise<BillFormState> {
+  const profile = await getRenderProfile();
+  return guarded(async () => {
+    const outingId = idFrom(formData, "outingId");
+    const billId = idFrom(formData, "billId");
+    await updateBillItem(profile.personId, outingId, billId, idFrom(formData, "itemId"), itemFields(formData));
+    revalidatePath(`/roles/${outingId}/contas/${billId}`);
+  });
+}
+
+export async function removeBillItemAction(_prevState: BillFormState, formData: FormData): Promise<BillFormState> {
+  const profile = await getRenderProfile();
+  return guarded(async () => {
+    const outingId = idFrom(formData, "outingId");
+    const billId = idFrom(formData, "billId");
+    await removeBillItem(profile.personId, outingId, billId, idFrom(formData, "itemId"));
+    revalidatePath(`/roles/${outingId}/contas/${billId}`);
+  });
+}
+
+function optionalMoney(formData: FormData, name: string): number | undefined {
+  const text = String(formData.get(name) ?? "").trim();
+  return text === "" ? undefined : parseMoneyToCents(text);
+}
+
+export async function updateBillAmountsAction(_prevState: BillFormState, formData: FormData): Promise<BillFormState> {
+  const profile = await getRenderProfile();
+  return guarded(async () => {
+    const outingId = idFrom(formData, "outingId");
+    const billId = idFrom(formData, "billId");
+    await updateBillAmounts(profile.personId, outingId, billId, {
+      directTotalCents: optionalMoney(formData, "directTotal"),
+      serviceChargeCents: optionalMoney(formData, "serviceCharge"),
+      discountCents: optionalMoney(formData, "discount"),
+    });
+    revalidatePath(`/roles/${outingId}/contas/${billId}`);
   });
 }
