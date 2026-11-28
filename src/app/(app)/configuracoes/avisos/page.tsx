@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { connection } from "next/server";
+import { requireReadyAccount } from "@/server/auth";
 import { pushIsConfigured } from "@/server/push";
 import { DeviceSwitch } from "./device-switch";
 
@@ -10,6 +11,7 @@ export const metadata: Metadata = {
 };
 
 async function DeviceSettings() {
+  await requireReadyAccount();
   await connection();
   const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
   if (!pushIsConfigured() || !publicKey) {
