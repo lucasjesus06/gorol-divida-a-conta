@@ -24,6 +24,8 @@ import type { Blocker } from "@/domain/outing-closing";
 import { getClosingVote, type ClosingVoteView } from "@/server/closing-votes";
 import { CLOSING_VOTE_DAYS } from "@/domain/closing-vote";
 import { getParameterValues } from "@/server/system-parameters";
+import { getEffectiveSettings, getOutingSettings, type OutingSettingsView } from "@/server/outing-settings";
+import { SettingsForm } from "./settings-form";
 import { ClosingVoteAnswer, CloseOutingButton, LeaveOutingButton, RemoveParticipantButton, RequestClosingButton } from "./lifecycle-controls";
 import { getPhotoUrls, listFiles, type FileView } from "@/server/files";
 import { FileList } from "@/components/files/FileList";
@@ -43,7 +45,7 @@ export const metadata: Metadata = {
 const kindLabels = { event: "Pontual", recurring: "Recorrente" } as const;
 const dateFormat = new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short", timeZone: "America/Sao_Paulo" });
 
-type View = "resumo" | "despesas" | "acertos" | "pagamentos" | "participantes" | "convite";
+type View = "resumo" | "despesas" | "acertos" | "pagamentos" | "participantes" | "convite" | "ajustes";
 
 function parseView(value: string | string[] | undefined, isAdmin: boolean): View {
   if (value === "participantes") return "participantes";
@@ -51,6 +53,7 @@ function parseView(value: string | string[] | undefined, isAdmin: boolean): View
   if (value === "pagamentos") return "pagamentos";
   if (value === "acertos") return "acertos";
   if (value === "convite" && isAdmin) return "convite";
+  if (value === "ajustes" && isAdmin) return "ajustes";
   return "resumo";
 }
 
@@ -61,7 +64,7 @@ function Tabs({ outingId, view, isAdmin }: { outingId: string; view: View; isAdm
     { view: "acertos", label: "Acertos" },
     { view: "pagamentos", label: "Pagamentos" },
     { view: "participantes", label: "Participantes" },
-    ...(isAdmin ? [{ view: "convite" as const, label: "Convite" }] : []),
+    ...(isAdmin ? [{ view: "convite" as const, label: "Convite" }, { view: "ajustes" as const, label: "Ajustes" }] : []),
   ];
 
   return (
@@ -588,6 +591,8 @@ async function OutingContent({ params, searchParams }: Pick<PageProps<"/roles/[i
     view === "pagamentos" || view === "resumo" ? listPayments(profile.personId, id) : [],
     view === "acertos" ? getOutingBalances(profile.personId, id) : null,
   ]);
+  const suggestedRoute = view === "acertos" && (await getEffectiveSettings(id)).suggestedRoute === "manual" ? "manual" : "inteligente";
+  const outingSettings = view === "ajustes" && isAdmin ? await getOutingSettings(profile.personId, id) : null;
   const voteDays = view === "resumo" && isAdmin ? ((await getParameterValues())["closing.vote_days"] as number) : CLOSING_VOTE_DAYS;
   const closingVote = view === "resumo" ? await getClosingVote(profile.personId, id) : null;
   const closeBlockers = isAdmin && view === "resumo" && outing.status === "active" ? await getCloseBlockers(profile.personId, id) : null;
@@ -605,7 +610,7 @@ async function OutingContent({ params, searchParams }: Pick<PageProps<"/roles/[i
       <Tabs outingId={outing.id} view={view} isAdmin={isAdmin} />
       {view === "resumo" && <Summary outing={outing} pendingRequests={pendingRequests} expenses={expenses} pendingPayerRequests={payerRequests.filter((request) => request.status === "pending").length} paymentsToConfirm={payments.filter((payment) => payment.canResolve).length} closeBlockers={closeBlockers} closingVote={closingVote} voteDays={voteDays} />}
       {view === "despesas" && <ExpensesView outing={outing} expenses={expenses} canRegister={payerIds.has(profile.personId)} requests={payerRequests} bills={bills} />}
-      {view === "acertos" && balances && <SettlementsView outing={outing} balances={balances} me={profile.personId} route={query.rota === "manual" ? "manual" : "inteligente"} />}
+      {view === "acertos" && balances && <SettlementsView outing={outing} balances={balances} me={profile.personId} route={query.rota === "manual" ? "manual" : query.rota === "inteligente" ? "inteligente" : suggestedRoute} />}
       {view === "pagamentos" && (
         <PaymentsView
           outing={outing}
@@ -618,6 +623,7 @@ async function OutingContent({ params, searchParams }: Pick<PageProps<"/roles/[i
       )}
       {view === "participantes" && <Participants outing={outing} payerIds={payerIds} photos={photos} />}
       {view === "convite" && <Invite outing={outing} personId={profile.personId} />}
+      {view === "ajustes" && outingSettings && <SettingsForm outingId={outing.id} view={outingSettings as OutingSettingsView} />}
     </>
   );
 }
