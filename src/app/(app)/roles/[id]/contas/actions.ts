@@ -10,7 +10,7 @@ import { parseMoneyToCents } from "@/domain/money";
 import { parseBillForm } from "./parse-bill-form";
 import { parseCloseForm } from "./parse-close-form";
 
-export type BillFormState = { error?: string };
+export type BillFormState = { error?: string; billId?: string };
 
 function idFrom(formData: FormData, name: string) {
   const value = String(formData.get(name) ?? "");
@@ -44,6 +44,10 @@ export async function openBillAction(_prevState: BillFormState, formData: FormDa
     return failure;
   }
   revalidatePath(`/roles/${outingId}`);
+  // With a photo of the note to attach, the screen sends it first and only then goes to the bill.
+  if (formData.get("keepOpen") === "1") {
+    return { billId };
+  }
   redirect(`/roles/${outingId}/contas/${billId}`);
 }
 

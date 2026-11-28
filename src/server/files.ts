@@ -1,7 +1,7 @@
 import "server-only";
 import { and, eq, inArray, isNotNull, isNull } from "drizzle-orm";
 import { asService, getDb } from "@/db/client";
-import { expenses, files, outingParticipants, payments } from "@/db/schema";
+import { consumptionBills, expenses, files, outingParticipants, payments } from "@/db/schema";
 import { DomainError } from "@/domain/domain-error";
 import type { FileKind } from "@/domain/file-kinds";
 import { validateStoredFile, validateUploadRequest } from "@/domain/file-rules";
@@ -41,6 +41,20 @@ async function assertCanAttach(personId: string, input: UploadInput) {
     }
     if (expense.registeredBy !== personId && context.outing.role !== "admin") {
       throw new DomainError("evidence_not_allowed", "Só quem lançou a despesa ou o dono do rolê anexa evidência.");
+    }
+    return;
+  }
+
+  if (input.kind === "bill_document") {
+    const [bill] = await getDb()
+      .select({ openedBy: consumptionBills.openedBy })
+      .from(consumptionBills)
+      .where(and(eq(consumptionBills.id, input.subjectId), eq(consumptionBills.outingId, input.outingId)));
+    if (!bill) {
+      throw new DomainError("bill_not_found", "Conta não encontrada.");
+    }
+    if (bill.openedBy !== personId && context.outing.role !== "admin") {
+      throw new DomainError("bill_document_not_allowed", "Só quem abriu a conta ou o dono do rolê anexa a nota.");
     }
     return;
   }

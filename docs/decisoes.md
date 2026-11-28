@@ -187,6 +187,13 @@ Há três níveis de configuração, todos em telas do aplicativo:
 - **O mesmo código de Pix não vale para dois pagamentos** enquanto o primeiro não for recusado; se o primeiro foi recusado, o código volta a valer. A leitura de cada comprovante fica guardada e **não muda**.
 - **A leitura não prova que o comprovante é verdadeiro**: uma imagem bem editada pode passar. A segurança é a contestação em 3 dias.
 
+### Nota, cupom e maquininha lidos no aparelho (GOR-17b)
+
+- Em **Nova conta**, o botão **"Ler uma nota"** lê, no aparelho (mesmo leitor do comprovante), uma **foto, um print ou um PDF com texto** e **preenche o formulário**: lugar, data, itens (nome, quantidade e valor), taxa de serviço, desconto e total. **Nada é aberto sozinho**: a pessoa confere e edita antes de tocar em "Abrir conta".
+- O app distingue **nota com itens** (cupom, NFC-e/DANFE, print de delivery), **comprovante de maquininha** (só o total) e **o que não reconhece** (formulário em branco, com o aviso para preencher à mão). Se a soma dos itens com a taxa e o desconto **não bate com o total da nota**, o aviso mostra os dois valores.
+- **Maquininha:** a pessoa escolhe **"Só o valor"** ou **"Descrever os gastos"**. O **total da nota é o teto**: descrever mais que o total é recusado, com os dois valores. Descrevendo menos, a diferença entra sozinha como uma linha **"Sem descrição"**, dividida no fechamento como qualquer sobra; o descrito é **calculado**, não digitado.
+- **A foto da nota fica anexada à conta** (novo tipo de arquivo, `bill_document`), visível a todos os participantes. Quem abriu a conta ou o dono do rolê anexa, inclusive depois, na própria tela da conta enquanto ela está aberta. Se o envio da foto falhar ao abrir a conta, a conta já existe e a foto pode ser anexada ali.
+
 ### Leitura de documentos (foto, print e PDF)
 
 - O app lê **foto da notinha, print de tela e PDF** que tenham descrições e valores (fatura, nota, pedido de delivery) e monta um **rascunho** de despesa: descrição, data, total e, quando houver, itens e taxa de serviço. Word, Excel e outros formatos ficam fora do MVP.

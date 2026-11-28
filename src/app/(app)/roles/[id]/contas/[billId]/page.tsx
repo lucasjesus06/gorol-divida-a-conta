@@ -5,12 +5,16 @@ import { Suspense } from "react";
 import { ListSkeleton } from "@/components/common/ListSkeleton";
 import { Pill } from "@/components/common/Pill";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { FileList } from "@/components/files/FileList";
+import { FileUploader } from "@/components/files/FileUploader";
 import { Button } from "@/components/ui/button";
 import { DomainError } from "@/domain/domain-error";
+import { formatFileSize } from "@/domain/file-rules";
 import { formatCents } from "@/domain/money";
 import { isUuid } from "@/lib/uuid";
 import { getRenderProfile } from "@/server/auth";
 import { getBill } from "@/server/bills";
+import { listFiles } from "@/server/files";
 import { listPayers } from "@/server/expenses";
 import { AddItemForm, AmountsForm, ClaimForm, CloseBillForm, EditItemForm, LeftoverAnswer } from "./bill-controls";
 
@@ -29,8 +33,9 @@ async function BillContent({ params }: Pick<PageProps<"/roles/[id]/contas/[billI
 
   let bill;
   let people;
+  let documents;
   try {
-    [bill, people] = await Promise.all([getBill(profile.personId, id, billId), listPayers(profile.personId, id)]);
+    [bill, people, documents] = await Promise.all([getBill(profile.personId, id, billId), listPayers(profile.personId, id), listFiles(profile.personId, "bill_document", id, [billId])]);
   } catch (error) {
     if (error instanceof DomainError && (error.code === "outing_not_found" || error.code === "bill_not_found")) {
       notFound();
@@ -53,6 +58,18 @@ async function BillContent({ params }: Pick<PageProps<"/roles/[id]/contas/[billI
           {bill.serviceChargeCents > 0 ? `, com taxa de ${formatCents(bill.serviceChargeCents)}` : ""}
           {bill.payers.length > 0 ? ` · pago por ${bill.payers.map((payer) => payer.name).join(", ")}` : ` · aberta por ${bill.openedBy.name}`}
         </p>
+
+        {(documents.length > 0 || (bill.canClose && bill.status === "open")) && (
+          <section className="flex flex-col gap-2">
+            <FileList
+              revalidate={`/roles/${id}/contas/${billId}`}
+              files={documents.map((file) => ({ id: file.id, name: file.name, sizeLabel: formatFileSize(file.sizeBytes), canRemove: false }))}
+            />
+            {bill.canClose && bill.status === "open" && (
+              <FileUploader kind="bill_document" outingId={id} subjectId={billId} label="Anexar a foto da nota" revalidate={`/roles/${id}/contas/${billId}`} />
+            )}
+          </section>
+        )}
 
         {bill.mustAcceptLeftover && (
           <div className="card-surface flex flex-col gap-3 p-5">

@@ -42,6 +42,18 @@ describe("parseBillForm", () => {
     expect(input).toMatchObject({ mode: "direct", directTotalCents: 12345 });
   });
 
+  it("com o total da maquininha, o que não foi descrito entra como uma linha só", () => {
+    const input = parseBillForm(form([["mode", "detailed"], ["description", "Bar"], ["date", "2026-03-10"], ["slipTotal", "120,00"], ["itemDescription", "Pizza"], ["itemTotal", "40,00"], ["itemQuantity", "1"]]));
+    expect("items" in input && input.items).toEqual([
+      { description: "Pizza", totalCents: 4000, quantity: "1" },
+      { description: "Sem descrição", totalCents: 8000, quantity: "1" },
+    ]);
+  });
+
+  it("com o total da maquininha, descrever mais que o total é recusado", () => {
+    expect(() => parseBillForm(form([["mode", "detailed"], ["description", "Bar"], ["date", "2026-03-10"], ["slipTotal", "30,00"], ["itemDescription", "Pizza"], ["itemTotal", "40,00"], ["itemQuantity", "1"]]))).toThrowError(expect.objectContaining({ code: "described_above_total" }));
+  });
+
   it("recusa valor e data inválidos", () => {
     expect(() => parseBillForm(form([...base.filter(([key]) => key !== "date"), ["date", "10/03"]]))).toThrowError(expect.objectContaining({ code: "invalid_date" }));
     expect(() => parseBillForm(form([...base.filter(([key]) => key !== "itemTotal"), ["itemTotal", "abc"]]))).toThrowError(expect.objectContaining({ code: "invalid_amount" }));

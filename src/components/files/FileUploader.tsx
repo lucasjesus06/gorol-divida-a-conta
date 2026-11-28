@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { createSupabaseUploadClient } from "@/lib/supabase/browser";
 
 type Props = {
-  kind: "expense_evidence" | "payment_receipt";
+  kind: "expense_evidence" | "payment_receipt" | "bill_document";
   outingId: string;
   subjectId: string;
   label: string;

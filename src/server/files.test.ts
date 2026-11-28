@@ -33,6 +33,7 @@ const expensesServer = await import("./expenses");
 const paymentsServer = await import("./payments");
 const server = await import("./files");
 const lifecycle = await import("./outing-lifecycle");
+const billsServer = await import("./bills");
 
 type TestDb = Awaited<ReturnType<typeof createTestDatabase>>;
 const db = () => state.db as TestDb;
@@ -112,6 +113,32 @@ describe("evidência da despesa", () => {
     await expect(server.requestUpload(lucas, { ...evidence(), subjectId: crypto.randomUUID() })).rejects.toMatchObject({ code: "expense_not_found" });
     await expect(server.requestUpload(lucas, { ...evidence(), sizeBytes: 11 * 1024 * 1024 })).rejects.toMatchObject({ code: "file_too_large" });
     await expect(server.requestUpload(lucas, { ...evidence(), mimeType: "video/mp4" })).rejects.toMatchObject({ code: "file_type_not_allowed" });
+  });
+});
+
+describe("nota da conta", () => {
+  async function bill(openedBy: string) {
+    return billsServer.openBill(openedBy, outingId, { description: "Bar", occurredAt: new Date("2026-03-10T20:00:00Z"), mode: "direct", directTotalCents: 5000 });
+  }
+  const document = (billId: string) => ({ kind: "bill_document" as const, outingId, subjectId: billId, mimeType: "image/jpeg", sizeBytes: jpeg.length, name: "nota.jpg" });
+
+  it("quem abriu a conta anexa a foto da nota, e os participantes veem e abrem", async () => {
+    const billId = await bill(maria);
+    const fileId = await upload(maria, document(billId), jpeg);
+    expect((await server.listFiles(caio, "bill_document", outingId, [billId])).map((file) => file.name)).toEqual(["nota.jpg"]);
+    expect(await server.getFileUrl(caio, fileId)).toContain("https://signed.example/");
+  });
+
+  it("o dono anexa à conta de outra pessoa; um terceiro participante não", async () => {
+    const billId = await bill(maria);
+    await upload(lucas, document(billId), jpeg);
+    await expect(server.requestUpload(caio, document(billId))).rejects.toMatchObject({ code: "bill_document_not_allowed" });
+  });
+
+  it("não aceita conta que não existe, e quem não participa não anexa", async () => {
+    await expect(server.requestUpload(lucas, document(crypto.randomUUID()))).rejects.toMatchObject({ code: "bill_not_found" });
+    const billId = await bill(maria);
+    await expect(server.requestUpload(stranger, document(billId))).rejects.toMatchObject({ code: "outing_not_found" });
   });
 });
 
