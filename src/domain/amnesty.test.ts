@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { anExpense } from "@/test/expense-fixtures";
 import { aConfirmedPayment, aDeclaredPayment } from "@/test/payment-fixtures";
-import { forgivableBetween, planAmnesty, type Amnesty } from "./amnesty";
+import { forgivableBetween, planAmnesty, planClearingAmnesty, type Amnesty } from "./amnesty";
 import { computeOutingBalances } from "./outing-balance";
 import { pairStatement } from "./pair-statement";
 import { manualRoute } from "./settlement-routes";
@@ -120,5 +120,28 @@ describe("a anistia no saldo", () => {
 
   it("a rota manual do rolê já considera o perdão", () => {
     expect(manualRoute("ubatuba", expenses, [], [forgiven])).toEqual([{ fromId: "joao", toId: "lucas", amountCents: 2000 }]);
+  });
+});
+
+describe("planClearingAmnesty", () => {
+  it("perdoa tudo o que resta, da despesa mais antiga para a mais nova", () => {
+    expect(planClearingAmnesty("lucas", "joao", expenses, [], [])).toEqual({
+      items: [
+        { outingId: "ubatuba", expenseId: "pousada", amountCents: 5000 },
+        { outingId: "futebol", expenseId: "quadra", amountCents: 2000 },
+      ],
+      totalCents: 7000,
+    });
+  });
+
+  it("para no que a pessoa ainda deve, depois de pagamentos e perdões", () => {
+    const paid = aConfirmedPayment({ outingId: "ubatuba", fromId: "joao", toId: "lucas", amountCents: 6000 });
+    const plan = planClearingAmnesty("lucas", "joao", expenses, [paid], []);
+    expect(plan?.totalCents).toBe(1000);
+    expect(plan?.items).toEqual([{ outingId: "ubatuba", expenseId: "pousada", amountCents: 1000 }]);
+  });
+
+  it("não há nada a perdoar quando ninguém deve", () => {
+    expect(planClearingAmnesty("joao", "lucas", expenses, [], [])).toBeNull();
   });
 });

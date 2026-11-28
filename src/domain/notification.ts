@@ -130,3 +130,23 @@ export function amnestyGranted(input: { creditorId: string; creditorName: string
     `/resumo/${input.creditorId}`,
   );
 }
+
+/** To the other person: someone asks to share expenses permanently. */
+export function sharedFundRequested(input: { requesterName: string }) {
+  return draft(
+    "shared_fund_requested",
+    "Despesas compartilhadas",
+    `${input.requesterName} quer declarar que vocês dividem as mesmas despesas. Se você aceitar, não haverá dívida entre vocês daqui em diante.`,
+    "/configuracoes/despesas-compartilhadas",
+  );
+}
+
+/** To the other person: how the request, or the arrangement, ended. */
+export function sharedFundResolved(input: { name: string; result: "accepted" | "declined" | "ended" }) {
+  const texts = {
+    accepted: `${input.name} aceitou: vocês passam a dividir as mesmas despesas, e a dívida que havia entre vocês foi perdoada.`,
+    declined: `${input.name} não aceitou dividir as mesmas despesas.`,
+    ended: `${input.name} desfez a declaração de despesas compartilhadas. O que foi lançado até agora continua como estava.`,
+  } as const;
+  return draft("shared_fund_resolved", "Despesas compartilhadas", texts[input.result], "/configuracoes/despesas-compartilhadas");
+}

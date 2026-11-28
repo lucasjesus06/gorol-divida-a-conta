@@ -14,6 +14,7 @@ import {
 import { paymentDeclared } from "@/domain/notification";
 import { assertActiveOuting, outingContext, readOutingContext } from "./expenses";
 import { notify } from "./push";
+import { areSharingNow } from "./shared-funds";
 
 export type PaymentView = {
   id: string;
@@ -54,6 +55,9 @@ export async function declarePayment(
     if (existing) {
       return existing;
     }
+  }
+  if (await areSharingNow(personId, input.toId)) {
+    throw new DomainError("shared_fund_no_payment", "Vocês dividem as mesmas despesas, então não há o que pagar entre vocês.");
   }
 
   const payment = declarePaymentDomain({

@@ -25,7 +25,7 @@ async function loadFor(creditorId: string, debtorId: string) {
 /** What `debtorId` owes the reader, expense by expense, and how much of it can still be forgiven. */
 export async function getForgivable(personId: string, debtorId: string): Promise<ForgivableView> {
   const ledger = await loadFor(personId, debtorId);
-  const forgivable = forgivableBetween(personId, debtorId, ledger.expenses, ledger.payments, ledger.amnesties);
+  const forgivable = forgivableBetween(personId, debtorId, ledger.expenses, ledger.payments, ledger.amnesties, ledger.funds);
   return {
     debtor: { id: debtorId, name: ledger.personNames.get(debtorId) ?? "Pessoa" },
     maxCents: forgivable.maxCents,
@@ -80,7 +80,7 @@ export async function grantAmnesty(
         .where(and(eq(amnesties.creditorId, personId), eq(amnesties.debtorId, debtorId)));
       // The pair's amnesties are read again under the lock; everything else comes from the ledger read above.
       const others = ledger.amnesties.filter((amnesty) => !(amnesty.creditorId === personId && amnesty.debtorId === debtorId));
-      const plan = planAmnesty(personId, debtorId, selection, ledger.expenses, ledger.payments, [...others, ...groupAmnesties(rows)]);
+      const plan = planAmnesty(personId, debtorId, selection, ledger.expenses, ledger.payments, [...others, ...groupAmnesties(rows)], ledger.funds);
       totalCents = plan.totalCents;
       await tx.insert(amnesties).values({ id, creditorId: personId, debtorId, totalCents: plan.totalCents, idempotencyKey });
       await tx.insert(amnestyItems).values(plan.items.map((item) => ({ amnestyId: id, outingId: item.outingId, expenseId: item.expenseId, amountCents: item.amountCents })));
