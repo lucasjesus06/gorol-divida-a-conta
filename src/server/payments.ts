@@ -12,7 +12,7 @@ import {
   type PaymentStatus,
 } from "@/domain/payment";
 import { paymentDeclared } from "@/domain/notification";
-import { assertActiveOuting, outingContext } from "./expenses";
+import { assertActiveOuting, outingContext, readOutingContext } from "./expenses";
 import { notify } from "./push";
 
 export type PaymentView = {
@@ -96,7 +96,7 @@ export async function declarePayment(
 }
 
 export async function listPayments(personId: string, outingId: string): Promise<PaymentView[]> {
-  const context = await outingContext(personId, outingId);
+  const context = await readOutingContext(personId, outingId);
   const rows = await getDb().select().from(payments).where(eq(payments.outingId, outingId)).orderBy(desc(payments.declaredAt));
   const nameOf = (id: string) => context.names.get(id) ?? "Pessoa";
   return rows.map((row) => ({

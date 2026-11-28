@@ -10,12 +10,18 @@ import { hasPixKey } from "./pix";
 import { hasAcceptedTerms } from "./terms";
 import { loadProfile, type Profile } from "./profiles";
 
-export async function getIdentity(): Promise<Identity | null> {
+// Each of these is asked by several parts of the same page (the menu, the gate, the page itself),
+// so the answer is kept for the request instead of going to the session and the database again.
+export const getIdentity = cache(async (): Promise<Identity | null> => {
   await connection();
   const supabase = await createSupabaseServerClient();
   const { data } = await supabase.auth.getClaims();
   return identityFromClaims(data?.claims);
-}
+});
+
+export const getProfile = cache((userId: string): Promise<Profile | null> => loadProfile(userId));
+const acceptedTerms = cache((personId: string): Promise<boolean> => hasAcceptedTerms(personId));
+const hasPix = cache((personId: string): Promise<boolean> => hasPixKey(personId));
 
 export async function requireIdentity(): Promise<Identity> {
   const identity = await getIdentity();
@@ -53,21 +59,26 @@ export const isOnboarded = cache(async (): Promise<boolean> => {
   if (identity.kind !== "account") {
     return true;
   }
-  const profile = await loadProfile(identity.userId);
-  return profile !== null && (await hasAcceptedTerms(profile.personId)) && (await hasPixKey(profile.personId));
+  const profile = await getProfile(identity.userId);
+  if (!profile) {
+    return false;
+  }
+  const [terms, pix] = await Promise.all([acceptedTerms(profile.personId), hasPix(profile.personId)]);
+  return terms && pix;
 });
 
 /** An account with the profile, the terms and the Pix key done; anyone else is sent to finish them first. */
 export async function requireReadyAccount(): Promise<{ identity: Extract<Identity, { kind: "account" }>; profile: Profile }> {
   const identity = await requireAccount();
-  const profile = await loadProfile(identity.userId);
+  const profile = await getProfile(identity.userId);
   if (!profile) {
     redirect("/perfil");
   }
-  if (!(await hasAcceptedTerms(profile.personId))) {
+  const [terms, pix] = await Promise.all([acceptedTerms(profile.personId), hasPix(profile.personId)]);
+  if (!terms) {
     redirect("/termos");
   }
-  if (!(await hasPixKey(profile.personId))) {
+  if (!pix) {
     redirect("/configuracoes/pix");
   }
   return { identity, profile };
@@ -75,15 +86,18 @@ export async function requireReadyAccount(): Promise<{ identity: Extract<Identit
 
 async function currentProfile(): Promise<Profile> {
   const identity = await requireIdentity();
-  const profile = await loadProfile(identity.userId);
+  const profile = await getProfile(identity.userId);
   if (!profile) {
     redirect(identity.kind === "account" ? "/perfil" : "/aguardando");
   }
-  if (identity.kind === "account" && !(await hasAcceptedTerms(profile.personId))) {
-    redirect("/termos");
-  }
-  if (identity.kind === "account" && !(await hasPixKey(profile.personId))) {
-    redirect("/configuracoes/pix");
+  if (identity.kind === "account") {
+    const [terms, pix] = await Promise.all([acceptedTerms(profile.personId), hasPix(profile.personId)]);
+    if (!terms) {
+      redirect("/termos");
+    }
+    if (!pix) {
+      redirect("/configuracoes/pix");
+    }
   }
   await bindRequestPerson(profile.personId);
   return profile;

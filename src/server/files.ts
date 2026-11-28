@@ -5,7 +5,7 @@ import { expenses, files, outingParticipants, payments } from "@/db/schema";
 import { DomainError } from "@/domain/domain-error";
 import type { FileKind } from "@/domain/file-kinds";
 import { validateStoredFile, validateUploadRequest } from "@/domain/file-rules";
-import { outingContext } from "./expenses";
+import { outingContext, readOutingContext } from "./expenses";
 import { BUCKET, createDownloadUrl, createDownloadUrls, createUploadToken, readStored, removeStored } from "./storage";
 
 const DOWNLOAD_SECONDS = 300;
@@ -125,7 +125,7 @@ export type FileView = { id: string; kind: FileKind; subjectId: string | null; n
 
 /** The ready files of these subjects that the person is allowed to see (the database decides). */
 export async function listFiles(personId: string, kind: FileKind, outingId: string, subjectIds: string[]): Promise<FileView[]> {
-  await outingContext(personId, outingId);
+  await readOutingContext(personId, outingId);
   if (subjectIds.length === 0) {
     return [];
   }

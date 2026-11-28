@@ -16,7 +16,7 @@ import { assertLateDisputeConfirmed, disputeWindow } from "@/domain/dispute-wind
 import { DomainError } from "@/domain/domain-error";
 import { outingReopened } from "@/domain/notification";
 import { reviseExpense as reviseExpenseDomain } from "@/domain/expense";
-import { insertVersion, loadCurrent, outingContext, toDomainInput } from "./expenses";
+import { insertVersion, loadCurrent, outingContext, toDomainInput, readOutingContext } from "./expenses";
 import { notify } from "./push";
 import { getEffectiveSettings } from "./outing-settings";
 
@@ -96,7 +96,7 @@ export async function openDispute(
 }
 
 export async function listDisputes(personId: string, outingId: string, expenseId?: string): Promise<DisputeView[]> {
-  const context = await outingContext(personId, outingId);
+  const context = await readOutingContext(personId, outingId);
   const rows = await getDb()
     .select()
     .from(expenseDisputes)

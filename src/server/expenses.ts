@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { and, desc, eq, inArray, isNotNull } from "drizzle-orm";
 import { asService, getDb } from "@/db/client";
 import { expenseDisputes, expensePayers, expenseShares, expenses, outingParticipants, outingPayers, outings } from "@/db/schema";
@@ -76,6 +77,12 @@ export async function outingContext(personId: string, outingId: string) {
   };
 }
 
+/**
+ * The same context for read-only screens: several loaders of one page ask for it, so within a
+ * single request it is read once. Anything that changes data uses `outingContext`, which always reads fresh.
+ */
+export const readOutingContext = cache((personId: string, outingId: string) => outingContext(personId, outingId));
+
 export function assertActiveOuting(status: string) {
   if (status !== "active") {
     throw new DomainError("outing_closed", "Este rolê já foi encerrado.");
@@ -125,7 +132,7 @@ async function loadViews(outingId: string, names: Map<string, string>, only?: st
 }
 
 export async function listPayers(personId: string, outingId: string) {
-  const context = await outingContext(personId, outingId);
+  const context = await readOutingContext(personId, outingId);
   return context.participants.map((participant) => ({
     personId: participant.personId,
     name: participant.name,
@@ -322,13 +329,13 @@ export async function voidExpense(personId: string, outingId: string, expenseId:
 }
 
 export async function listExpenses(personId: string, outingId: string): Promise<ExpenseView[]> {
-  const context = await outingContext(personId, outingId);
+  const context = await readOutingContext(personId, outingId);
   const all = await loadViews(outingId, context.names);
   return all.filter((expense) => expense.status !== "superseded");
 }
 
 export async function getExpense(personId: string, outingId: string, expenseId: string): Promise<ExpenseDetail> {
-  const context = await outingContext(personId, outingId);
+  const context = await readOutingContext(personId, outingId);
   const [all, links] = await Promise.all([
     loadViews(outingId, context.names),
     getDb().select({ id: expenses.id, previousVersionId: expenses.previousVersionId }).from(expenses).where(eq(expenses.outingId, outingId)),
