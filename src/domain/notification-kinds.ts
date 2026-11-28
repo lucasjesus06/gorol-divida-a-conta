@@ -13,6 +13,8 @@ export const notificationKinds = [
   "amnesty_granted",
   "shared_fund_requested",
   "shared_fund_resolved",
+  "payment_receipt_review",
+  "payment_contested",
 ] as const;
 
 export type NotificationKind = (typeof notificationKinds)[number];
