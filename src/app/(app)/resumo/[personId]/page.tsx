@@ -57,6 +57,11 @@ async function Detail({ params }: Pick<PageProps<"/resumo/[personId]">, "params"
               <p className="text-sm text-muted-foreground">A soma de todos os rolês que vocês dividem: o que um deve num rolê abate o que o outro deve em outro.</p>
             </>
           )}
+          {total !== null && total > 0 && (
+            <Button asChild variant="secondary" className="self-start">
+              <Link href={`/resumo/${detail.otherId}/perdoar`}>Perdoar dívida</Link>
+            </Button>
+          )}
           {total !== null && total < 0 && iOwe[0] && (
             <Button asChild className="self-start">
               <Link href={payLink(iOwe[0].outingId, detail.otherId, total)}>Pagar o total</Link>
