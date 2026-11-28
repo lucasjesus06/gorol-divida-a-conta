@@ -18,6 +18,7 @@ import { outingReopened } from "@/domain/notification";
 import { reviseExpense as reviseExpenseDomain } from "@/domain/expense";
 import { insertVersion, loadCurrent, outingContext, toDomainInput } from "./expenses";
 import { notify } from "./push";
+import { getParameterValues } from "./system-parameters";
 
 export type DisputeView = {
   id: string;
@@ -42,8 +43,9 @@ export async function openDispute(
   const context = await outingContext(personId, outingId);
   const closed = context.outing.status !== "active";
   const [closing] = closed ? await getDb().select({ closedAt: outings.closedAt, closedBy: outings.closedBy }).from(outings).where(eq(outings.id, outingId)) : [];
-  const window = disputeWindow(closing?.closedAt ?? null, now);
-  assertLateDisputeConfirmed(window, input.confirmLate === true);
+  const windowDays = closed ? ((await getParameterValues())["dispute.window_days"] as number) : undefined;
+  const window = disputeWindow(closing?.closedAt ?? null, now, windowDays);
+  assertLateDisputeConfirmed(window, input.confirmLate === true, windowDays);
   const current = await loadCurrent(outingId, expenseId, context.names);
 
   const openOnes = await getDb()

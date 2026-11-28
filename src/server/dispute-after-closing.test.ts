@@ -15,6 +15,7 @@ const expensesServer = await import("./expenses");
 const paymentsServer = await import("./payments");
 const lifecycle = await import("./outing-lifecycle");
 const disputes = await import("./disputes");
+const params = await import("./system-parameters");
 
 type TestDb = Awaited<ReturnType<typeof createTestDatabase>>;
 const db = () => state.db as TestDb;
@@ -114,6 +115,19 @@ describe("contestar depois dos 7 dias", () => {
     await disputes.openDispute(maria, outingId, expenseId, { subject: "amount", message: "Valor errado", confirmLate: true });
     await expensesServer.registerExpense(lucas, outingId, { ...revision(900), description: "Gelo" });
     await expect(lifecycle.closeOuting(lucas, outingId)).rejects.toMatchObject({ code: "outing_cannot_close" });
+  });
+
+  it("o prazo segue o parâmetro: com 14 dias, 10 dias depois ainda está no prazo", async () => {
+    await params.saveParameter(lucas, "dispute.window_days", 14);
+    await closedDaysAgo(10);
+    await disputes.openDispute(maria, outingId, expenseId, { subject: "amount", message: "Valor errado" });
+    expect((await outing()).status).toBe("closed");
+  });
+
+  it("com 3 dias, 5 dias depois já é fora do prazo e a mensagem diz 3", async () => {
+    await params.saveParameter(lucas, "dispute.window_days", 3);
+    await closedDaysAgo(5);
+    await expect(disputes.openDispute(maria, outingId, expenseId, { subject: "amount", message: "x" })).rejects.toMatchObject({ code: "dispute_late_needs_confirmation" });
   });
 
   it("só quem participa da despesa contesta, como antes", async () => {
