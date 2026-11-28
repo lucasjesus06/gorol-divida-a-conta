@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { asService, getDb } from "@/db/client";
 import { people } from "@/db/schema";
 import { DomainError } from "@/domain/domain-error";
+import { normalizeNickname } from "@/domain/person";
 
 export type Profile = { personId: string; displayName: string };
 
@@ -55,4 +56,23 @@ export function loadProfile(...args: Parameters<typeof loadProfileImpl>) {
 
 export function saveProfile(...args: Parameters<typeof saveProfileImpl>) {
   return asService(() => saveProfileImpl(...args));
+}
+
+export type ProfileDetails = { personId: string; displayName: string; nickname: string | null; phone: string };
+
+/** What the person sees about themselves; the phone is shown only to them. */
+export async function getMyProfileDetails(personId: string): Promise<ProfileDetails> {
+  const [row] = await asService(() =>
+    getDb().select({ displayName: people.displayName, nickname: people.nickname, phone: people.phone }).from(people).where(eq(people.id, personId)),
+  );
+  if (!row) {
+    throw new DomainError("person_not_found", "Pessoa não encontrada.");
+  }
+  return { personId, ...row };
+}
+
+/** Empty text goes back to using the first name. */
+export async function saveNickname(personId: string, value: string): Promise<void> {
+  const nickname = normalizeNickname(value);
+  await asService(() => getDb().update(people).set({ nickname }).where(eq(people.id, personId)));
 }

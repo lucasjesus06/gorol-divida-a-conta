@@ -23,7 +23,7 @@ import { getCloseBlockers } from "@/server/outing-lifecycle";
 import type { Blocker } from "@/domain/outing-closing";
 import { getClosingVote, type ClosingVoteView } from "@/server/closing-votes";
 import { ClosingVoteAnswer, CloseOutingButton, LeaveOutingButton, RemoveParticipantButton, RequestClosingButton } from "./lifecycle-controls";
-import { listFiles, type FileView } from "@/server/files";
+import { getPhotoUrls, listFiles, type FileView } from "@/server/files";
 import { FileList } from "@/components/files/FileList";
 import { FileUploader } from "@/components/files/FileUploader";
 import { formatFileSize } from "@/domain/file-rules";
@@ -473,7 +473,7 @@ function SettlementsView({ outing, balances, me, route }: { outing: OutingDetail
   );
 }
 
-function Participants({ outing, payerIds }: { outing: OutingDetail; payerIds: Set<string> }) {
+function Participants({ outing, payerIds, photos }: { outing: OutingDetail; payerIds: Set<string>; photos: Map<string, string> }) {
   const isAdmin = outing.role === "admin";
 
   return (
@@ -482,7 +482,7 @@ function Participants({ outing, payerIds }: { outing: OutingDetail; payerIds: Se
         <ul className="flex flex-col gap-2">
           {outing.participants.map((participant) => (
             <li key={participant.id} className="card-surface flex items-center gap-3 p-3">
-              <Avatar name={participant.displayName} size="sm" />
+              <Avatar name={participant.displayName} size="sm" src={photos.get(participant.personId)} />
               <div className="flex min-w-0 flex-col">
                 <span className="truncate text-sm font-semibold">
                   {participant.displayName}
@@ -586,6 +586,7 @@ async function OutingContent({ params, searchParams }: Pick<PageProps<"/roles/[i
   ]);
   const closingVote = view === "resumo" ? await getClosingVote(profile.personId, id) : null;
   const closeBlockers = isAdmin && view === "resumo" && outing.status === "active" ? await getCloseBlockers(profile.personId, id) : null;
+  const photos = view === "participantes" ? await getPhotoUrls(profile.personId, outing.participants.map((participant) => participant.personId)) : new Map<string, string>();
   const receipts = view === "pagamentos" ? await listFiles(profile.personId, "payment_receipt", id, payments.map((payment) => payment.id)) : [];
   const payerIds = new Set(people.filter((person) => person.isPayer).map((person) => person.personId));
 
@@ -610,7 +611,7 @@ async function OutingContent({ params, searchParams }: Pick<PageProps<"/roles/[i
           defaults={{ toId: typeof query.para === "string" ? query.para : undefined, amount: typeof query.valor === "string" ? query.valor : undefined }}
         />
       )}
-      {view === "participantes" && <Participants outing={outing} payerIds={payerIds} />}
+      {view === "participantes" && <Participants outing={outing} payerIds={payerIds} photos={photos} />}
       {view === "convite" && <Invite outing={outing} personId={profile.personId} />}
     </>
   );

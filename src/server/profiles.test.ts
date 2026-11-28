@@ -10,7 +10,7 @@ vi.mock("@/db/client", () => ({
   asService: <T>(work: () => Promise<T>) => work(),
 }));
 
-const { loadProfile, saveProfile } = await import("./profiles");
+const { loadProfile, saveProfile, getMyProfileDetails, saveNickname } = await import("./profiles");
 
 type TestDb = Awaited<ReturnType<typeof createTestDatabase>>;
 const db = () => state.db as TestDb;
@@ -69,5 +69,25 @@ describe("perfil da conta", () => {
 
     expect(again).toEqual(first);
     expect(await db().$count(people)).toBe(1);
+  });
+});
+
+describe("apelido", () => {
+  it("salva o apelido, mostra só para a própria pessoa e vazio volta ao primeiro nome", async () => {
+    const profile = await saveProfile(ANA, { displayName: "Ana Souza", phone: "+5511999990001" });
+    expect(await getMyProfileDetails(profile.personId)).toMatchObject({ displayName: "Ana Souza", nickname: null, phone: "+5511999990001" });
+
+    await saveNickname(profile.personId, "  Aninha  ");
+    expect((await getMyProfileDetails(profile.personId)).nickname).toBe("Aninha");
+
+    await saveNickname(profile.personId, "   ");
+    expect((await getMyProfileDetails(profile.personId)).nickname).toBeNull();
+  });
+
+  it("recusa apelido grande demais sem alterar o que já havia", async () => {
+    const profile = await saveProfile(ANA, { displayName: "Ana Souza", phone: "+5511999990001" });
+    await saveNickname(profile.personId, "Aninha");
+    await expect(saveNickname(profile.personId, "x".repeat(41))).rejects.toMatchObject({ code: "nickname_too_long" });
+    expect((await getMyProfileDetails(profile.personId)).nickname).toBe("Aninha");
   });
 });

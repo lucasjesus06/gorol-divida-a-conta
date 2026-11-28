@@ -71,9 +71,9 @@ async function loadFacts() {
     getDb().select().from(reminderLog),
     getDb().select().from(reminderPauses),
     getDb().select({ openedBy: expenseDisputes.openedBy, outingId: expenseDisputes.outingId }).from(expenseDisputes).where(eq(expenseDisputes.status, "open")),
-    getDb().select({ id: people.id, phone: people.phone }).from(people).where(isNotNull(people.userId)),
+    getDb().select({ id: people.id, phone: people.phone, nickname: people.nickname }).from(people).where(isNotNull(people.userId)),
   ]);
-  return { logs, pauses, disputes, phones: new Map(phones.map((row) => [row.id, row.phone])) };
+  return { logs, pauses, disputes, phones: new Map(phones.map((row) => [row.id, row.phone])), nicknames: new Map(phones.map((row) => [row.id, row.nickname])) };
 }
 
 function stateFor(pair: Pair, facts: Awaited<ReturnType<typeof loadFacts>>): ReminderState {
@@ -112,7 +112,9 @@ export async function getChargeQueue(now: Date = new Date()): Promise<ChargeItem
         const pix = await getMyPixKey(pair.creditorId);
         message = renderTemplate(pickTemplate(templates, decision.sequence), {
           debtorName,
+          debtorNickname: facts.nicknames.get(pair.debtorId) ?? null,
           creditorName,
+          creditorNickname: facts.nicknames.get(pair.creditorId) ?? null,
           amountCents: pair.amountCents,
           outingNames: pair.outingIds.map((id) => ledger.outingNames.get(id) ?? "Rolê"),
           pixKey: pix?.display ?? null,

@@ -54,3 +54,15 @@ export async function createDownloadUrl(path: string, seconds: number): Promise<
   }
   return data.signedUrl;
 }
+
+/** Short-lived links for several files at once; a path that cannot be signed is simply left out. */
+export async function createDownloadUrls(paths: string[], seconds: number): Promise<Map<string, string>> {
+  if (paths.length === 0) {
+    return new Map();
+  }
+  const { data, error } = await createSupabaseAdminClient().storage.from(BUCKET).createSignedUrls(paths, seconds);
+  if (error || !data) {
+    return new Map();
+  }
+  return new Map(data.flatMap((item) => (item.path && item.signedUrl ? [[item.path, item.signedUrl] as const] : [])));
+}

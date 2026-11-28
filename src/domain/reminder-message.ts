@@ -42,7 +42,10 @@ export function validateTemplates(bodies: string[]): string[] {
 
 export type MessageValues = {
   debtorName: string;
+  /** What the debtor likes to be called, when they chose something. */
+  debtorNickname?: string | null;
   creditorName: string;
+  creditorNickname?: string | null;
   amountCents: Cents;
   outingNames: string[];
   pixKey: string | null;
@@ -54,8 +57,8 @@ function firstName(name: string): string {
 
 export function renderTemplate(body: string, values: MessageValues): string {
   const replacements: Record<TemplateVariable, string> = {
-    nome: firstName(values.debtorName),
-    credor: firstName(values.creditorName),
+    nome: values.debtorNickname ?? firstName(values.debtorName),
+    credor: values.creditorNickname ?? firstName(values.creditorName),
     valor: formatCents(values.amountCents),
     rolês: values.outingNames.join(", "),
     chave_pix: values.pixKey ?? "(sem chave cadastrada, peça a ele)",

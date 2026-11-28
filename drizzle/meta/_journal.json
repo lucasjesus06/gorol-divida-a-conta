@@ -246,6 +246,13 @@
       "when": 1795823217863,
       "tag": "0034_politicas_reabertura_do_role",
       "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1795825968729,
+      "tag": "0035_apelido",
+      "breakpoints": true
     }
   ]
 }

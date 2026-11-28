@@ -1,4 +1,4 @@
-import { Bell, ChevronRight, HandCoins, KeyRound, ShieldCheck } from "lucide-react";
+import { Bell, ChevronRight, HandCoins, KeyRound, ShieldCheck, UserRound } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { ReactNode } from "react";
@@ -52,6 +52,12 @@ export default function SettingsPage() {
     <>
       <PageHeader title="Configurações" description="Seus dados e o funcionamento da sua conta." />
       <div className="flex flex-col gap-3">
+        <SettingsLink
+          href="/configuracoes/perfil"
+          icon={<UserRound className="size-5" />}
+          title="Perfil"
+          description="Foto e como você quer ser chamado."
+        />
         <SettingsLink
           href="/configuracoes/pix"
           icon={<KeyRound className="size-5" />}

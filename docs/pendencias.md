@@ -15,9 +15,9 @@ Tudo o que ainda precisa ser feito ou decidido. O que fica para versões futuras
   - o histórico de cobranças ainda não aparece para o devedor nem para o credor.
 - **Arquivos (GOR-15), o que ficou de fora:**
   - **Web Share Target** (receber o comprovante direto do app do banco, no Android): fica para a GOR-18;
-  - a **foto de perfil** já tem base (tipo, limites e substituição da antiga), mas a **tela de envio e o Avatar com foto** entram na parte 2 da GOR-20;
+  - a **tela de envio da foto de perfil** e o Avatar com foto entraram na GOR-20b;
   - **arquivos reservados e nunca confirmados** (quem escolheu o arquivo e fechou o app no meio) ficam como pendentes no banco e no armazenamento; falta uma limpeza periódica;
-  - a imagem **não é reduzida no celular** antes do envio (limite de 10 MB); a redução e a retirada dos dados da foto (como localização) entram com a foto de perfil;
+  - a imagem de **evidência e comprovante não é reduzida no celular** antes do envio (limite de 10 MB); só a foto de perfil é recortada e reduzida (o que também tira os dados da câmera, como a localização);
   - o valor e a data lidos do documento (`amountCents`, `documentDate` da evidência) ainda não são informados na tela, então a conferência "valor confere com o total" não aparece;
   - **não foi possível validar neste ambiente** o envio e a abertura de arquivo de verdade no Supabase Storage (o armazenamento é simulado nos testes). O bucket `arquivos` é criado sozinho no primeiro envio; para validar, anexe uma foto a uma despesa e abra-a em outro aparelho.
 - **Conta por consumo (GOR-10):** o alcance de "fechou, acabou a responsa": vale para a conta ou para o rolê?
@@ -33,7 +33,8 @@ Tudo o que ainda precisa ser feito ou decidido. O que fica para versões futuras
 - **Senha SMTP do Brevo:** a chave gerada vence em **27/11/2027**, e também expira após 90 dias sem uso. Renovar no Brevo e atualizar em **Authentication → SMTP Settings** no Supabase.
 - **Configurações (GOR-20), o que já foi feito:** central em `/configuracoes` com **Chave Pix** (tipo escolhido pela pessoa: CPF, CNPJ, celular, e-mail ou aleatória, validado por tipo) e **Administração** dentro dela, só para o super admin, com o botão de **revogar convite**. A chave é **obrigatória no primeiro acesso** da conta (quem não tem é levado para a tela da chave) e o **QR code e o Pix copia e cola** aparecem na aba Acertos, só para quem precisa pagar aquela pessoa, até o valor devido (direto ou pela rota). Convidados sem conta não cadastram chave.
 - **Configurações (GOR-20), o que ainda falta:**
-  - **foto de perfil** (depende do armazenamento, GOR-15), **apelido**, **canal preferido dos avisos** (WhatsApp, app ou os dois), **situação dos lembretes** e **privacidade e termos**;
+  - **canal preferido dos avisos** (WhatsApp, app ou os dois), **situação dos lembretes** e **privacidade e termos**;
+  - **foto e apelido (20b, feitos), o que ficou de fora:** a foto só aparece no menu e na lista de participantes (nas demais listas continua a inicial colorida); o apelido só vale nas mensagens de cobrança e no menu da própria pessoa, porque nos rolês vale o nome que o dono cadastrou; o **recorte e a redução** da foto são feitos no aparelho e **não foi possível validar aqui** (teste com uma foto do celular, inclusive uma tirada na hora); o nome e o telefone ainda não se editam pela pessoa;
   - o **motor de regras** (parâmetros do sistema, como prazos, cobrança e taxa de serviço) e a tela para ajustá-lo;
   - o Pix copia e cola usa cidade "BRASIL" e o primeiro nome do recebedor, porque o app não sabe a cidade; **não foi possível validar neste ambiente que um app de banco aceita o código** (a conferência do CRC segue o vetor de referência). Teste pagando um valor pequeno;
   - confirmar a lista de parâmetros ajustáveis (cobrança, prazo de contestação do comprovante, forma de divisão, rota e taxa de serviço padrão);
