@@ -1,7 +1,7 @@
 import "server-only";
 import { and, desc, eq, inArray, isNotNull } from "drizzle-orm";
-import { getDb } from "@/db/client";
-import { expensePayers, expenseShares, expenses, outingParticipants, outingPayers } from "@/db/schema";
+import { asService, getDb } from "@/db/client";
+import { expenseDisputes, expensePayers, expenseShares, expenses, outingParticipants, outingPayers } from "@/db/schema";
 import { DomainError } from "@/domain/domain-error";
 import {
   createExpense,
@@ -245,7 +245,17 @@ export async function loadCurrent(outingId: string, expenseId: string, names: Ma
 
 export async function reviseExpense(personId: string, outingId: string, expenseId: string, input: ExpenseInput): Promise<string> {
   const context = await outingContext(personId, outingId);
-  assertActiveOuting(context.outing.status);
+  const closed = context.outing.status !== "active";
+  if (closed) {
+    // A closed outing only takes the correction an accepted dispute asked for, in this very expense.
+    const [accepted] = await getDb()
+      .select({ id: expenseDisputes.id })
+      .from(expenseDisputes)
+      .where(and(eq(expenseDisputes.expenseId, expenseId), eq(expenseDisputes.outingId, outingId), eq(expenseDisputes.status, "approved")));
+    if (!accepted) {
+      assertActiveOuting(context.outing.status);
+    }
+  }
   assertCanRegisterExpense(context.outing.role, context.declaredIds.has(personId));
   const current = await loadCurrent(outingId, expenseId, context.names);
   assertCanChangeExpense(current.registeredBy, personId, context.outing.role);
@@ -268,11 +278,16 @@ export async function reviseExpense(personId: string, outingId: string, expenseI
   });
   validate(context, revision);
 
+  // The database policies for new expenses are written for open outings, so a correction on a
+  // closed one is written by the server, after the checks above.
+  const run = closed ? asService : <T,>(work: () => Promise<T>) => work();
   try {
-    await getDb().transaction(async (tx) => {
-      await insertVersion(tx, outingId, personId, revision, input.idempotencyKey);
-      await tx.update(expenses).set({ status: "superseded" }).where(and(eq(expenses.id, current.id), eq(expenses.status, "active")));
-    });
+    await run(() =>
+      getDb().transaction(async (tx) => {
+        await insertVersion(tx, outingId, personId, revision, input.idempotencyKey);
+        await tx.update(expenses).set({ status: "superseded" }).where(and(eq(expenses.id, current.id), eq(expenses.status, "active")));
+      }),
+    );
   } catch (error) {
     const existing = input.idempotencyKey ? await findByKey(outingId, input.idempotencyKey) : null;
     if (existing) {

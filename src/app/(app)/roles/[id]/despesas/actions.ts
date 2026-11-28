@@ -11,7 +11,7 @@ import { createPayerRequest, decidePayerRequest } from "@/server/payer-requests"
 import { disputeSubjects } from "@/domain/dispute-status";
 import { parseExpenseForm } from "./parse-expense-form";
 
-export type ExpenseFormState = { error?: string };
+export type ExpenseFormState = { error?: string; needsConfirmation?: boolean };
 
 function outingIdFrom(formData: FormData) {
   const outingId = String(formData.get("outingId") ?? "");
@@ -111,7 +111,7 @@ export async function decidePayerRequestAction(_prevState: ExpenseFormState, for
 
 export async function openDisputeAction(_prevState: ExpenseFormState, formData: FormData): Promise<ExpenseFormState> {
   const profile = await getRenderProfile();
-  return guarded(async () => {
+  const result = await guardedLate(async () => {
     const outingId = outingIdFrom(formData);
     const subject = String(formData.get("subject") ?? "");
     if (!(disputeSubjects as readonly string[]).includes(subject)) {
@@ -121,9 +121,24 @@ export async function openDisputeAction(_prevState: ExpenseFormState, formData: 
     await openDispute(profile.personId, outingId, expenseId, {
       subject: subject as (typeof disputeSubjects)[number],
       message: String(formData.get("message") ?? ""),
+      confirmLate: formData.get("confirmLate") === "on",
     });
-    revalidatePath(`/roles/${outingId}/despesas/${expenseId}`);
+    revalidatePath(`/roles/${outingId}`, "layout");
   });
+  return result;
+}
+
+/** Like `guarded`, but tells the form when the person still has to confirm that a late dispute reopens the outing. */
+async function guardedLate(work: () => Promise<void>): Promise<ExpenseFormState> {
+  try {
+    await work();
+  } catch (error) {
+    if (error instanceof DomainError) {
+      return error.code === "dispute_late_needs_confirmation" ? { error: error.message, needsConfirmation: true } : { error: error.message };
+    }
+    throw error;
+  }
+  return {};
 }
 
 export async function decideDisputeAction(_prevState: ExpenseFormState, formData: FormData): Promise<ExpenseFormState> {

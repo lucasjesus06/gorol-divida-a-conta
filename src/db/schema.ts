@@ -11,6 +11,7 @@ import { joinRequestStatuses } from "../domain/join";
 import { outingKinds, outingRoles, outingStatuses } from "../domain/outing";
 import { notificationKinds } from "../domain/notification-kinds";
 import { reminderChannels } from "../domain/reminder-channels";
+import { closingVoteDecisions, closingVoteStatuses } from "../domain/closing-vote-status";
 import { fileKinds, fileStatuses } from "../domain/file-kinds";
 import { pixKeyTypes } from "../domain/pix-key-types";
 
@@ -694,4 +695,69 @@ export const files = pgTable(
     index("files_subject_idx").on(table.kind, table.subjectId),
     index("files_owner_idx").on(table.ownerId, table.kind),
   ],
+).enableRLS();
+
+export const closingVotes = pgTable(
+  "closing_votes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    outingId: uuid("outing_id")
+      .notNull()
+      .references(() => outings.id, { onDelete: "restrict" }),
+    requestedBy: uuid("requested_by")
+      .notNull()
+      .references(() => people.id, { onDelete: "restrict" }),
+    /** The balances the voters saw; if they change, the vote no longer means what people agreed to. */
+    snapshot: text("snapshot").notNull(),
+    status: text("status", { enum: closingVoteStatuses }).notNull().default("open"),
+    deadline: timestamp("deadline", { withTimezone: true }).notNull(),
+    resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    check("closing_votes_status_valid", oneOf(table.status, closingVoteStatuses)),
+    check("closing_votes_resolved_matches_status", sql`(${table.status} = 'open') = (${table.resolvedAt} is null)`),
+    uniqueIndex("closing_votes_one_open_per_outing_idx").on(table.outingId).where(sql`${table.status} = 'open'`),
+    index("closing_votes_outing_idx").on(table.outingId, table.createdAt),
+  ],
+).enableRLS();
+
+export const closingVoteChoices = pgTable(
+  "closing_vote_choices",
+  {
+    voteId: uuid("vote_id")
+      .notNull()
+      .references(() => closingVotes.id, { onDelete: "cascade" }),
+    personId: uuid("person_id")
+      .notNull()
+      .references(() => people.id, { onDelete: "restrict" }),
+    decision: text("decision", { enum: closingVoteDecisions }).notNull().default("pending"),
+    decidedAt: timestamp("decided_at", { withTimezone: true }),
+  },
+  (table) => [
+    primaryKey({ columns: [table.voteId, table.personId] }),
+    check("closing_vote_choices_decision_valid", oneOf(table.decision, closingVoteDecisions)),
+    check("closing_vote_choices_decided_matches", sql`(${table.decision} = 'pending') = (${table.decidedAt} is null)`),
+  ],
+).enableRLS();
+
+export const outingReopenings = pgTable(
+  "outing_reopenings",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    outingId: uuid("outing_id")
+      .notNull()
+      .references(() => outings.id, { onDelete: "restrict" }),
+    /** The late dispute that made the outing open again. */
+    disputeId: uuid("dispute_id")
+      .notNull()
+      .references(() => expenseDisputes.id, { onDelete: "restrict" }),
+    reopenedBy: uuid("reopened_by")
+      .notNull()
+      .references(() => people.id, { onDelete: "restrict" }),
+    reopenedAt: timestamp("reopened_at", { withTimezone: true }).notNull().defaultNow(),
+    previousClosedAt: timestamp("previous_closed_at", { withTimezone: true }).notNull(),
+    previousClosedBy: uuid("previous_closed_by").references(() => people.id, { onDelete: "restrict" }),
+  },
+  (table) => [index("outing_reopenings_outing_idx").on(table.outingId, table.reopenedAt)],
 ).enableRLS();

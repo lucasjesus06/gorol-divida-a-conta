@@ -12,7 +12,7 @@ import { loadLedgerForOutings } from "./balances";
 import { assertActiveOuting, outingContext } from "./expenses";
 import { notify } from "./push";
 
-async function closeInput(outingId: string, names: Map<string, string>) {
+export async function closeInput(outingId: string, names: Map<string, string>) {
   const ledger = await loadLedgerForOutings([outingId]);
   const balances = computeOutingBalances(outingId, ledger.expenses, ledger.payments);
 
@@ -32,6 +32,7 @@ async function closeInput(outingId: string, names: Map<string, string>) {
   const awaiting = participants.filter((participant) => participant.accountApprovedAt === null && participant.userId !== null && pendingGuests.has(participant.userId));
 
   return {
+    people: [...balances.values()].map((balance) => ({ personId: balance.participantId, netCents: balance.netCents })),
     balances: [...balances.values()].map((balance) => ({ name: names.get(balance.participantId) ?? "Pessoa", netCents: balance.netCents })),
     pendingPayments: pendingPayments.length,
     guestsAwaitingAccount: awaiting.map((participant) => names.get(participant.personId) ?? "Pessoa"),
@@ -49,13 +50,8 @@ export async function getCloseBlockers(personId: string, outingId: string): Prom
   return closeBlockers(await closeInput(outingId, context.names));
 }
 
-/** The owner closes an outing that has nothing left to settle. Debts between people are not erased. */
-export async function closeOuting(personId: string, outingId: string): Promise<void> {
-  const context = await outingContext(personId, outingId);
-  assertAdmin({ role: context.outing.role, status: "active" });
-  assertActiveOuting(context.outing.status);
-  assertCanClose(await closeInput(outingId, context.names));
-
+/** Marks the outing as closed and tells the others. The caller has already checked that closing is allowed. */
+export async function finalizeClose(personId: string, outingId: string, context: Awaited<ReturnType<typeof outingContext>>): Promise<void> {
   const closed = await asService(() =>
     getDb()
       .update(outings)
@@ -69,6 +65,15 @@ export async function closeOuting(personId: string, outingId: string): Promise<v
   await Promise.all(
     context.participants.filter((participant) => participant.personId !== personId).map((participant) => notify(participant.personId, outingClosed({ outingId, outingName: context.outing.name }))),
   );
+}
+
+/** The owner closes an outing that has nothing left to settle. Debts between people are not erased. */
+export async function closeOuting(personId: string, outingId: string): Promise<void> {
+  const context = await outingContext(personId, outingId);
+  assertAdmin({ role: context.outing.role, status: "active" });
+  assertActiveOuting(context.outing.status);
+  assertCanClose(await closeInput(outingId, context.names));
+  await finalizeClose(personId, outingId, context);
 }
 
 async function leaveInput(outingId: string, targetId: string, context: Awaited<ReturnType<typeof outingContext>>): Promise<LeaveInput> {

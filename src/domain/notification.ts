@@ -87,3 +87,33 @@ export function participantRemoved(input: { outingName: string }) {
 export function participantLeft(input: { personName: string; outingId: string; outingName: string }) {
   return draft("participant_left", "Alguém saiu do rolê", `${input.personName} saiu de ${input.outingName}.`, `/roles/${input.outingId}?visao=participantes`);
 }
+
+/** To whoever is owed money: the owner wants to close the outing and they have a say. */
+export function closingVoteRequested(input: { outingId: string; outingName: string; ownerName: string }) {
+  return draft(
+    "closing_vote_requested",
+    "Encerrar o rolê?",
+    `${input.ownerName} quer encerrar ${input.outingName}. A dívida entre vocês continua. Se ninguém disser nada em 3 dias, vale como aceite.`,
+    `/roles/${input.outingId}`,
+  );
+}
+
+/** To everyone in the outing: how the vote to close it ended. */
+export function closingVoteResolved(input: { outingId: string; outingName: string; result: "approved" | "rejected" | "cancelled" }) {
+  const texts = {
+    approved: `${input.outingName} foi encerrado. As dívidas entre as pessoas continuam.`,
+    rejected: `Alguém não aceitou encerrar ${input.outingName}. O rolê continua aberto.`,
+    cancelled: `Os saldos de ${input.outingName} mudaram, então o pedido de encerramento foi cancelado.`,
+  } as const;
+  return draft("closing_vote_resolved", input.result === "approved" ? "Rolê encerrado" : "Encerramento não aconteceu", texts[input.result], `/roles/${input.outingId}`);
+}
+
+/** To everyone in the outing: a late dispute opened it again. */
+export function outingReopened(input: { outingId: string; outingName: string; personName: string }) {
+  return draft(
+    "outing_reopened",
+    "Rolê reaberto",
+    `${input.personName} contestou uma despesa de ${input.outingName} depois do prazo, e o rolê foi reaberto para o dono avaliar.`,
+    `/roles/${input.outingId}`,
+  );
+}

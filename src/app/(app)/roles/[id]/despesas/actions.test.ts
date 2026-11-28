@@ -79,7 +79,14 @@ describe("decidePayerRequestAction", () => {
 describe("openDisputeAction", () => {
   it("contesta em nome de quem está logado", async () => {
     expect(await actions.openDisputeAction({}, form({ outingId, expenseId: "e1", subject: "not_participated", message: "Não fui" }))).toEqual({});
-    expect(disputes.openDispute).toHaveBeenCalledWith("p1", outingId, "e1", { subject: "not_participated", message: "Não fui" });
+    expect(disputes.openDispute).toHaveBeenCalledWith("p1", outingId, "e1", { subject: "not_participated", message: "Não fui", confirmLate: false });
+  });
+
+  it("fora do prazo pede a confirmação e, confirmada, repassa ao servidor", async () => {
+    disputes.openDispute.mockRejectedValueOnce(new DomainError("dispute_late_needs_confirmation", "Este rolê foi encerrado há mais de 7 dias."));
+    expect(await actions.openDisputeAction({}, form({ outingId, expenseId: "e1", subject: "amount", message: "x" }))).toEqual({ error: "Este rolê foi encerrado há mais de 7 dias.", needsConfirmation: true });
+    await actions.openDisputeAction({}, form({ outingId, expenseId: "e1", subject: "amount", message: "x", confirmLate: "on" }));
+    expect(disputes.openDispute).toHaveBeenLastCalledWith("p1", outingId, "e1", { subject: "amount", message: "x", confirmLate: true });
   });
 
   it("recusa um motivo inventado sem consultar nada", async () => {
