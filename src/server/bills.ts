@@ -122,6 +122,7 @@ export async function openBill(personId: string, outingId: string, input: BillIn
         items.map((item, position) => ({
           billId,
           position,
+          addedBy: personId,
           description: item.description,
           totalCents: item.totalCents,
           quantityNum: Number(item.quantity.numerator),

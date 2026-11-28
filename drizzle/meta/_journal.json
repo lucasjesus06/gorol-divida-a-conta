@@ -309,6 +309,20 @@
       "when": 1795833819302,
       "tag": "0043_politicas_leitura_por_conjunto",
       "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1795834626042,
+      "tag": "0044_conta_direta_e_itens_em_aberto",
+      "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "7",
+      "when": 1795834627136,
+      "tag": "0045_politicas_conta_direta_e_itens_em_aberto",
+      "breakpoints": true
     }
   ]
 }
