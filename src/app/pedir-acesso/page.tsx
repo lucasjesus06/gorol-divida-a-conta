@@ -25,8 +25,8 @@ async function RequestGate() {
 
 export default function RequestAccessPage() {
   return (
-    <Shell>
-      <section className="mt-4 flex flex-col gap-6">
+    <Shell center>
+      <section className="flex flex-col gap-6">
         <div className="flex flex-col gap-2">
           <h1 className="text-3xl font-extrabold tracking-tight">Pedir acesso</h1>
           <p className="text-sm text-muted-foreground">

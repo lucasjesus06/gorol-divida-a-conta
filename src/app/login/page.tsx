@@ -15,8 +15,8 @@ async function LoginFormWithNext({ searchParams }: Pick<PageProps<"/login">, "se
 
 export default function LoginPage(props: PageProps<"/login">) {
   return (
-    <Shell>
-      <section className="mt-4 flex flex-col gap-6">
+    <Shell center>
+      <section className="flex flex-col gap-6">
         <h1 className="text-3xl font-extrabold tracking-tight">Entrar</h1>
         <div className="card-surface p-6">
           <Suspense fallback={<LoginForm next="/" />}>
