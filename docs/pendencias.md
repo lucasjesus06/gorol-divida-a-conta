@@ -102,6 +102,12 @@ Tudo o que ainda precisa ser feito ou decidido. O que fica para versões futuras
   - a seleção de contatos da agenda usa o Contact Picker, que só existe no Android com Chrome: **não foi possível validar neste ambiente**; teste num Android (o botão "Escolher da agenda" aparece só onde há suporte);
   - sala com código e QR ao vivo, foto na aprovação, link individual por contato, PIN ou passkey para o convidado voltar sozinho e 2FA do super admin: ver [`evolucoes.md`](evolucoes.md).
 
+- **Desempenho (GOR-27), o que ficou de fora:**
+  - **não foi medido o carregamento no navegador** (tamanho de pacote, tempo de tela real): só o banco e o servidor. O ganho de menos idas ao banco por tela é **estimado** (o `cache` do React só vale dentro da renderização do servidor, então não dá para medi-lo nos testes); a contagem medida sem esse cache foi de 44 consultas na tela Resumo do dono, e o que mudou de fato é que agora elas saem **em paralelo**;
+  - **a fila de cobrança do super admin lê o sistema inteiro** (todos os rolês, o histórico e os aceites) e **o Resumo entre pessoas lê todo o histórico** de despesas da pessoa. Com muito volume isso pesa; a saída é guardar **saldos pré-calculados**, o que é uma mudança maior, a fazer quando houver volume real;
+  - a função `app.is_participant_of_expense` ficou sem uso depois da migração 0043; pode ser removida numa limpeza futura;
+  - as outras políticas (participantes, pagamentos de escrita, contas por consumo) ainda usam `app.is_participant(outing_id)` por linha; são tabelas pequenas por rolê, e só vale trocar se a medição mostrar custo.
+
 ## 3. Fora do escopo desta versão
 
 Grupos, leitura da NFC-e pela SEFAZ (a leitura de documentos por foto, print e PDF entra nas GOR-17 e GOR-18), documentos Word e Excel, Capacitor/APK, OpenAPI e compensação de saldos entre rolês.
