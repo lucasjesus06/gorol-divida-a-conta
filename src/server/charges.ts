@@ -1,7 +1,7 @@
 import "server-only";
 import { asc, eq, isNotNull } from "drizzle-orm";
 import { asService, getDb } from "@/db/client";
-import { expenseDisputes, messageTemplates, outings, people, reminderLog, reminderPauses } from "@/db/schema";
+import { expenseDisputes, messageTemplates, outings, people, reminderLog, reminderPauses, termsAcceptances } from "@/db/schema";
 import {
   decideReminder,
   pauseReminders as pauseRemindersDomain,
@@ -11,17 +11,12 @@ import {
 import { DomainError } from "@/domain/domain-error";
 import { paymentReminder } from "@/domain/notification";
 import { pairStatement } from "@/domain/pair-statement";
+import { TERMS_VERSION, remindersConsentedAt } from "@/domain/terms";
 import type { ReminderChannel } from "@/domain/reminder-channels";
 import { DEFAULT_TEMPLATES, pickTemplate, renderTemplate, validateTemplates, whatsappLink } from "@/domain/reminder-message";
 import { accountIds, loadLedgerForOutings } from "./balances";
 import { getMyPixKey } from "./pix";
 import { notify } from "./push";
-
-/**
- * The acceptance of the terms of use is not recorded yet (see docs/pendencias.md), so the
- * reminder rule that needs it is satisfied by this fixed date until that story exists.
- */
-const TERMS_NOT_ENFORCED_YET = new Date(0);
 
 export type ChargeItem = {
   debtor: { id: string; name: string; phone: string };
@@ -67,13 +62,14 @@ async function openPairs() {
 }
 
 async function loadFacts() {
-  const [logs, pauses, disputes, phones] = await Promise.all([
+  const [logs, pauses, disputes, phones, acceptances] = await Promise.all([
     getDb().select().from(reminderLog),
     getDb().select().from(reminderPauses),
     getDb().select({ openedBy: expenseDisputes.openedBy, outingId: expenseDisputes.outingId }).from(expenseDisputes).where(eq(expenseDisputes.status, "open")),
     getDb().select({ id: people.id, phone: people.phone, nickname: people.nickname }).from(people).where(isNotNull(people.userId)),
+    getDb().select().from(termsAcceptances).where(eq(termsAcceptances.version, TERMS_VERSION)),
   ]);
-  return { logs, pauses, disputes, phones: new Map(phones.map((row) => [row.id, row.phone])), nicknames: new Map(phones.map((row) => [row.id, row.nickname])) };
+  return { logs, pauses, disputes, phones: new Map(phones.map((row) => [row.id, row.phone])), nicknames: new Map(phones.map((row) => [row.id, row.nickname])), consents: new Map(acceptances.map((row) => [row.personId, remindersConsentedAt(row)])) };
 }
 
 function stateFor(pair: Pair, facts: Awaited<ReturnType<typeof loadFacts>>): ReminderState {
@@ -85,7 +81,7 @@ function stateFor(pair: Pair, facts: Awaited<ReturnType<typeof loadFacts>>): Rem
     debtorId: pair.debtorId,
     outingId: pair.outingIds[0] as string,
     pendingCents: pair.amountCents,
-    termsAcceptedAt: TERMS_NOT_ENFORCED_YET,
+    termsAcceptedAt: facts.consents.get(pair.debtorId) ?? null,
     hasOpenDispute: facts.disputes.some((dispute) => dispute.openedBy === pair.debtorId && pair.outingIds.includes(dispute.outingId)),
     sentAt: logs.map((row) => row.sentAt),
     pausedAt: pauses[0]?.pausedAt ?? null,
