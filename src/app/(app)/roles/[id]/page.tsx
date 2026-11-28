@@ -22,6 +22,8 @@ import { listPayments, type PaymentView } from "@/server/payments";
 import { getCloseBlockers } from "@/server/outing-lifecycle";
 import type { Blocker } from "@/domain/outing-closing";
 import { getClosingVote, type ClosingVoteView } from "@/server/closing-votes";
+import { CLOSING_VOTE_DAYS } from "@/domain/closing-vote";
+import { getParameterValues } from "@/server/system-parameters";
 import { ClosingVoteAnswer, CloseOutingButton, LeaveOutingButton, RemoveParticipantButton, RequestClosingButton } from "./lifecycle-controls";
 import { getPhotoUrls, listFiles, type FileView } from "@/server/files";
 import { FileList } from "@/components/files/FileList";
@@ -89,6 +91,7 @@ function Summary({
   expenses,
   closeBlockers,
   closingVote,
+  voteDays,
 }: {
   outing: OutingDetail;
   pendingRequests: number;
@@ -97,6 +100,7 @@ function Summary({
   expenses: ExpenseView[];
   closeBlockers: Blocker[] | null;
   closingVote: ClosingVoteView | null;
+  voteDays: number;
 }) {
   const active = expenses.filter((expense) => expense.status === "active");
   const total = active.reduce((sum, expense) => sum + expense.totalCents, 0);
@@ -155,7 +159,7 @@ function Summary({
             ) : closingVote?.status === "open" ? (
               <p className="text-sm text-muted-foreground">Há um pedido de encerramento em andamento, acima.</p>
             ) : closeBlockers.every((blocker) => blocker.code === "open_balance") ? (
-              <RequestClosingButton outingId={outing.id} />
+              <RequestClosingButton outingId={outing.id} days={voteDays} />
             ) : (
               <CloseOutingButton outingId={outing.id} blocked />
             )}
@@ -584,6 +588,7 @@ async function OutingContent({ params, searchParams }: Pick<PageProps<"/roles/[i
     view === "pagamentos" || view === "resumo" ? listPayments(profile.personId, id) : [],
     view === "acertos" ? getOutingBalances(profile.personId, id) : null,
   ]);
+  const voteDays = view === "resumo" && isAdmin ? ((await getParameterValues())["closing.vote_days"] as number) : CLOSING_VOTE_DAYS;
   const closingVote = view === "resumo" ? await getClosingVote(profile.personId, id) : null;
   const closeBlockers = isAdmin && view === "resumo" && outing.status === "active" ? await getCloseBlockers(profile.personId, id) : null;
   const photos = view === "participantes" ? await getPhotoUrls(profile.personId, outing.participants.map((participant) => participant.personId)) : new Map<string, string>();
@@ -598,7 +603,7 @@ async function OutingContent({ params, searchParams }: Pick<PageProps<"/roles/[i
         actions={<Pill>{outing.status === "closed" ? "Encerrado" : kindLabels[outing.kind]}</Pill>}
       />
       <Tabs outingId={outing.id} view={view} isAdmin={isAdmin} />
-      {view === "resumo" && <Summary outing={outing} pendingRequests={pendingRequests} expenses={expenses} pendingPayerRequests={payerRequests.filter((request) => request.status === "pending").length} paymentsToConfirm={payments.filter((payment) => payment.canResolve).length} closeBlockers={closeBlockers} closingVote={closingVote} />}
+      {view === "resumo" && <Summary outing={outing} pendingRequests={pendingRequests} expenses={expenses} pendingPayerRequests={payerRequests.filter((request) => request.status === "pending").length} paymentsToConfirm={payments.filter((payment) => payment.canResolve).length} closeBlockers={closeBlockers} closingVote={closingVote} voteDays={voteDays} />}
       {view === "despesas" && <ExpensesView outing={outing} expenses={expenses} canRegister={payerIds.has(profile.personId)} requests={payerRequests} bills={bills} />}
       {view === "acertos" && balances && <SettlementsView outing={outing} balances={balances} me={profile.personId} route={query.rota === "manual" ? "manual" : "inteligente"} />}
       {view === "pagamentos" && (
