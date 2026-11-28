@@ -69,6 +69,8 @@
   --animate-twinkle: twinkle 2.4s ease-in-out infinite;
   --animate-pulse-ring: pulse-ring 1.8s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   --animate-scan: scan 2.2s ease-in-out infinite;
+  --animate-drift-a: drift-a 34s ease-in-out infinite alternate;
+  --animate-drift-b: drift-b 41s ease-in-out infinite alternate;
   --animate-fade-up: fade-up 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
 
   @keyframes float {
@@ -108,6 +110,22 @@
     }
     50% {
       top: 88%;
+    }
+  }
+  @keyframes drift-a {
+    from {
+      transform: translate3d(0, 0, 0);
+    }
+    to {
+      transform: translate3d(38px, -26px, 0);
+    }
+  }
+  @keyframes drift-b {
+    from {
+      transform: translate3d(0, 0, 0);
+    }
+    to {
+      transform: translate3d(-34px, 30px, 0);
     }
   }
   @keyframes fade-up {

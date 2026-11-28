@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useActionState } from "react";
 import { Button } from "@/components/ui/button";
 import { inputClass } from "@/components/ui/field-styles";
+import { OtpInput } from "@/components/ui/otp-input";
 import { sendCode, verifyCode, type SendCodeState, type VerifyCodeState } from "./actions";
 
 export function LoginForm({ next }: { next: string }) {
@@ -19,17 +20,7 @@ export function LoginForm({ next }: { next: string }) {
           Se <span className="font-semibold text-foreground">{sent.email}</span> tiver acesso, enviamos um código
           para esse e-mail.
         </p>
-        <label className="flex flex-col gap-2 text-sm font-medium">
-          Código
-          <input
-            name="code"
-            inputMode="numeric"
-            autoComplete="one-time-code"
-            required
-            className={inputClass}
-            aria-describedby={verified.error ? "login-erro" : undefined}
-          />
-        </label>
+        <OtpInput name="code" label="Código" describedBy={verified.error ? "login-erro" : undefined} invalid={Boolean(verified.error)} />
         {verified.error && (
           <p id="login-erro" role="alert" className="text-sm text-destructive">
             {verified.error}
