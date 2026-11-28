@@ -211,7 +211,7 @@ export async function getRelationDetail(personId: string, otherId: string): Prom
     entries: statement.entries.map((entry) => ({
       ...entry,
       outingName: ledger.outingNames.get(entry.outingId) ?? "Rolê",
-      label: entry.kind === "expense" ? entry.description : "Pagamento",
+      label: entry.kind === "expense" ? entry.description : entry.kind === "payment" ? "Pagamento" : "Dívida perdoada",
     })),
   };
 }

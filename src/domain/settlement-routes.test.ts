@@ -24,6 +24,8 @@ function balancesWithNets(nets: Record<string, number>): ParticipantBalance[] {
     netCents,
     awaitingConfirmationSentCents: 0,
     awaitingConfirmationReceivedCents: 0,
+    amnestyGivenCents: 0,
+    amnestyReceivedCents: 0,
   }));
 }
 
