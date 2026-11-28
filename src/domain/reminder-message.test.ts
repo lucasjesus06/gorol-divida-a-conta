@@ -32,6 +32,11 @@ describe("renderTemplate", () => {
     expect(text).toContain("a Lucas (Churrasco, Praia). lucas@exemplo.com");
   });
 
+  it("usa o apelido de quem escolheu um, em vez do primeiro nome", () => {
+    const text = renderTemplate("{nome} e {credor}", { ...values, debtorNickname: "Dona Mari", creditorNickname: null });
+    expect(text).toBe("Dona Mari e Lucas");
+  });
+
   it("avisa quando o credor não tem chave", () => {
     expect(renderTemplate("{chave_pix}", { ...values, pixKey: null })).toContain("sem chave");
   });

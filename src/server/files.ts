@@ -6,7 +6,7 @@ import { DomainError } from "@/domain/domain-error";
 import type { FileKind } from "@/domain/file-kinds";
 import { validateStoredFile, validateUploadRequest } from "@/domain/file-rules";
 import { outingContext } from "./expenses";
-import { BUCKET, createDownloadUrl, createUploadToken, readStored, removeStored } from "./storage";
+import { BUCKET, createDownloadUrl, createDownloadUrls, createUploadToken, readStored, removeStored } from "./storage";
 
 const DOWNLOAD_SECONDS = 300;
 
@@ -192,4 +192,59 @@ export async function removeFile(personId: string, fileId: string): Promise<void
   }
   await asService(() => getDb().delete(files).where(eq(files.id, fileId)));
   await removeStored([file.path]);
+}
+
+/** Everyone the viewer may see a photo of: themselves and whoever shares an outing with them. */
+async function visibleOwners(viewerId: string, ownerIds: string[]): Promise<Set<string>> {
+  const visible = new Set(ownerIds.filter((id) => id === viewerId));
+  const others = ownerIds.filter((id) => id !== viewerId);
+  if (others.length === 0) {
+    return visible;
+  }
+  const mine = await getDb()
+    .select({ outingId: outingParticipants.outingId })
+    .from(outingParticipants)
+    .where(and(eq(outingParticipants.personId, viewerId), isNotNull(outingParticipants.confirmedAt), isNull(outingParticipants.leftAt)));
+  if (mine.length === 0) {
+    return visible;
+  }
+  const shared = await getDb()
+    .select({ personId: outingParticipants.personId })
+    .from(outingParticipants)
+    .where(
+      and(
+        inArray(outingParticipants.personId, others),
+        isNotNull(outingParticipants.confirmedAt),
+        isNull(outingParticipants.leftAt),
+        inArray(outingParticipants.outingId, mine.map((row) => row.outingId)),
+      ),
+    );
+  shared.forEach((row) => visible.add(row.personId));
+  return visible;
+}
+
+/** Profile photos the viewer is allowed to see, as short-lived links by person. */
+export async function getPhotoUrls(viewerId: string, ownerIds: string[]): Promise<Map<string, string>> {
+  const allowed = [...(await visibleOwners(viewerId, [...new Set(ownerIds)]))];
+  if (allowed.length === 0) {
+    return new Map();
+  }
+  const rows = await getDb()
+    .select({ ownerId: files.ownerId, path: files.path })
+    .from(files)
+    .where(and(eq(files.kind, "profile_photo"), eq(files.status, "ready"), inArray(files.ownerId, allowed)));
+  const urls = await createDownloadUrls(rows.map((row) => row.path), DOWNLOAD_SECONDS);
+  return new Map(rows.flatMap((row) => (urls.has(row.path) ? [[row.ownerId, urls.get(row.path) as string] as const] : [])));
+}
+
+/** The person's own photo: its id (to remove it) and a link to show it. */
+export async function getMyPhoto(personId: string): Promise<{ id: string; url: string } | null> {
+  const [row] = await getDb()
+    .select({ id: files.id, path: files.path })
+    .from(files)
+    .where(and(eq(files.kind, "profile_photo"), eq(files.status, "ready"), eq(files.ownerId, personId)));
+  if (!row) {
+    return null;
+  }
+  return { id: row.id, url: await createDownloadUrl(row.path, DOWNLOAD_SECONDS) };
 }

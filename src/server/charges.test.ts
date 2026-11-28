@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { expenseDisputes, notifications, people, reminderLog } from "@/db/schema";
+import { eq } from "drizzle-orm";
 import { approveAccount, createTestDatabase } from "@/test/database";
 
 const state = vi.hoisted(() => ({ db: undefined as unknown }));
@@ -63,6 +64,13 @@ describe("fila de cobrança", () => {
     expect(item.message).toContain("30,00");
     expect(item.message).toContain("lucas@exemplo.com");
     expect(item.whatsappUrl).toMatch(/^https:\/\/wa\.me\/5511999990001\?text=/);
+  });
+
+  it("a mensagem usa o apelido de quem escolheu um", async () => {
+    await db().update(people).set({ nickname: "Mari" }).where(eq(people.id, maria));
+    await server.saveTemplates(lucas, ["Oi {nome}, é o {credor}"]);
+    const item = (await server.getChargeQueue(noon)).find((candidate) => candidate.debtor.id === maria)!;
+    expect(item.message).toBe("Oi Mari, é o Lucas");
   });
 
   it("fora da janela de horário espera, sem mensagem nem link", async () => {

@@ -25,12 +25,14 @@ vi.mock("./storage", () => ({
     paths.forEach((path) => state.stored.delete(path));
   },
   createDownloadUrl: async (path: string) => `https://signed.example/${path}`,
+  createDownloadUrls: async (paths: string[]) => new Map(paths.map((path) => [path, `https://signed.example/${path}`])),
 }));
 
 const outingsServer = await import("./outings");
 const expensesServer = await import("./expenses");
 const paymentsServer = await import("./payments");
 const server = await import("./files");
+const lifecycle = await import("./outing-lifecycle");
 
 type TestDb = Awaited<ReturnType<typeof createTestDatabase>>;
 const db = () => state.db as TestDb;
@@ -182,5 +184,34 @@ describe("foto de perfil e remoção", () => {
     const fileId = await upload(lucas, evidence(), pdf);
     await expect(server.removeFile(lucas, fileId)).rejects.toMatchObject({ code: "file_not_removable" });
     expect(await db().$count(files)).toBe(1);
+  });
+});
+
+describe("fotos de perfil na tela", () => {
+  const photo = () => ({ kind: "profile_photo" as const, mimeType: "image/jpeg", sizeBytes: jpeg.length, name: "eu.jpg" });
+
+  it("cada pessoa vê a própria foto e a de quem divide rolê com ela, e mais ninguém", async () => {
+    await upload(lucas, photo(), jpeg);
+    await upload(maria, photo(), jpeg);
+    await upload(stranger, photo(), jpeg);
+
+    const seenByCaio = await server.getPhotoUrls(caio, [lucas, maria, caio, stranger]);
+    expect([...seenByCaio.keys()].sort()).toEqual([lucas, maria].sort());
+    expect([...(await server.getPhotoUrls(stranger, [lucas, maria, stranger])).keys()]).toEqual([stranger]);
+  });
+
+  it("quem saiu do rolê deixa de ver e de ser visto", async () => {
+    await upload(maria, photo(), jpeg);
+    const settled = await paymentsServer.declarePayment(caio, outingId, { toId: lucas, amountCents: 3000 });
+    await paymentsServer.confirmPayment(lucas, outingId, settled);
+    await lifecycle.removeParticipant(lucas, outingId, caio);
+    expect((await server.getPhotoUrls(caio, [maria])).size).toBe(0);
+    expect((await server.getPhotoUrls(lucas, [maria])).size).toBe(1);
+  });
+
+  it("a própria foto vem com o id para poder remover; sem foto devolve nulo", async () => {
+    expect(await server.getMyPhoto(lucas)).toBeNull();
+    const fileId = await upload(lucas, photo(), jpeg);
+    expect(await server.getMyPhoto(lucas)).toMatchObject({ id: fileId });
   });
 });
