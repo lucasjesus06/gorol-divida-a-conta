@@ -43,7 +43,12 @@ Tudo o que ainda precisa ser feito ou decidido. O que fica para versões futuras
   - **parâmetros do sistema (20d, feitos), o que ficou de fora:**
     - entraram só as regras que já têm quem as leia: os 5 da cobrança, o **prazo da votação de encerramento** e o **prazo para contestar depois de encerrado**. O **prazo de contestação do comprovante** só entra com a GOR-17 (hoje nada o usa), e a validade de convite e de link continua fixa por segurança;
     - os **limites mínimo e máximo** são propostas minhas (por exemplo, intervalo de 12 h a 7 dias; votação de 1 a 14 dias): **revise a lista na tela** e ajuste o catálogo (`src/domain/system-parameters.ts`) se quiser outros;
-    - o **ajuste por rolê** (o dono sobrescrever o padrão só no seu rolê, dentro dos limites) é a **20f**; forma de divisão, rota de acerto e taxa de serviço padrão entram nela;
+    - o **ajuste por rolê** já existe (20f): ver abaixo;
+  - **ajustes do rolê (20f, feitos), o que ficou de fora:**
+    - o dono ajusta, na aba **Ajustes** (só ele vê), o **prazo da votação de encerramento**, o **prazo de contestação depois de encerrado**, a **divisão sugerida**, a **rota de acerto sugerida** e a **taxa de serviço sugerida**; vazio usa o padrão. Só altera com o rolê aberto;
+    - a divisão, a rota e a taxa são **sugestões** que já vêm marcadas, e a pessoa pode trocar: a taxa aparece como o botão "Calcular X% dos itens" na conta por consumo, que preenche o campo com a soma dos itens digitados;
+    - **não há histórico** das mudanças dos ajustes do rolê (só quem e quando por último). Se o dono mudar o prazo no meio de uma votação aberta, **a votação já aberta mantém o prazo com que foi pedida**;
+    - o prazo de votação e o de contestação **respeitam os limites do sistema**; a divisão "por itens" não é ajuste, porque a conta por consumo é um fluxo à parte;
     - mudar um parâmetro **não reescreve o que já foi gravado**: a votação aberta mantém o prazo que tinha, e o rolê já encerrado continua contando o prazo de contestação pelo valor em vigor na hora de contestar;
   - o Pix copia e cola usa cidade "BRASIL" e o primeiro nome do recebedor, porque o app não sabe a cidade; **não foi possível validar neste ambiente que um app de banco aceita o código** (a conferência do CRC segue o vetor de referência). Teste pagando um valor pequeno;
   - confirmar a lista de parâmetros ajustáveis (cobrança, prazo de contestação do comprovante, forma de divisão, rota e taxa de serviço padrão);

@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { notifications, outingReopenings, outings, people } from "@/db/schema";
+import { notifications, outingReopenings, outingSettings, outings, people } from "@/db/schema";
 import { approveAccount, createTestDatabase } from "@/test/database";
 
 const state = vi.hoisted(() => ({ db: undefined as unknown }));
@@ -128,6 +128,14 @@ describe("contestar depois dos 7 dias", () => {
     await params.saveParameter(lucas, "dispute.window_days", 3);
     await closedDaysAgo(5);
     await expect(disputes.openDispute(maria, outingId, expenseId, { subject: "amount", message: "x" })).rejects.toMatchObject({ code: "dispute_late_needs_confirmation" });
+  });
+
+  it("o ajuste do rolê vence o padrão do sistema no prazo de contestação", async () => {
+    // The owner set it while the outing was open; the beforeEach already closed it, so it is written directly.
+    await db().insert(outingSettings).values({ outingId, disputeWindowDays: 30, updatedBy: lucas });
+    await closedDaysAgo(20);
+    await disputes.openDispute(maria, outingId, expenseId, { subject: "amount", message: "Valor errado" });
+    expect((await outing()).status).toBe("closed");
   });
 
   it("só quem participa da despesa contesta, como antes", async () => {

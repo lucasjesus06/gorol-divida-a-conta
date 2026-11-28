@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { DomainError } from "@/domain/domain-error";
 import { isUuid } from "@/lib/uuid";
 import { getRenderProfile } from "@/server/auth";
+import { getEffectiveSettings } from "@/server/outing-settings";
 import { listPayers } from "@/server/expenses";
 import { BillForm } from "./bill-form";
 
@@ -29,6 +30,7 @@ async function NewBill({ params }: Pick<PageProps<"/roles/[id]/contas/nova">, "p
     }
     throw error;
   }
+  const settings = await getEffectiveSettings(id);
   const payers = people.filter((person) => person.isPayer);
   const canOpen = payers.some((person) => person.personId === profile.personId);
   const today = new Date().toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" });
@@ -42,7 +44,7 @@ async function NewBill({ params }: Pick<PageProps<"/roles/[id]/contas/nova">, "p
       />
       <div className="card-surface p-6">
         {canOpen ? (
-          <BillForm outingId={id} me={profile.personId} payers={payers} today={today} idempotencyKey={crypto.randomUUID()} />
+          <BillForm outingId={id} me={profile.personId} payers={payers} today={today} idempotencyKey={crypto.randomUUID()} serviceFeePercent={settings.serviceFeePercent} />
         ) : (
           <p className="text-sm">Só o dono do rolê e os pagantes declarados abrem uma conta.</p>
         )}

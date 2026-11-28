@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { DomainError } from "@/domain/domain-error";
 import { isUuid } from "@/lib/uuid";
 import { getRenderProfile } from "@/server/auth";
+import { getEffectiveSettings } from "@/server/outing-settings";
 import { listPayers } from "@/server/expenses";
 import { ExpenseForm } from "../expense-form";
 
@@ -29,6 +30,7 @@ async function NewExpense({ params }: Pick<PageProps<"/roles/[id]/despesas/nova"
     }
     throw error;
   }
+  const settings = await getEffectiveSettings(id);
   const canRegister = people.find((person) => person.personId === profile.personId)?.isPayer === true;
   const today = new Date().toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" });
 
@@ -42,7 +44,7 @@ async function NewExpense({ params }: Pick<PageProps<"/roles/[id]/despesas/nova"
             me={profile.personId}
             idempotencyKey={crypto.randomUUID()}
             people={people}
-            defaults={{ description: "", total: "", date: today, method: "equal", payers: {}, shares: {} }}
+            defaults={{ description: "", total: "", date: today, method: settings.defaultSplit, payers: {}, shares: {} }}
           />
         ) : (
           <p className="text-sm">Só o dono do rolê e os pagantes declarados registram despesas.</p>

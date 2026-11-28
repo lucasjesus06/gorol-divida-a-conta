@@ -281,6 +281,20 @@
       "when": 1795829815663,
       "tag": "0039_politicas_parametros_do_sistema",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1795830423081,
+      "tag": "0040_ajustes_do_role",
+      "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1795830424287,
+      "tag": "0041_politicas_ajustes_do_role",
+      "breakpoints": true
     }
   ]
 }
