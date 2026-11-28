@@ -55,7 +55,7 @@ async function openPairs() {
     for (let j = i + 1; j < ids.length; j += 1) {
       const a = ids[i] as string;
       const b = ids[j] as string;
-      const statement = pairStatement(a, b, ledger.expenses, ledger.payments, ledger.amnesties);
+      const statement = pairStatement(a, b, ledger.expenses, ledger.payments, ledger.amnesties, ledger.funds);
       const net = statement.projectedNetCents;
       if (net === 0) continue;
       const outingIds = [...statement.projectedNetByOutingCents].filter(([, cents]) => cents !== 0).map(([id]) => id);

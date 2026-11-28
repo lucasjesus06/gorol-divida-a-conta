@@ -4,6 +4,7 @@ import type { Cents } from "./money";
 import { expenseObligations } from "./obligations";
 import { pairStatement } from "./pair-statement";
 import type { Payment } from "./payment";
+import { areNeutralAt, type SharedFund } from "./shared-fund";
 
 export type AmnestyItem = { outingId: string; expenseId: string; amountCents: Cents };
 
@@ -41,6 +42,7 @@ export function forgivableBetween(
   expenses: Expense[],
   payments: Payment[],
   amnesties: Amnesty[],
+  funds: SharedFund[] = [],
 ): Forgivable {
   const forgivenBy = new Map<string, Cents>();
   for (const amnesty of amnesties) {
@@ -52,6 +54,7 @@ export function forgivableBetween(
 
   const rows: ForgivableExpense[] = [];
   for (const expense of activeExpenses(expenses)) {
+    if (areNeutralAt(funds, creditorId, debtorId, expense.createdAt)) continue;
     const owedCents = expenseObligations(expense)
       .filter((obligation) => obligation.debtorId === debtorId && obligation.creditorId === creditorId)
       .reduce((sum, obligation) => sum + obligation.amountCents, 0);
@@ -69,7 +72,7 @@ export function forgivableBetween(
   }
   rows.sort((a, b) => a.occurredAt.getTime() - b.occurredAt.getTime());
 
-  const net = pairStatement(creditorId, debtorId, expenses, payments, amnesties).projectedNetCents;
+  const net = pairStatement(creditorId, debtorId, expenses, payments, amnesties, funds).projectedNetCents;
   return { expenses: rows, maxCents: Math.max(net, 0) };
 }
 
@@ -84,6 +87,7 @@ export function planAmnesty(
   expenses: Expense[],
   payments: Payment[],
   amnesties: Amnesty[],
+  funds: SharedFund[] = [],
 ): { items: AmnestyItem[]; totalCents: Cents } {
   if (creditorId === debtorId) {
     throw new DomainError("amnesty_same_person", "Você não pode perdoar a si mesmo.");
@@ -92,7 +96,7 @@ export function planAmnesty(
     throw new DomainError("amnesty_empty", "Escolha ao menos uma despesa para perdoar.");
   }
 
-  const forgivable = forgivableBetween(creditorId, debtorId, expenses, payments, amnesties);
+  const forgivable = forgivableBetween(creditorId, debtorId, expenses, payments, amnesties, funds);
   const byExpense = new Map(forgivable.expenses.map((row) => [row.expenseId, row]));
   const seen = new Set<string>();
   const items: AmnestyItem[] = [];
@@ -119,4 +123,29 @@ export function planAmnesty(
     throw new DomainError("amnesty_above_balance", "Você só pode perdoar até o que essa pessoa ainda deve a você.");
   }
   return { items, totalCents };
+}
+
+/**
+ * Forgives, oldest expense first, everything the debtor still owes the creditor. Used when two people
+ * start sharing the same money: what was between them before is cleared on the spot.
+ */
+export function planClearingAmnesty(
+  creditorId: string,
+  debtorId: string,
+  expenses: Expense[],
+  payments: Payment[],
+  amnesties: Amnesty[],
+): { items: AmnestyItem[]; totalCents: Cents } | null {
+  const forgivable = forgivableBetween(creditorId, debtorId, expenses, payments, amnesties);
+  let left = forgivable.maxCents;
+  const selection: { expenseId: string; amountCents: Cents }[] = [];
+  for (const row of forgivable.expenses) {
+    if (left === 0) break;
+    const amountCents = Math.min(row.remainingCents, left);
+    if (amountCents > 0) {
+      selection.push({ expenseId: row.expenseId, amountCents });
+      left -= amountCents;
+    }
+  }
+  return selection.length === 0 ? null : planAmnesty(creditorId, debtorId, selection, expenses, payments, amnesties);
 }

@@ -337,6 +337,20 @@
       "when": 1795836002494,
       "tag": "0047_politicas_anistias",
       "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1795837443989,
+      "tag": "0048_despesas_compartilhadas",
+      "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "7",
+      "when": 1795837444989,
+      "tag": "0049_politicas_despesas_compartilhadas",
+      "breakpoints": true
     }
   ]
 }

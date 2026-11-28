@@ -1,4 +1,4 @@
-import { Bell, ChevronRight, HandCoins, KeyRound, ShieldCheck, ShieldHalf, SlidersHorizontal, UserRound } from "lucide-react";
+import { Bell, ChevronRight, HandCoins, KeyRound, ShieldCheck, ShieldHalf, SlidersHorizontal, UserRound, Users } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { ReactNode } from "react";
@@ -47,6 +47,12 @@ async function SettingsContent() {
         icon={<Bell className="size-5" />}
         title="Avisos no aparelho"
         description="Ligue para ser avisado no celular."
+      />
+      <SettingsLink
+        href="/configuracoes/despesas-compartilhadas"
+        icon={<Users className="size-5" />}
+        title="Despesas compartilhadas"
+        description="Para quem divide o mesmo dinheiro, como cônjuges."
       />
       <SettingsLink
         href="/configuracoes/privacidade"

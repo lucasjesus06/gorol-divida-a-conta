@@ -14,7 +14,7 @@ import { notify } from "./push";
 
 export async function closeInput(outingId: string, names: Map<string, string>) {
   const ledger = await loadLedgerForOutings([outingId]);
-  const balances = computeOutingBalances(outingId, ledger.expenses, ledger.payments, ledger.amnesties);
+  const balances = computeOutingBalances(outingId, ledger.expenses, ledger.payments, ledger.amnesties, ledger.funds);
 
   const [participants, pendingPayments, bills, requests] = await Promise.all([
     asService(() =>
@@ -81,7 +81,7 @@ async function leaveInput(outingId: string, targetId: string, context: Awaited<R
   const others = context.participants.filter((participant) => participant.personId !== targetId);
   const openWith = others.map((other) => ({
     name: other.name,
-    netCents: pairStatement(targetId, other.personId, ledger.expenses, ledger.payments, ledger.amnesties).netByOutingCents.get(outingId) ?? 0,
+    netCents: pairStatement(targetId, other.personId, ledger.expenses, ledger.payments, ledger.amnesties, ledger.funds).netByOutingCents.get(outingId) ?? 0,
   }));
 
   const [pending, claims] = await Promise.all([
